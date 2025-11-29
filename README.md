@@ -58,3 +58,18 @@ Add repo settings: Pages -> Build from GitHub Actions. Workflow below builds and
 MIT (add a LICENSE file if desired).
 # foxhole-reporter
 
+
+
+# TODO
+## Data
+- Fetch dynamic data in a more efficient manner
+- Enable ETags and caching on the WarAPI
+- Store snapshops in Supabase
+
+## Icons & filters
+- Implement tags to match icons to filters
+    - Don't refetch dynamic data when adjusting filters
+- Color icons based on faction ownership
+
+## Additional map data
+- Draw hex subregions as vectorLayer
