@@ -41,7 +41,7 @@ export const HEX_LAYOUT: HexCoordinate[] = [
   // Row 6 (4 hexes)
   { row: 6, col: 0, apiName: 'FarranacCoastHex', displayName: "Farranac Coast", imageName: 'FarranacCoastHex.png' },
   { row: 6, col: 1, apiName: 'LinnMercyHex', displayName: "Linn of Mercy", imageName: 'LinnMercyHex.png' },
-  { row: 6, col: 2, apiName: 'MarbanHollowHex', displayName: "Marban Hollow", imageName: 'MarbanHollowHex.png' },
+  { row: 6, col: 2, apiName: 'MarbanHollow', displayName: "Marban Hollow", imageName: 'MarbanHollowHex.png' },
   { row: 6, col: 3, apiName: 'StlicanShelfHex', displayName: "Stlican Shelf", imageName: 'StlicanShelfHex.png' },
   
   // Row 7 (5 hexes)

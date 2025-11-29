@@ -3,6 +3,7 @@ import { MapContainer, Tooltip, LayerGroup, CircleMarker, Marker } from 'react-l
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useTerritoryDiff } from '../lib/queries';
+import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
@@ -11,6 +12,7 @@ import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM } from '../lib/mapConfig';
 
 // Map WarAPI icon type to human-readable label
 function getIconLabel(iconType: number): string {
@@ -31,7 +33,11 @@ function getIconLabel(iconType: number): string {
 }
 
 export default function MapView() {
-  const { data: snapshot } = useLatestSnapshot();
+  const dataSource = useMapStore((s) => s.dataSource);
+  //const { data: supabaseSnapshot } = useLatestSnapshot();
+  const { data: warApiSnapshot } = useWarApiDirect();
+  const snapshot = warApiSnapshot;//dataSource === 'warapi' ? warApiSnapshot : supabaseSnapshot;
+  
   const { data: dailyDiff } = useTerritoryDiff('daily');
   const { data: weeklyDiff } = useTerritoryDiff('weekly');
   const activeLayers = useMapStore((s) => s.activeLayers);
@@ -40,15 +46,21 @@ export default function MapView() {
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
   useEffect(() => {
-    // placeholder effect for side features (e.g., realtime updates via channel)
-  }, []);
+    console.log('[MapView] Data source:', dataSource);
+    console.log('[MapView] Snapshot data:', snapshot);
+    console.log('[MapView] Territory count:', snapshot?.territories?.length ?? 0);
+    console.log('[MapView] Territory layer active:', activeLayers.territory);
+    if (snapshot?.territories && snapshot.territories.length > 0) {
+      console.log('[MapView] Sample territory:', snapshot.territories[0]);
+    }
+  }, [snapshot, activeLayers.territory, dataSource]);
 
   return (
     <MapContainer 
       center={[0, 0] as [number, number]} 
-      zoom={1} 
-      minZoom={0}
-      maxZoom={5}
+      zoom={1}
+      minZoom={MAP_MIN_ZOOM}
+      maxZoom={MAP_MAX_ZOOM}
       crs={CRS.Simple}
       className="h-full w-full bg-gray-900"
     >
@@ -60,19 +72,31 @@ export default function MapView() {
       />
       {activeLayers.territory && (
         <LayerGroup>
-          {snapshot?.territories.map((t: TerritoryTile) => {
+          {snapshot?.territories.map((t: TerritoryTile, idx: number) => {
             // Project directly into the bounds of the region's hex tile.
             const projected = projectRegionPoint(t.region, t.x, t.y);
-            if (!projected) return null;
+            console.warn(`[MapView] Projecting region: ${t.region} at (${t.x}, ${t.y})`);
+            if (!projected) {
+              console.warn(`[MapView] Failed to project region: ${t.region} at (${t.x}, ${t.y})`);
+              return null;
+            }
             const [lat, lng] = projected;
+            
+            if (idx < 3) {
+              console.log(`[MapView] Marker ${idx}: region=${t.region}, iconType=${t.iconType}, pos=[${lat}, ${lng}]`);
+            }
             
             const isVictoryBase = (t.flags & 0x01) !== 0;
             const isScorched = (t.flags & 0x10) !== 0;
             const isBuildSite = (t.flags & 0x04) !== 0;
 
             const [w, h] = getIconSize(t.iconType);
+            const iconUrl = getIconUrl(t.iconType);
+            if (idx < 3) {
+              console.log(`[MapView] Icon ${idx}: url=${iconUrl}, size=[${w}, ${h}]`);
+            }
             const icon = L.icon({
-              iconUrl: getIconUrl(t.iconType),
+              iconUrl,
               iconSize: [w, h],
               iconAnchor: [w / 2, h / 2],
               className: 'drop-shadow-sm'

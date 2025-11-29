@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { projectRegionPoint } from '../lib/projection';
 import { useMap } from 'react-leaflet';
-import { MINOR_LABEL_MIN_ZOOM } from '../lib/mapConfig';
+import { MINOR_LABEL_MIN_ZOOM, MAJOR_LABEL_MIN_ZOOM } from '../lib/mapConfig';
 import { getIconUrl, getIconSize } from '../lib/icons';
 import { getHexByApiName } from '../lib/hexLayout';
 
@@ -51,7 +51,7 @@ export default function StaticMapLayer({ visible, majorVisible, minorVisible }: 
 
         const textMarkers = entry.data.mapTextItems
           .filter(txt => {
-            if (txt.mapMarkerType === 'Major') return majorVisible;
+            if (txt.mapMarkerType === 'Major') return majorVisible && zoom >= MAJOR_LABEL_MIN_ZOOM;
             // Minor labels gated by zoom level
             return minorVisible && zoom >= MINOR_LABEL_MIN_ZOOM;
           })

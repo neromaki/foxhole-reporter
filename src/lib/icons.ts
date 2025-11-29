@@ -2,53 +2,57 @@
 // Uses Vite's import.meta.url to resolve asset paths at build time
 
 export function getIconUrl(iconType: number): string {
+    console.log(`Getting icon URL for iconType: ${iconType}`);
   const name = iconTypeToFilename(iconType);
   return new URL(`../map/icons/${name}`, import.meta.url).href;
 }
 
 export function iconTypeToFilename(iconType: number): string {
+    console.log(`Mapping iconType to filename: ${iconType}`);
+  // Map WarAPI iconType codes to local PNG asset filenames
   const map: Record<number, string> = {
     // Common bases and structures
-    11: 'Hospital.png',
-    12: 'VehicleFactory.png',
-    17: 'Refinery.png',
-    18: 'Shipyard.png',
-    19: 'EngineeringCenter.png',
-    20: 'SalvageField.png',
-    21: 'ComponentField.png',
-    22: 'FuelField.png',
-    23: 'SulfurField.png',
-    27: 'Keep.png',
-    28: 'ObservationTower.png',
-    29: 'Fort.png',
-    32: 'SulfurMine.png',
-    33: 'StorageFacility.png',
-    34: 'Factory.png',
-    35: 'GarrisonStation.png',
-    37: 'RocketSite.png',
-    38: 'SalvageMine.png',
-    39: 'ConstructionYard.png',
-    40: 'ComponentMine.png',
-    45: 'RelicBase.png',
-    51: 'MassProductionFactory.png',
-    52: 'Seaport.png',
-    53: 'CoastalGun.png',
-    54: 'SoulFactory.png',
-    56: 'TownBase1.png',
-    57: 'TownBase2.png',
-    58: 'TownBase3.png',
-    59: 'StormCannon.png',
-    60: 'IntelCenter.png',
-    61: 'CoalField.png',
-    62: 'OilField.png',
-    70: 'RocketTarget.png',
-    71: 'RocketGroundZero.png',
-    72: 'RocketSiteArmed.png',
-    75: 'OilRig.png',
-    83: 'WeatherStation.png',
-    84: 'MortarHouse.png'
+    11: 'Medical',
+    12: 'Vehicle',
+    17: 'Manufacturing',
+    18: 'Shipyard',
+    19: 'TechCenter',
+    20: 'Salvage',
+    21: 'Components',
+    22: 'Fuel',
+    23: 'Sulfur',
+    27: 'Keep',
+    28: 'ObservationTower',
+    29: 'Fort',
+    32: 'SulfurMine',
+    33: 'StorageFacility',
+    34: 'Factory',
+    35: 'Safehouse',
+    37: 'RocketSite',
+    38: 'SalvageMine',
+    39: 'ConstructionYard',
+    40: 'ComponentMine',
+    45: 'RelicBase',
+    51: 'MassProductionFactory',
+    52: 'Seaport',
+    53: 'CoastalGun',
+    54: 'SoulFactory',
+    56: 'TownBaseTier1',
+    57: 'TownBaseTier2',
+    58: 'TownBaseTier3',
+    59: 'StormCannon',
+    60: 'IntelCenter',
+    61: 'Coal',
+    62: 'OilWell',
+    70: 'RocketTarget',
+    71: 'RocketGroundZero',
+    72: 'RocketSiteArmed',
+    75: 'FacilityMineOilRig',
+    83: 'WeatherStation',
+    84: 'MortarHouse'
   };
-  return map[iconType] ?? 'Unknown.png';
+  console.log(`Mapped iconType ${iconType} to filename: ${map[iconType] ?? 'Unknown'}`);
+  return "MapIcon" + (map[iconType] ?? 'Unknown') + ".png";
 }
 
 export function getIconSize(iconType: number): [number, number] {
