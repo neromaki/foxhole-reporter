@@ -1,0 +1,250 @@
+[
+    {
+        "id": 56,
+        "name": "Town Base 1",
+        "tags": ["Base", "Spawn", "Storage", "Base_Town", "Base_Town_1"]
+    },
+    {
+        "id": 57,
+        "name": "Town Base 2",
+        "tags": ["Base", "Spawn", "Storage", "Base_Town", "Base_Town_2"]
+    },
+    {
+        "id": 58,
+        "name": "Town Base 3",
+        "tags": ["Base", "Spawn", "Storage", "Base_Town", "Base_Town_3", "Victory_Point"]
+    },
+	
+    {
+        "id": 45,
+        "name": "Relic Base 1",
+        "tags": ["Base", "Spawn", "Storage", "Base_Relic", "Base_Relic_1"]
+    },
+    {
+        "id": 27,
+        "name": "Special Base (Keep)",
+        "tags": ["Base", "Spawn", "Storage", "Base_Keep"]
+    },
+    {
+        "id": 29,
+        "name": "Fort",
+        "tags": ["Base", "Spawn", "Storage", "Base_Fort"]
+    },
+    {
+        "id": 8,
+        "name": "Forward Base 1",
+        "tags": ["Base", "Spawn", "Storage", "Base_Forward", "Base_Forward_1"]
+    },
+    {
+        "id": 35,
+        "name": "Garrison Station",
+        "tags": ["Base", "Spawn", "Storage", "Base_Garrison_Station"]
+    },
+    {
+        "id": 11,
+        "name": "Hospital",
+        "tags": ["Base", "Spawn", "Hospital", "Base_Hospital"]
+    },
+    {
+        "id": 30,
+        "name": "Troop Ship",
+        "tags": ["Base", "Spawn", "Storage", "Ship", "Base_Troop_Ship"]
+    },
+
+
+
+
+    {
+        "id": 12,
+        "name": "Vehicle Factory",
+        "tags": ["Economy", "Construction", "Static", "Vehicle_Factory"]
+    },
+    {
+        "id": 18,
+        "name": "Shipyard",
+        "tags": ["Economy", "Construction", "Static", "Shipyard"]
+    },
+    {
+        "id": 39,
+        "name": "Construction Yard",
+        "tags": ["Economy", "Construction", "Static", "Construction_Yard"]
+    },
+
+
+
+
+    {
+        "id": 17,
+        "name": "Refinery",
+        "tags": ["Economy", "Production", "Static", "Refinery"]
+    },
+    {
+        "id": 34,
+        "name": "Factory",
+        "tags": ["Economy", "Production", "Static", "Factory"]
+    },
+    {
+        "id": 51,
+        "name": "Mass Production",
+        "tags": ["Economy", "Production", "Static", "Factory", "Mass_Production", "MPF"]
+    },
+    {
+        "id": 52,
+        "name": "Seaport",
+        "tags": ["Economy", "Storage", "Static", "Seaport"]
+    },
+    {
+        "id": 33,
+        "name": "Storage Facility",
+        "tags": ["Economy", "Storage", "Static", "Storage_Facility"]
+    },
+
+
+
+
+    {
+        "id": 20,
+        "name": "Salvage Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Salvage"]
+    },
+    {
+        "id": 21,
+        "name": "Component Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Component"]
+    },
+    {
+        "id": 22,
+        "name": "Fuel Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Fuel"]
+    },
+    {
+        "id": 23,
+        "name": "Sulfur Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Sulfur"]
+    },
+    {
+        "id": 61,
+        "name": "Coal Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Coal"]
+    },
+    {
+        "id": 62,
+        "name": "Oil Field",
+        "tags": ["Economy", "Resource", "ResourceField", "Resource_Oil"]
+    },
+
+
+
+
+    {
+        "id": 38,
+        "name": "Salvage Mine",
+        "tags": ["Economy", "Resource", "Resource_Mine", "Resource_Salvage"]
+    },
+    {
+        "id": 40,
+        "name": "Component Mine",
+        "tags": ["Economy", "Resource", "Resource_Mine", "Resource_Component"]
+    },
+    {
+        "id": 32,
+        "name": "Sulfur Mine",
+        "tags": ["Economy", "Resource", "Resource_Mine", "Resource_Sulfur"]
+    },
+    {
+        "id": 75,
+        "name": "Facility Mine Oil Rig",
+        "tags": ["Economy", "Resource", "Resource_Mine", "Resource_Oil"]
+    },	
+
+
+	
+	
+    {
+        "id": 59,
+        "name": "Storm Cannon",
+        "tags": ["Utility", "Storm_Cannon"]
+    },
+    {
+        "id": 53,
+        "name": "Coastal Gun",
+        "tags": ["Utility", "Static", "Defense", "Coastal_Gun"]
+    },
+    {
+        "id": 84,
+        "name": "Mortar House",
+        "tags": ["Utility", "Static", "Defense", "Mortar_House"]
+    },
+    {
+        "id": 54,
+        "name": "Soul Factory",        
+        "tags": ["Utility", "Soul_Factory"]
+    },	
+
+
+
+
+    {
+        "id": 60,
+        "name": "Intel Center",
+        "tags": ["Utility", "Intel_Center"]
+    },
+    {
+        "id": 83,
+        "name": "Weather Station",
+        "tags": ["Utility", "Weather_Station"]
+    },
+    {
+        "id": 19,
+        "name": "Tech Center",
+        "tags": ["Utility", "Tech_Center"]
+    },
+    {
+        "id": 28,
+        "name": "Observation Tower",
+        "tags": ["Utility", "Observation_Tower"]
+    },
+	
+    
+
+
+    {
+        "id": 37,
+        "name": "Rocket Site",
+        "tags": ["Rocket", "Rocket_Site"]
+    },
+    {
+        "id": 72,
+        "name": "Rocket Site With Rocket",
+        "tags": ["Rocket", "Rocket_Site_Armed"]
+    },
+    {
+        "id": 70,
+        "name": "Rocket Target",
+        "tags": ["Rocket", "Rocket_Target"]
+    },
+    {
+        "id": 71,
+        "name": "Rocket Ground Zero",
+        "tags": ["Rocket", "Rocket_Ground_Zero"]
+    },
+
+    
+
+
+    {
+        "id": 24,
+        "name": "World Map Tent",
+        "tags": ["Static", "Utility", "Home_Base", "Home_Map_Tent"]
+    },
+    {
+        "id": 25,
+        "name": "Travel Tent",
+        "tags": ["Static", "Utility", "Home_Base", "Home_Travel_Tent"]
+    },
+    {
+        "id": 26,
+        "name": "Training Area",
+        "tags": ["Static", "Utility", "Home_Base", "Home_Training_Area"]
+    }
+]
