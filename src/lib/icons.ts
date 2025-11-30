@@ -61,11 +61,11 @@ export function getIconSize(iconType: number): [number, number] {
     case 56:
     case 57:
     case 58:
-      return [22, 22];
+      return [24, 24];
     case 37:
     case 59:
       return [24, 24];
     default:
-      return [18, 18];
+      return [24, 24];
   }
 }

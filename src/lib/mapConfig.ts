@@ -1,6 +1,6 @@
 // Map display configuration constants
 export const MINOR_LABEL_MIN_ZOOM = 3; // Minor labels appear at or above this zoom level
-export const MAJOR_LABEL_MIN_ZOOM = 5; // Major labels appear at or above this zoom level
+export const MAJOR_LABEL_MIN_ZOOM = 1; // Major labels appear at or above this zoom level
 export const MAP_MIN_ZOOM = 0;         // Minimum zoom level for the map
 export const MAP_MAX_ZOOM = 3;        // Maximum zoom level for the map
 
@@ -20,3 +20,6 @@ export const ZOOM_THROTTLE_MS = 100; // Only used when mode is 'throttle'
 // When enabled, we create each icon at its max-zoom size and apply a transform scale for lower zooms.
 export const ICON_SMOOTH_SCALE = true;
 export const ICON_SMOOTH_DURATION_MS = 160; // ms for transition easing
+
+// Debug performance overlay flag
+export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf panel
