@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { MapContainer, Tooltip, LayerGroup, CircleMarker, Marker } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import { MapContainer, Tooltip, LayerGroup, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useTerritoryDiff } from '../lib/queries';
@@ -12,7 +12,7 @@ import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS } from '../lib/mapConfig';
 
 // Map WarAPI icon type to human-readable label
 function getIconLabel(iconType: number): string {
@@ -59,80 +59,25 @@ export default function MapView() {
   return (
     <MapContainer 
       center={[0, 0] as [number, number]} 
-      zoom={1}
+      zoom={MAP_MIN_ZOOM}
       minZoom={MAP_MIN_ZOOM}
       maxZoom={MAP_MAX_ZOOM}
       crs={CRS.Simple}
       className="h-full w-full bg-gray-900"
     >
+      <ZoomLogger />
+      <TerritoryLayer 
+        snapshot={snapshot}
+        activeLayers={activeLayers}
+        changedDaily={changedDaily}
+        changedWeekly={changedWeekly}
+      />
       <HexTileLayer />
       <StaticMapLayer 
         visible={activeLayers.static}
         majorVisible={activeLayers.labelsMajor}
         minorVisible={activeLayers.labelsMinor}
       />
-      {activeLayers.territory && (
-        <LayerGroup>
-          {snapshot?.territories.map((t: TerritoryTile, idx: number) => {
-            // Project directly into the bounds of the region's hex tile.
-            const projected = projectRegionPoint(t.region, t.x, t.y);
-            console.log(`[MapView] Projecting region: ${t.region} at (${t.x}, ${t.y})`);
-            if (!projected) {
-              console.warn(`[MapView] Failed to project region: ${t.region} at (${t.x}, ${t.y})`);
-              return null;
-            }
-            const [lat, lng] = projected;
-            
-            if (idx < 3) {
-              console.log(`[MapView] Marker ${idx}: region=${t.region}, iconType=${t.iconType}, pos=[${lat}, ${lng}]`);
-            }
-            
-            const isVictoryBase = (t.flags & 0x01) !== 0;
-            const isScorched = (t.flags & 0x10) !== 0;
-            const isBuildSite = (t.flags & 0x04) !== 0;
-
-            const [w, h] = getIconSize(t.iconType);
-            const iconUrl = getIconUrl(t.iconType);
-            if (idx < 3) {
-              console.log(`[MapView] Icon ${idx}: url=${iconUrl}, size=[${w}, ${h}]`);
-            }
-            const icon = L.icon({
-              iconUrl,
-              iconSize: [w, h],
-              iconAnchor: [w / 2, h / 2],
-              className: 'drop-shadow-sm'
-            });
-
-            return (
-              <Marker key={t.id} position={[lat, lng]} icon={icon}>
-                <Tooltip>
-                  <div className="text-xs">
-                    <div className="font-semibold">{getIconLabel(t.iconType)}</div>
-                    <div>{t.owner}</div>
-                    <div className="text-gray-400">{t.region}</div>
-                    {isVictoryBase && <div className="text-amber-400">Victory Base</div>}
-                    {isScorched && <div className="text-red-400">Scorched</div>}
-                    {isBuildSite && <div className="text-blue-400">Build Site</div>}
-                    {SHOW_DAILY_REPORT && changedDaily ? changedDaily.has(t.id) && <div className="text-purple-400">Changed 24h</div> : null}
-                    {SHOW_WEEKLY_REPORT && changedWeekly ? changedWeekly.has(t.id) && <div className="text-amber-400">Changed 7d</div> : null}
-                  </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
-          {activeLayers.debugRegions && snapshot?.territories.map((t: TerritoryTile, idx: number) => {
-            const projected = projectRegionPoint(t.region, t.x, t.y);
-            if (!projected) return null;
-            const [lat, lng] = projected;
-            return (
-              <Marker position={[lat, lng]} key={`dbg-${t.id}-${idx}`} icon={L.divIcon({
-                className: 'map-label text-[9px] font-semibold',
-                html: `<span>${t.region}</span>`
-              })} />
-            );
-          })}
-        </LayerGroup>
-      )}
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
     </MapContainer>
   );
@@ -144,4 +89,264 @@ function ownerColor(owner: TerritoryTile['owner']) {
     case 'Warden': return '#16a34a';
     default: return '#6b7280';
   }
+}
+
+// Logs zoom level on wheel/zoom events
+function ZoomLogger() {
+  const map = useMap();
+  useMapEvents({
+    zoom: () => {
+      console.log('[MapView] Zoom event, zoom:', map.getZoom());
+    },
+  });
+  React.useEffect(() => {
+    const container = map.getContainer();
+    const onWheel = () => {
+      console.log('[MapView] Wheel event, zoom:', map.getZoom());
+    };
+    container.addEventListener('wheel', onWheel);
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+    };
+  }, [map]);
+  return null;
+}
+
+// Territory markers rendered with icon sizes that scale by zoom
+function TerritoryLayer({
+  snapshot,
+  activeLayers,
+  changedDaily,
+  changedWeekly,
+}: {
+  snapshot: { territories?: TerritoryTile[] } | undefined | null;
+  activeLayers: any;
+  changedDaily: Set<string> | false;
+  changedWeekly: Set<string> | false;
+}) {
+  const map = useMap();
+  // Caches for performance
+  const iconUrlCache = React.useRef<Map<number, string>>(new Map());
+  const iconSizeCache = React.useRef<Map<number, [number, number]>>(new Map());
+  const iconInstanceCache = React.useRef<Map<string, L.Icon>>(new Map());
+  const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
+  const iconTypeById = React.useRef<Map<string, number>>(new Map());
+
+  function getUrl(iconType: number): string {
+    if (iconUrlCache.current.has(iconType)) return iconUrlCache.current.get(iconType)!;
+    const url = getIconUrl(iconType);
+    iconUrlCache.current.set(iconType, url);
+    return url;
+  }
+
+  function getBaseSize(iconType: number): [number, number] {
+    if (iconSizeCache.current.has(iconType)) return iconSizeCache.current.get(iconType)!;
+    const s = getIconSize(iconType);
+    iconSizeCache.current.set(iconType, s);
+    return s;
+  }
+
+  function zoomBucket(z: number): string {
+    return String(Math.round(z));
+  }
+
+  function scaleForZoom(z: number): number {
+    return Math.pow(1.25, z - 1);
+  }
+
+  function getIcon(iconType: number, z: number): L.Icon {
+    if (ICON_SMOOTH_SCALE) {
+      // Single icon per iconType at max zoom size
+      const key = `${iconType}|max`; // unified key
+      const cached = iconInstanceCache.current.get(key);
+      if (cached) return cached;
+      const [bw, bh] = getBaseSize(iconType);
+      const maxScale = scaleForZoom(MAP_MAX_ZOOM);
+      const w = Math.max(8, Math.round(bw * maxScale));
+      const h = Math.max(8, Math.round(bh * maxScale));
+      const icon = L.icon({
+        iconUrl: getUrl(iconType),
+        iconSize: [w, h],
+        iconAnchor: [w / 2, h / 2],
+        className: 'drop-shadow-sm smooth-icon-base',
+      });
+      iconInstanceCache.current.set(key, icon);
+      return icon;
+    } else {
+      const bucket = zoomBucket(z);
+      const key = `${iconType}|${bucket}`;
+      const cached = iconInstanceCache.current.get(key);
+      if (cached) return cached;
+      const [bw, bh] = getBaseSize(iconType);
+      const s = scaleForZoom(z);
+      const w = Math.max(8, Math.round(bw * s));
+      const h = Math.max(8, Math.round(bh * s));
+      const icon = L.icon({
+        iconUrl: getUrl(iconType),
+        iconSize: [w, h],
+        iconAnchor: [w / 2, h / 2],
+        className: 'drop-shadow-sm',
+      });
+      iconInstanceCache.current.set(key, icon);
+      return icon;
+    }
+  }
+
+  function applySmoothScale(marker: L.Marker, iconType: number, z: number) {
+    const el = marker.getElement();
+    if (!el) return;
+    const img = el.querySelector('img.leaflet-marker-icon') as HTMLImageElement | null;
+    if (!img) return;
+    const maxScale = scaleForZoom(MAP_MAX_ZOOM);
+    const currentScale = scaleForZoom(z) / maxScale;
+    img.style.transition = `transform ${ICON_SMOOTH_DURATION_MS}ms ease-out`;
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `scale(${currentScale})`;
+  }
+
+  function updateIconsForZoom(z: number) {
+    if (ICON_SMOOTH_SCALE) {
+      // Just adjust transform scale; icons created at max size.
+      for (const [id, marker] of markerRefs.current) {
+        const iconType = iconTypeById.current.get(id);
+        if (iconType == null) continue;
+        applySmoothScale(marker, iconType, z);
+      }
+    } else {
+      const bucket = zoomBucket(z);
+      for (const [, iconType] of iconTypeById.current) {
+        const key = `${iconType}|${bucket}`;
+        if (!iconInstanceCache.current.has(key)) {
+          iconInstanceCache.current.set(key, getIcon(iconType, z));
+        }
+      }
+      for (const [id, marker] of markerRefs.current) {
+        const iconType = iconTypeById.current.get(id);
+        if (iconType == null) continue;
+        marker.setIcon(getIcon(iconType, z));
+      }
+    }
+  }
+
+  // Attach zoom handlers based on config mode
+  React.useEffect(() => {
+    if (ZOOM_ICON_UPDATE_MODE === 'throttle') {
+      let scheduled = false;
+      let lastRun = 0;
+      const handler = () => {
+        const now = Date.now();
+        if (now - lastRun >= ZOOM_THROTTLE_MS) {
+          lastRun = now;
+          updateIconsForZoom(map.getZoom());
+          scheduled = false;
+        } else if (!scheduled) {
+          scheduled = true;
+          const delay = ZOOM_THROTTLE_MS - (now - lastRun);
+          setTimeout(() => {
+            lastRun = Date.now();
+            updateIconsForZoom(map.getZoom());
+            scheduled = false;
+          }, delay);
+        }
+      };
+      map.on('zoom', handler);
+      return () => {
+        map.off('zoom', handler);
+      };
+    } else {
+      const handler = () => updateIconsForZoom(map.getZoom());
+      map.on('zoomend', handler);
+      return () => {
+        map.off('zoomend', handler);
+      };
+    }
+  }, [map]);
+
+  // Memoize projection of territory positions so zoom changes don't recompute
+  const projectedTerritories = useMemo(() => {
+    if (!snapshot?.territories) return [] as Array<{
+      t: TerritoryTile;
+      lat: number;
+      lng: number;
+    }>;
+    const out: Array<{ t: TerritoryTile; lat: number; lng: number }> = [];
+    for (const t of snapshot.territories) {
+      const projected = projectRegionPoint(t.region, t.x, t.y);
+      if (!projected) continue;
+      const [lat, lng] = projected;
+      out.push({ t, lat, lng });
+    }
+    return out;
+  }, [snapshot]);
+
+  function sizeScale(z: number): number {
+    // Exponential scale for clearer visual differentiation
+    // Base at 1 for z=1; smaller at z<1, larger at z>1
+    return Math.pow(1.25, z - 1);
+  }
+
+  if (!activeLayers.territory) return null;
+
+  return (
+    <LayerGroup>
+      {projectedTerritories.map(({ t, lat, lng }, idx: number) => {
+
+        const isVictoryBase = (t.flags & 0x01) !== 0;
+        const isScorched = (t.flags & 0x10) !== 0;
+        const isBuildSite = (t.flags & 0x04) !== 0;
+
+        // Cache iconType by id and create initial icon using current zoom
+        iconTypeById.current.set(t.id, t.iconType);
+        const initialIcon = getIcon(t.iconType, map.getZoom());
+
+        return (
+          <Marker
+            key={t.id}
+            position={[lat, lng]}
+            icon={initialIcon}
+            ref={(ref: any) => {
+              if (ref) markerRefs.current.set(t.id, ref);
+              if (ref && ICON_SMOOTH_SCALE) {
+                // Apply initial scale without animation
+                const el = ref.getElement();
+                if (el) {
+                  const img = el.querySelector('img.leaflet-marker-icon') as HTMLImageElement | null;
+                  if (img) {
+                    const maxScale = scaleForZoom(MAP_MAX_ZOOM);
+                    const currentScale = scaleForZoom(map.getZoom()) / maxScale;
+                    img.style.transformOrigin = 'center center';
+                    img.style.transform = `scale(${currentScale})`;
+                  }
+                }
+              }
+            }}
+          >
+            <Tooltip>
+              <div className="text-xs">
+                <div className="font-semibold">{getIconLabel(t.iconType)}</div>
+                <div>{t.owner}</div>
+                <div className="text-gray-400">{t.region}</div>
+                {isVictoryBase && <div className="text-amber-400">Victory Base</div>}
+                {isScorched && <div className="text-red-400">Scorched</div>}
+                {isBuildSite && <div className="text-blue-400">Build Site</div>}
+                {SHOW_DAILY_REPORT && changedDaily ? changedDaily.has(t.id) && <div className="text-purple-400">Changed 24h</div> : null}
+                {SHOW_WEEKLY_REPORT && changedWeekly ? changedWeekly.has(t.id) && <div className="text-amber-400">Changed 7d</div> : null}
+              </div>
+            </Tooltip>
+          </Marker>
+        );
+      })}
+      {activeLayers.debugRegions && snapshot?.territories?.map((t: TerritoryTile, idx: number) => {
+        const projected = projectRegionPoint(t.region, t.x, t.y);
+        if (!projected) return null;
+        const [lat, lng] = projected;
+        return (
+          <Marker position={[lat, lng]} key={`dbg-${t.id}-${idx}`} icon={L.divIcon({
+            className: 'map-label text-[9px] font-semibold',
+            html: `<span>${t.region}</span>`
+          })} />
+        );
+      })}
+    </LayerGroup>
+  );
 }
