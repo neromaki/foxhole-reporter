@@ -13,13 +13,14 @@ jobs:
       - name: Call poll-warapi Edge Function
         env:
           FUNCTION_URL: ${{ secrets.VITE_SUPABASE_URL }}/poll-warapi
-          #FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }} # optional
+          FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }} # optional
         run: |
           set -euo pipefail
           echo "Calling poll-warapi at $FUNCTION_URL"
           if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
               -H "Content-Type: application/json" \
+              -H "Authorization: $FUNCTION_AUTH_HEADER" \
               -d '{}') || true
           else
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
