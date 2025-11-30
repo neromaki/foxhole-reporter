@@ -1,5 +1,5 @@
 // Use Deno-compatible import for supabase-js in Edge Functions
-import { createClient } from 'npm:@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 // Workspace TypeScript may not have Deno types; declare to satisfy editor.
 declare const Deno: any;
 
