@@ -1,6 +1,6 @@
 // Supabase Edge Function: poll-warapi
 // Fetches Foxhole WarAPI snapshot and stores territories in snapshots table.
-import { getServiceClient } from '../_shared/supabaseClient.ts';
+import { getServiceClient } from '../../../src/lib/supabaseClient.ts';
 // Workspace TypeScript may not have Deno types; declare to satisfy editor.
 declare const Deno: any;
 

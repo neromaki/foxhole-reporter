@@ -23,9 +23,10 @@ function ownerMap(teamId: string): 'Colonial' | 'Warden' | 'Neutral' {
   }
 }
 
-export function useWarApiDirect() {
+export function useWarApiDirect(options?: { enabled?: boolean }) {
   return useQuery<WarApiSnapshot>({
     queryKey: ['warApiDirect'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       console.log('[useWarApiDirect] Fetching map list...');
       const mapList = await fetchMapList();

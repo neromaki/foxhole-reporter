@@ -1,5 +1,5 @@
 import React from 'react';
-import { useMapStore, LayerKey, DataSource } from '../state/useMapStore';
+import { useMapStore, LayerKey } from '../state/useMapStore';
 
 const labels: Record<LayerKey, string> = {
   territory: 'Territory (dynamic)',
@@ -17,28 +17,9 @@ const labels: Record<LayerKey, string> = {
 export default function LayerTogglePanel() {
   const active = useMapStore((s) => s.activeLayers);
   const toggle = useMapStore((s) => s.toggleLayer);
-  const dataSource = useMapStore((s) => s.dataSource);
-  const setDataSource = useMapStore((s) => s.setDataSource);
 
   return (
     <div className="p-4 space-y-3 overflow-y-auto">
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold tracking-wide text-gray-300 uppercase">Data Source</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setDataSource('warapi')}
-            className={`flex-1 px-3 py-2 rounded text-xs border transition ${dataSource === 'warapi' ? 'bg-blue-700 border-blue-600 text-white' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-300'}`}
-          >
-            WarAPI (Live)
-          </button>
-          <button
-            onClick={() => setDataSource('supabase')}
-            className={`flex-1 px-3 py-2 rounded text-xs border transition ${dataSource === 'supabase' ? 'bg-blue-700 border-blue-600 text-white' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-300'}`}
-          >
-            Supabase (Snapshot)
-          </button>
-        </div>
-      </div>
       <h2 className="text-sm font-semibold tracking-wide text-gray-300 uppercase">Layers</h2>
       <ul className="space-y-2">
         {Object.entries(labels).map(([key, label]) => {

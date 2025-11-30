@@ -1,6 +1,6 @@
 // Supabase Edge Function: diff-territory
 // Computes territory ownership changes daily & weekly.
-import { getServiceClient } from '../_shared/supabaseClient.ts';
+import { getServiceClient } from '../../../src/lib/supabaseClient.ts';
 // Workspace TypeScript may not have Deno types; declare to satisfy editor.
 declare const Deno: any;
 

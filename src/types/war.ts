@@ -28,3 +28,12 @@ export interface TerritoryDiff {
   generated_at: string;
   changes: TerritoryDiffEntry[];
 }
+
+export interface War {
+  war_id: string;
+  war_number: number;
+  winner: string;
+  war_start_time: Date;
+  war_end_time: Date;
+  required_victory_towns: number;
+}

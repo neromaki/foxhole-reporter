@@ -12,7 +12,7 @@ import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT } from '../lib/mapConfig';
 
 // Map WarAPI icon type to human-readable label
 function getIconLabel(iconType: number): string {
@@ -33,27 +33,28 @@ function getIconLabel(iconType: number): string {
 }
 
 export default function MapView() {
-  const dataSource = useMapStore((s) => s.dataSource);
-  //const { data: supabaseSnapshot } = useLatestSnapshot();
-  const { data: warApiSnapshot } = useWarApiDirect();
-  const snapshot = warApiSnapshot;//dataSource === 'warapi' ? warApiSnapshot : supabaseSnapshot;
+  // Fetch data based on config constant (only one source is fetched)
+  const { data: supabaseSnapshot } = useLatestSnapshot({ enabled: DATA_SOURCE === 'supabase' });
+  const { data: warApiSnapshot } = useWarApiDirect({ enabled: DATA_SOURCE === 'warapi' });
+  const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
   
-  const { data: dailyDiff } = useTerritoryDiff('daily');
-  const { data: weeklyDiff } = useTerritoryDiff('weekly');
+  const { data: dailyDiff } = SHOW_DAILY_REPORT ? useTerritoryDiff('daily') : { data: undefined };
+  const changedDaily = SHOW_DAILY_REPORT ? useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]) : false;
+  
+  const { data: weeklyDiff } = SHOW_WEEKLY_REPORT ? useTerritoryDiff('weekly') : { data: undefined };
+  const changedWeekly = SHOW_WEEKLY_REPORT ? useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]) : false;
+
   const activeLayers = useMapStore((s) => s.activeLayers);
 
-  const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
-  const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
-
   useEffect(() => {
-    console.log('[MapView] Data source:', dataSource);
+    console.log('[MapView] Data source (config):', DATA_SOURCE);
     console.log('[MapView] Snapshot data:', snapshot);
     console.log('[MapView] Territory count:', snapshot?.territories?.length ?? 0);
     console.log('[MapView] Territory layer active:', activeLayers.territory);
     if (snapshot?.territories && snapshot.territories.length > 0) {
       console.log('[MapView] Sample territory:', snapshot.territories[0]);
     }
-  }, [snapshot, activeLayers.territory, dataSource]);
+  }, [snapshot, activeLayers.territory]);
 
   return (
     <MapContainer 
@@ -112,8 +113,8 @@ export default function MapView() {
                     {isVictoryBase && <div className="text-amber-400">Victory Base</div>}
                     {isScorched && <div className="text-red-400">Scorched</div>}
                     {isBuildSite && <div className="text-blue-400">Build Site</div>}
-                    {changedDaily.has(t.id) && <div className="text-purple-400">Changed 24h</div>}
-                    {changedWeekly.has(t.id) && <div className="text-amber-400">Changed 7d</div>}
+                    {SHOW_DAILY_REPORT && changedDaily ? changedDaily.has(t.id) && <div className="text-purple-400">Changed 24h</div> : null}
+                    {SHOW_WEEKLY_REPORT && changedWeekly ? changedWeekly.has(t.id) && <div className="text-amber-400">Changed 7d</div> : null}
                   </div>
                 </Tooltip>
               </Marker>
