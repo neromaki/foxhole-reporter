@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Call poll-warapi Edge Function
         env:
-          FUNCTION_URL: ${{ secrets.VITE_SUPABASE_URL }}/poll-warapi
+          FUNCTION_URL: "https://${{ secrets.VITE_SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/poll-warapi"
           FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }} # optional
         run: |
           set -euo pipefail
