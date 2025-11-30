@@ -17,11 +17,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "Calling poll-warapi at $FUNCTION_URL"
-          curl -L -X POST "$FUNCTION_URL" \
-            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            --data '{"name":"Functions"}'
+          if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: $FUNCTION_AUTH_HEADER" \
+              -d '{}' || true)
+          else
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -d '{}' || true)
+          fi
+
+          # ensure variable is defined before numeric comparison (avoid set -u failure)
+          http_status="${http_status:-0}"
           echo "HTTP status: $http_status"
           if [ "$http_status" -ge 400 ]; then
             echo "Function returned error status $http_status"
