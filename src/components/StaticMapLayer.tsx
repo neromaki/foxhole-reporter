@@ -19,8 +19,6 @@ export default function StaticMapLayer({ visible, majorVisible, minorVisible }: 
 
   const anyLabelVisible = majorVisible || minorVisible;
   const { data, isLoading } = useStaticMaps(visible || anyLabelVisible);
-  if (!visible && !anyLabelVisible) return null;
-  if (isLoading) return null;
 
   // Pre-project all static items (icons + text) once per data load
   type ProjectedIcon = { key: string; lat: number; lng: number; iconType: number };
@@ -115,6 +113,10 @@ export default function StaticMapLayer({ visible, majorVisible, minorVisible }: 
   const handleMouseOut = React.useCallback(() => {
     hide(220);
   }, [hide]);
+
+  // Guarded early exits must occur after hooks to preserve order
+  if (!visible && !anyLabelVisible) return null;
+  if (isLoading) return null;
 
   return (
     <LayerGroup>

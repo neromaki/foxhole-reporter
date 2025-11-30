@@ -13,7 +13,7 @@ import { getIconUrl, getIconSize } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
-import { SharedTooltipProvider } from '../lib/sharedTooltip';
+import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 
 // Map WarAPI icon type to human-readable label
 function getIconLabel(iconType: number): string {
@@ -136,7 +136,7 @@ function TerritoryLayer({
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
 
-  const { show, hide } = require('../lib/sharedTooltip').useSharedTooltip();
+  const { show, hide } = useSharedTooltip();
 
   function getUrl(iconType: number): string {
     if (iconUrlCache.current.has(iconType)) return iconUrlCache.current.get(iconType)!;
