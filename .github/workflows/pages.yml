@@ -21,14 +21,15 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - name: Setup npm
-        uses: npm/action-setup@v4
-        with:
-          version: 9
       - name: Install dependencies
-        run: npm install --frozen-lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
       - name: Build
-        run: npm build
+        run: npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
