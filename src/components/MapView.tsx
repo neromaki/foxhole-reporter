@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MapContainer, Tooltip, LayerGroup, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, LayerGroup, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useTerritoryDiff } from '../lib/queries';
@@ -12,7 +12,8 @@ import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
+import { SharedTooltipProvider } from '../lib/sharedTooltip';
 
 // Map WarAPI icon type to human-readable label
 function getIconLabel(iconType: number): string {
@@ -65,19 +66,22 @@ export default function MapView() {
       crs={CRS.Simple}
       className="h-full w-full bg-gray-900"
     >
-      <ZoomLogger />
-      <TerritoryLayer 
-        snapshot={snapshot}
-        activeLayers={activeLayers}
-        changedDaily={changedDaily}
-        changedWeekly={changedWeekly}
-      />
-      <HexTileLayer />
-      <StaticMapLayer 
-        visible={activeLayers.static}
-        majorVisible={activeLayers.labelsMajor}
-        minorVisible={activeLayers.labelsMinor}
-      />
+      <SharedTooltipProvider>
+        <ZoomLogger />
+        <TerritoryLayer 
+          snapshot={snapshot}
+          activeLayers={activeLayers}
+          changedDaily={changedDaily}
+          changedWeekly={changedWeekly}
+        />
+        <HexTileLayer />
+        <StaticMapLayer 
+          visible={activeLayers.static}
+          majorVisible={activeLayers.labelsMajor}
+          minorVisible={activeLayers.labelsMinor}
+        />
+        {DEBUG_PERF_OVERLAY && <PerfOverlay />}
+      </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
     </MapContainer>
   );
@@ -131,6 +135,8 @@ function TerritoryLayer({
   const iconInstanceCache = React.useRef<Map<string, L.Icon>>(new Map());
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
+
+  const { show, hide } = require('../lib/sharedTooltip').useSharedTooltip();
 
   function getUrl(iconType: number): string {
     if (iconUrlCache.current.has(iconType)) return iconUrlCache.current.get(iconType)!;
@@ -225,6 +231,11 @@ function TerritoryLayer({
         if (iconType == null) continue;
         marker.setIcon(getIcon(iconType, z));
       }
+    }
+    if (DEBUG_PERF_OVERLAY) {
+      console.log('[Perf] UpdateIcons zoom=', z,
+        'visibleTerritories=', visibleTerritories.length,
+        'markerRefs=', markerRefs.current.size);
     }
   }
 
@@ -324,6 +335,52 @@ function TerritoryLayer({
     };
   }, [map, projectedTerritories]);
 
+  // Prune stale marker refs when visibleTerritories changes
+  React.useEffect(() => {
+    const ids = new Set(visibleTerritories.map(v => v.t.id));
+    for (const id of Array.from(markerRefs.current.keys())) {
+      if (!ids.has(id)) {
+        markerRefs.current.delete(id);
+        iconTypeById.current.delete(id);
+      }
+    }
+    if (DEBUG_PERF_OVERLAY) {
+      console.log('[Perf] After prune: visible=', visibleTerritories.length, 'refs=', markerRefs.current.size);
+    }
+  }, [visibleTerritories]);
+
+
+  // Helper to build tooltip content
+  const getTooltipContent = React.useCallback((t: TerritoryTile) => {
+    const isVictoryBase = (t.flags & 0x01) !== 0;
+    const isScorched = (t.flags & 0x10) !== 0;
+    const isBuildSite = (t.flags & 0x04) !== 0;
+    const parts = [
+      `<div class="font-semibold">${getIconLabel(t.iconType)}</div>`,
+      `<div>${t.owner}</div>`,
+      `<div class="text-gray-400">${t.region}</div>`,
+    ];
+    if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
+    if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
+    if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');
+    if (SHOW_DAILY_REPORT && changedDaily && (changedDaily as Set<string>).has(t.id)) {
+      parts.push('<div class="text-purple-400">Changed 24h</div>');
+    }
+    if (SHOW_WEEKLY_REPORT && changedWeekly && (changedWeekly as Set<string>).has(t.id)) {
+      parts.push('<div class="text-amber-400">Changed 7d</div>');
+    }
+    return `<div class="text-xs">${parts.join('')}</div>`;
+  }, [changedDaily, changedWeekly]);
+
+  // Hover handlers
+  const handleMouseOver = React.useCallback((t: TerritoryTile, lat: number, lng: number) => {
+    show(getTooltipContent(t), lat, lng, 100);
+  }, [show, getTooltipContent]);
+
+  const handleMouseOut = React.useCallback(() => {
+    hide(200);
+  }, [hide]);
+
   if (!activeLayers.territory) return null;
 
   return (
@@ -343,6 +400,10 @@ function TerritoryLayer({
             key={t.id}
             position={[lat, lng]}
             icon={initialIcon}
+            eventHandlers={{
+              mouseover: () => handleMouseOver(t, lat, lng),
+              mouseout: handleMouseOut,
+            }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);
               if (ref && ICON_SMOOTH_SCALE) {
@@ -359,30 +420,48 @@ function TerritoryLayer({
                 }
               }
             }}
-          >
-            <Tooltip>
-              <div className="text-xs">
-                <div className="font-semibold">{getIconLabel(t.iconType)}</div>
-                <div>{t.owner}</div>
-                <div className="text-gray-400">{t.region}</div>
-                {isVictoryBase && <div className="text-amber-400">Victory Base</div>}
-                {isScorched && <div className="text-red-400">Scorched</div>}
-                {isBuildSite && <div className="text-blue-400">Build Site</div>}
-                {SHOW_DAILY_REPORT && changedDaily ? changedDaily.has(t.id) && <div className="text-purple-400">Changed 24h</div> : null}
-                {SHOW_WEEKLY_REPORT && changedWeekly ? changedWeekly.has(t.id) && <div className="text-amber-400">Changed 7d</div> : null}
-              </div>
-            </Tooltip>
-          </Marker>
-        );
-      })}
-      {activeLayers.debugRegions && visibleTerritories.map(({ t, lat, lng }, idx: number) => {
-        return (
-          <Marker position={[lat, lng]} key={`dbg-${t.id}-${idx}`} icon={L.divIcon({
-            className: 'map-label text-[9px] font-semibold',
-            html: `<span>${t.region}</span>`
-          })} />
+          />
         );
       })}
     </LayerGroup>
+  );
+}
+
+// Simple performance overlay to inspect marker counts and memory usage
+function PerfOverlay() {
+  const map = useMap();
+  const [stats, setStats] = useState<{ markers: number; tooltipPresent: boolean; heapMB?: number; domMarkerIcons: number }>({ markers: 0, tooltipPresent: false, domMarkerIcons: 0 });
+  // Access refs via a global window hook for debugging (optional)
+  // @ts-ignore
+  const globalMarkerCount = (window.__markerRefsSize = (window.__markerRefsSize || 0));
+  useEffect(() => {
+    let interval: number | null = null;
+    const collect = () => {
+      const markerIcons = document.querySelectorAll('.leaflet-marker-icon');
+      const tooltip = document.querySelector('.shared-territory-tooltip');
+      let heapMB: number | undefined;
+      // Chrome only: performance.memory
+      const pm: any = (performance as any).memory;
+      if (pm && pm.usedJSHeapSize) {
+        heapMB = pm.usedJSHeapSize / 1024 / 1024;
+      }
+      // Derive logical marker count from React state (using data attr on container if available) or fallback to DOM icons
+      const logicalCount = (document.querySelector('#perf-logical-marker-count')?.getAttribute('data-count'));
+      const logicalMarkers = logicalCount ? parseInt(logicalCount, 10) : markerIcons.length;
+      setStats({ markers: logicalMarkers, tooltipPresent: !!tooltip, heapMB, domMarkerIcons: markerIcons.length });
+    };
+    collect();
+    interval = window.setInterval(collect, 2000);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [map]);
+  return (
+    <div className="absolute top-2 right-2 z-[1000] rounded bg-black/60 text-xs text-white px-2 py-1 space-y-0.5">
+      <div>Logical Markers: {stats.markers}</div>
+      <div>DOM Icons: {stats.domMarkerIcons}</div>
+      <div>Tooltip mounted: {stats.tooltipPresent ? 'yes' : 'no'}</div>
+      {stats.heapMB && <div>Heap: {stats.heapMB.toFixed(1)} MB</div>}
+    </div>
   );
 }

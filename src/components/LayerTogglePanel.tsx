@@ -11,7 +11,6 @@ const labels: Record<LayerKey, string> = {
   static: 'Static Map Icons',
   labelsMajor: 'Labels: Major',
   labelsMinor: 'Labels: Minor',
-  debugRegions: 'Debug: Region Names'
 };
 
 export default function LayerTogglePanel() {

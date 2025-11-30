@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type LayerKey = 'territory' | 'logistics' | 'mining' | 'production' | 'intel' | 'frontline' | 'static' | 'labelsMajor' | 'labelsMinor' | 'debugRegions';
+export type LayerKey = 'territory' | 'logistics' | 'mining' | 'production' | 'intel' | 'frontline' | 'static' | 'labelsMajor' | 'labelsMinor';
 
 interface MapState {
   activeLayers: Record<LayerKey, boolean>;
@@ -18,7 +18,6 @@ const defaultLayers: Record<LayerKey, boolean> = {
   static: true,
   labelsMajor: true,
   labelsMinor: true,
-  debugRegions: false,
 };
 
 export const useMapStore = create<MapState>((set) => ({
