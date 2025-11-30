@@ -75,7 +75,7 @@ export default function MapView() {
           {snapshot?.territories.map((t: TerritoryTile, idx: number) => {
             // Project directly into the bounds of the region's hex tile.
             const projected = projectRegionPoint(t.region, t.x, t.y);
-            console.warn(`[MapView] Projecting region: ${t.region} at (${t.x}, ${t.y})`);
+            console.log(`[MapView] Projecting region: ${t.region} at (${t.x}, ${t.y})`);
             if (!projected) {
               console.warn(`[MapView] Failed to project region: ${t.region} at (${t.x}, ${t.y})`);
               return null;

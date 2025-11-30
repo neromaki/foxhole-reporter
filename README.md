@@ -20,8 +20,8 @@ Interactive React + Leaflet map overlaying Foxhole WarAPI territory data with da
 git clone https://github.com/youruser/foxhole-reporter.git
 cd foxhole-reporter
 cp .env.example .env  # Add Supabase anon details
-pnpm install  # or npm install / yarn
-pnpm dev
+npm install  # or npm install / yarn
+npm dev
 ```
 
 Environment variables in `.env`:
