@@ -1,0 +1,33 @@
+name: Scheduled Poll WarAPI
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {} # allows manual trigger
+
+jobs:
+  call-poll-warapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call poll-warapi Edge Function
+        env:
+          FUNCTION_URL: ${{ secrets.VITE_SUPABASE_URL }}/poll-warapi
+          #FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }} # optional
+        run: |
+          set -euo pipefail
+          echo "Calling poll-warapi at $FUNCTION_URL"
+          if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -d '{}') || true
+          else
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -d '{}') || true
+          fi
+          echo "HTTP status: $http_status"
+          if [ "$http_status" -ge 400 ]; then
+            echo "Function returned error status $http_status"
+            exit 1
+          fi
