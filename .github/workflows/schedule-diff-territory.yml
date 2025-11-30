@@ -21,11 +21,11 @@ jobs:
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
               -H "Content-Type: application/json" \
               -H "Authorization: $FUNCTION_AUTH_HEADER" \
-              -d '{}' ) || true
+              -d '{}' || true)
           else
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
               -H "Content-Type: application/json" \
-              -d '{}' ) || true
+              -d '{}' || true)
           fi
           echo "HTTP status: $http_status"
           if [ "$http_status" -ge 400 ]; then
