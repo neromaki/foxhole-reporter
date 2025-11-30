@@ -20,7 +20,7 @@ jobs:
           if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
               -H "Content-Type: application/json" \
-              -H "Authorization: $FUNCTION_AUTH_HEADER" \
+              -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
               -d '{}' || true)
           else
             http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
