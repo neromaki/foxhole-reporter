@@ -279,17 +279,56 @@ function TerritoryLayer({
     return out;
   }, [snapshot]);
 
-  function sizeScale(z: number): number {
-    // Exponential scale for clearer visual differentiation
-    // Base at 1 for z=1; smaller at z<1, larger at z>1
-    return Math.pow(1.25, z - 1);
+  // Viewport culling: only render markers within current map bounds (with padding)
+  const [visibleTerritories, setVisibleTerritories] = React.useState<Array<{ t: TerritoryTile; lat: number; lng: number }>>([]);
+
+  function isInBounds(lat: number, lng: number, b: L.LatLngBounds, pad: number): boolean {
+    const padded = L.latLngBounds(
+      [b.getSouth() - pad, b.getWest() - pad],
+      [b.getNorth() + pad, b.getEast() + pad]
+    );
+    return padded.contains([lat, lng] as any);
   }
+
+  React.useEffect(() => {
+    if (!map) return;
+    let rafId: number | null = null;
+    const PAD = 20; // padding in map CRS units to avoid pop-in at edges
+
+    const recompute = () => {
+      const bounds = map.getBounds();
+      const filtered = projectedTerritories.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
+      setVisibleTerritories(filtered);
+    };
+
+    const schedule = () => {
+      if (rafId != null) return;
+      rafId = (window.requestAnimationFrame as any)(() => {
+        rafId = null;
+        recompute();
+      });
+    };
+
+    // Initial compute
+    recompute();
+
+    const onMove = () => schedule();
+    const onZoom = () => schedule();
+    map.on('move', onMove);
+    map.on('zoom', onZoom);
+
+    return () => {
+      map.off('move', onMove);
+      map.off('zoom', onZoom);
+      if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
+    };
+  }, [map, projectedTerritories]);
 
   if (!activeLayers.territory) return null;
 
   return (
     <LayerGroup>
-      {projectedTerritories.map(({ t, lat, lng }, idx: number) => {
+      {visibleTerritories.map(({ t, lat, lng }, idx: number) => {
 
         const isVictoryBase = (t.flags & 0x01) !== 0;
         const isScorched = (t.flags & 0x10) !== 0;
@@ -336,10 +375,7 @@ function TerritoryLayer({
           </Marker>
         );
       })}
-      {activeLayers.debugRegions && snapshot?.territories?.map((t: TerritoryTile, idx: number) => {
-        const projected = projectRegionPoint(t.region, t.x, t.y);
-        if (!projected) return null;
-        const [lat, lng] = projected;
+      {activeLayers.debugRegions && visibleTerritories.map(({ t, lat, lng }, idx: number) => {
         return (
           <Marker position={[lat, lng]} key={`dbg-${t.id}-${idx}`} icon={L.divIcon({
             className: 'map-label text-[9px] font-semibold',
