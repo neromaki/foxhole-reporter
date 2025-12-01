@@ -7,9 +7,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        coalition: '#1d4ed8',
-        warden: '#16a34a',
-        neutral: '#6b7280'
+        coalition: '#16a34a',
+        warden: '#1d4ed8',
+        neutral: '#fefefe'
       }
     },
   },

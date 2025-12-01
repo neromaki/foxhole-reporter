@@ -89,8 +89,8 @@ export default function MapView() {
 
 function ownerColor(owner: TerritoryTile['owner']) {
   switch (owner) {
-    case 'Colonial': return '#1d4ed8';
-    case 'Warden': return '#16a34a';
+    case 'Colonial': return '#16a34a';
+    case 'Warden': return '#1d4ed8';
     default: return '#6b7280';
   }
 }
@@ -233,7 +233,6 @@ function TerritoryLayer({
       }
     }
     if (DEBUG_PERF_OVERLAY) {
-      console.log('[Perf] UpdateIcons zoom=', z,
         'visibleTerritories=', visibleTerritories.length,
         'markerRefs=', markerRefs.current.size);
     }
@@ -345,7 +344,7 @@ function TerritoryLayer({
       }
     }
     if (DEBUG_PERF_OVERLAY) {
-      console.log('[Perf] After prune: visible=', visibleTerritories.length, 'refs=', markerRefs.current.size);
+      //console.log('[Perf] After prune: visible=', visibleTerritories.length, 'refs=', markerRefs.current.size);
     }
   }, [visibleTerritories]);
 
