@@ -130,18 +130,20 @@ function TerritoryLayer({
 }) {
   const map = useMap();
   // Caches for performance
-  const iconUrlCache = React.useRef<Map<number, string>>(new Map());
+  const iconUrlCache = React.useRef<Map<string, string>>(new Map());
   const iconSizeCache = React.useRef<Map<number, [number, number]>>(new Map());
   const iconInstanceCache = React.useRef<Map<string, L.Icon>>(new Map());
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
+  const ownerById = React.useRef<Map<string, TerritoryTile['owner']>>(new Map());
 
   const { show, hide } = useSharedTooltip();
 
-  function getUrl(iconType: number): string {
-    if (iconUrlCache.current.has(iconType)) return iconUrlCache.current.get(iconType)!;
-    const url = getIconUrl(iconType);
-    iconUrlCache.current.set(iconType, url);
+  function getUrl(iconType: number, owner?: TerritoryTile['owner']): string {
+    const key = `${iconType}|${owner ?? 'none'}`;
+    if (iconUrlCache.current.has(key)) return iconUrlCache.current.get(key)!;
+    const url = getIconUrl(iconType, owner);
+    iconUrlCache.current.set(key, url);
     return url;
   }
 
@@ -160,10 +162,10 @@ function TerritoryLayer({
     return Math.pow(1.25, z - 1);
   }
 
-  function getIcon(iconType: number, z: number): L.Icon {
+  function getIcon(iconType: number, z: number, owner?: TerritoryTile['owner']): L.Icon {
     if (ICON_SMOOTH_SCALE) {
       // Single icon per iconType at max zoom size
-      const key = `${iconType}|max`; // unified key
+      const key = `${iconType}|max|${owner ?? 'none'}`; // include owner in cache key
       const cached = iconInstanceCache.current.get(key);
       if (cached) return cached;
       const [bw, bh] = getBaseSize(iconType);
@@ -171,7 +173,7 @@ function TerritoryLayer({
       const w = Math.max(8, Math.round(bw * maxScale));
       const h = Math.max(8, Math.round(bh * maxScale));
       const icon = L.icon({
-        iconUrl: getUrl(iconType),
+        iconUrl: getUrl(iconType, owner),
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
         className: 'drop-shadow-sm smooth-icon-base',
@@ -180,7 +182,7 @@ function TerritoryLayer({
       return icon;
     } else {
       const bucket = zoomBucket(z);
-      const key = `${iconType}|${bucket}`;
+      const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
       const cached = iconInstanceCache.current.get(key);
       if (cached) return cached;
       const [bw, bh] = getBaseSize(iconType);
@@ -188,7 +190,7 @@ function TerritoryLayer({
       const w = Math.max(8, Math.round(bw * s));
       const h = Math.max(8, Math.round(bh * s));
       const icon = L.icon({
-        iconUrl: getUrl(iconType),
+        iconUrl: getUrl(iconType, owner),
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
         className: 'drop-shadow-sm',
@@ -220,21 +222,19 @@ function TerritoryLayer({
       }
     } else {
       const bucket = zoomBucket(z);
-      for (const [, iconType] of iconTypeById.current) {
-        const key = `${iconType}|${bucket}`;
+      for (const [id, iconType] of iconTypeById.current) {
+        const owner = ownerById.current.get(id);
+        const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
         if (!iconInstanceCache.current.has(key)) {
-          iconInstanceCache.current.set(key, getIcon(iconType, z));
+          iconInstanceCache.current.set(key, getIcon(iconType, z, owner));
         }
       }
       for (const [id, marker] of markerRefs.current) {
         const iconType = iconTypeById.current.get(id);
+        const owner = ownerById.current.get(id);
         if (iconType == null) continue;
-        marker.setIcon(getIcon(iconType, z));
+        marker.setIcon(getIcon(iconType, z, owner));
       }
-    }
-    if (DEBUG_PERF_OVERLAY) {
-        'visibleTerritories=', visibleTerritories.length,
-        'markerRefs=', markerRefs.current.size);
     }
   }
 
@@ -392,7 +392,8 @@ function TerritoryLayer({
 
         // Cache iconType by id and create initial icon using current zoom
         iconTypeById.current.set(t.id, t.iconType);
-        const initialIcon = getIcon(t.iconType, map.getZoom());
+        ownerById.current.set(t.id, t.owner);
+        const initialIcon = getIcon(t.iconType, map.getZoom(), t.owner);
 
         return (
           <Marker

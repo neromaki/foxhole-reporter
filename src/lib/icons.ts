@@ -1,14 +1,14 @@
 // Map WarAPI iconType to icon image URLs (PNG converted from TGA)
 // Uses Vite's import.meta.url to resolve asset paths at build time
 
-export function getIconUrl(iconType: number): string {
-    console.log(`Getting icon URL for iconType: ${iconType}`);
-  const name = iconTypeToFilename(iconType);
+export function getIconUrl(iconType: number, owner?: string): string {
+  console.log(`Getting icon URL for iconType: ${iconType}, owner: ${owner}`);
+  const name = iconTypeToFilename(iconType, owner);
   return new URL(`../map/icons/${name}`, import.meta.url).href;
 }
 
-export function iconTypeToFilename(iconType: number): string {
-    console.log(`Mapping iconType to filename: ${iconType}`);
+export function iconTypeToFilename(iconType: number, owner?: string): string {
+  console.log(`Mapping iconType to filename: ${iconType} with owner: ${owner}`);
   // Map WarAPI iconType codes to local PNG asset filenames
   const map: Record<number, string> = {
     // Common bases and structures
@@ -51,8 +51,21 @@ export function iconTypeToFilename(iconType: number): string {
     83: 'WeatherStation',
     84: 'MortarHouse'
   };
-  console.log(`Mapped iconType ${iconType} to filename: ${map[iconType] ?? 'Unknown'}`);
-  return "MapIcon" + (map[iconType] ?? 'Unknown') + ".png";
+  const base = "MapIcon" + (map[iconType] ?? 'Unknown');
+  const suffix = ownerSuffix(owner);
+  const filename = base + (suffix ? suffix : '') + ".png";
+  console.log(`Mapped iconType ${iconType} to filename: ${filename}`);
+  return filename;
+}
+
+function ownerSuffix(owner?: string): string | '' {
+  if (!owner) return '';
+  const normalized = String(owner).trim().toUpperCase();
+  if (normalized === 'COLONIAL') return 'Colonial';
+  if (normalized === 'WARDEN') return 'Warden';
+  if (normalized === 'NONE' || normalized === 'NEUTRAL') return '';
+  // If an unexpected value comes through, do not append
+  return '';
 }
 
 export function getIconSize(iconType: number): [number, number] {
