@@ -492,7 +492,7 @@ const mapIcons: Array<MapIconStruct> = [
         "id": MapIcon.Oil_Rig,
         "apiName": "Oil Rig",
         "iconFileName": "FacilityMineOilRig",
-        "displayName": "Facility Mine Oil Rig",
+        "displayName": "Oil Rig",
         "tags": [
             MapIconTag.Economy,
             MapIconTag.Resource,

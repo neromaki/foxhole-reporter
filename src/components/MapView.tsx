@@ -9,15 +9,13 @@ import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import { getHexByApiName } from '../lib/hexLayout';
-import { getIconUrl, getIconSize, getMapIconsByTag } from '../lib/icons';
+import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
-import { getIconLabel } from '../lib/icons';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
-import { getMapIcon } from '../lib/icons';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -349,11 +347,10 @@ function TerritoryLayer({
     const isVictoryBase = (t.flags & 0x01) !== 0;
     const isScorched = (t.flags & 0x10) !== 0;
     const isBuildSite = (t.flags & 0x04) !== 0;
-    const parts = [
-      `<div class="font-semibold">${getIconLabel(t.iconType)}</div>`,
-      `<div>${t.owner}</div>`,
-      `<div class="text-gray-400">${t.region}</div>`,
-    ];
+    const parts = [];
+    parts.push(`<div class="font-semibold">${getIconLabel(t.iconType)}</div>`);
+    if (t.owner !== 'Neutral') parts.push(`<div>${t.owner}</div>`);
+    parts.push(`<div class="text-gray-400">${getHexByApiName(t.region)?.displayName}</div>`);
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
     if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');

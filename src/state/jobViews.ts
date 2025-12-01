@@ -22,7 +22,8 @@ export const jobViewGroups: JobViewGroup[] = [
     children: [
       { id: 'salvage-miner', name: 'Salvage Miner', tags: [MapIconTag.Resource_Salvage, MapIconTag.Refinery], mode: 'ANY' },
       { id: 'component-miner', name: 'Component Miner', tags: [MapIconTag.Resource_Component, MapIconTag.Refinery], mode: 'ANY' },
-      { id: 'sulfur-miner', name: 'Sulfur Miner', tags: [MapIconTag.Resource_Sulfur, MapIconTag.Refinery], mode: 'ANY' }, // NOTE: uses Resource_Component per spec provided
+      { id: 'sulfur-miner', name: 'Sulfur Miner', tags: [MapIconTag.Resource_Sulfur, MapIconTag.Refinery], mode: 'ANY' },
+      { id: 'coal-miner', name: 'Coal Miner', tags: [MapIconTag.Resource_Coal], mode: 'ANY' },
       { id: 'oil-miner', name: 'Oil Miner', tags: [MapIconTag.Resource_Oil], mode: 'ALL' },
     ],
   },
