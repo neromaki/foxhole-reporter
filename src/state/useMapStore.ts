@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type LayerKey = 'territory' | 'logistics' | 'mining' | 'production' | 'intel' | 'frontline' | 'static' | 'labelsMajor' | 'labelsMinor';
+export type LayerKey = 'territory' | 'logistics' | 'resources' | 'salvage' | 'components' | 'production' | 'intel' | 'frontline' | 'static' | 'labelsMajor' | 'labelsMinor';
 
 interface MapState {
   activeLayers: Record<LayerKey, boolean>;
@@ -11,7 +11,9 @@ interface MapState {
 const defaultLayers: Record<LayerKey, boolean> = {
   territory: true,
   logistics: true,
-  mining: true,
+  resources: false,
+  salvage: false,
+  components: false,
   production: true,
   intel: true,
   frontline: true,

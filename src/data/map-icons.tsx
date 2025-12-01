@@ -49,6 +49,7 @@ enum MapIconTag {
     Economy = "Economy",
     Storage = "Storage",
     Factory = "Factory",
+    Logistics = "Logistics",
     Production = "Production",
     Construction = "Construction",
     // Resources
@@ -135,6 +136,7 @@ enum MapIconTag {
 interface MapIconStruct {
     id: MapIcon;
     apiName: string;
+    iconFileName: string;
     displayName: string;
     tags: Array<MapIconTag>;
 }
@@ -143,30 +145,36 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Town_Base_1,
         "apiName": "Town Base 1",
-        "displayName": "Town Base 1",
+        "iconFileName": "TownBaseTier1",
+        "displayName": "Town Base",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Base_Town,
+            MapIconTag.Spawn,
+            MapIconTag.Base_Town,
             MapIconTag.Town_Base_1
         ]
     },
     {
         "id": MapIcon.Town_Base_2,
         "apiName": "Town Base 2",
-        "displayName": "Town Base 2",
+        "iconFileName": "TownBaseTier2",
+        "displayName": "Town Base T2",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Base_Town,
+            MapIconTag.Spawn,
+            MapIconTag.Base_Town,
             MapIconTag.Town_Base_2
         ]
     },
     {
         "id": MapIcon.Town_Base_3,
         "apiName": "Town Base 3",
-        "displayName": "Town Base 3",
+        "iconFileName": "TownBaseTier3",
+        "displayName": "Town Base T3",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Base_Town,
+            MapIconTag.Spawn,
+            MapIconTag.Base_Town,
             MapIconTag.Town_Base_3,
             MapIconTag.Victory_Point
         ]
@@ -175,10 +183,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Relic_Base_1,
         "apiName": "Relic Base 1",
-        "displayName": "Relic Base 1",
+        "iconFileName": "RelicBase",
+        "displayName": "Relic Base",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Relic,
             MapIconTag.Relic_Base_1
         ]
@@ -186,30 +196,36 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Keep,
         "apiName": "Special Base (Keep)",
+        "iconFileName": "Keep",
         "displayName": "Keep",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Keep
         ]
     },
     {
         "id": MapIcon.Fort,
         "apiName": "Fort",
+        "iconFileName": "Fort",
         "displayName": "Fort",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Fort
         ]
     },
     {
         "id": MapIcon.Forward_Base_1,
         "apiName": "Forward Base 1",
-        "displayName": "Forward Base 1",
+        "iconFileName": "ForwardBase1",
+        "displayName": "Forward Base",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Forward,
             MapIconTag.Forward_Base_1
         ]
@@ -217,29 +233,35 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Garrison_Station,
         "apiName": "Garrison Station",
+        "iconFileName": "Safehouse",
         "displayName": "Garrison Station",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Garrison_Station
         ]
     },
     {
         "id": MapIcon.Hospital,
         "apiName": "Hospital",
+        "iconFileName": "Medical",
         "displayName": "Hospital",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Hospital
+            MapIconTag.Spawn,
+            MapIconTag.Hospital
         ]
     },
     {
         "id": MapIcon.Troop_Ship,
         "apiName": "Troop Ship",
+        "iconFileName": "TroopShip",
         "displayName": "Troop Ship",
         "tags": [
             MapIconTag.Base,
-            MapIconTag.Spawn,MapIconTag.Storage,
+            MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Ship,
             MapIconTag.Troop_Ship
         ]
@@ -248,60 +270,72 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Vehicle_Factory,
         "apiName": "Vehicle Factory",
+        "iconFileName": "Vehicle",
         "displayName": "Vehicle Factory",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Construction,MapIconTag.Static,
+            MapIconTag.Construction,
+            MapIconTag.Static,
             MapIconTag.Vehicle_Factory
         ]
     },
     {
         "id": MapIcon.Shipyard,
         "apiName": "Shipyard",
+        "iconFileName": "Shipyard",
         "displayName": "Shipyard",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Construction,MapIconTag.Static,
+            MapIconTag.Construction,
+            MapIconTag.Static,
             MapIconTag.Shipyard
         ]
     },
     {
         "id": MapIcon.Construction_Yard,
         "apiName": "Construction Yard",
+        "iconFileName": "ConstructionYard",
         "displayName": "Construction Yard",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Construction,MapIconTag.Static,
+            MapIconTag.Construction,
+            MapIconTag.Static,
             MapIconTag.Construction_Yard
         ]
     },
     {
         "id": MapIcon.Refinery,
         "apiName": "Refinery",
+        "iconFileName": "Manufacturing",
         "displayName": "Refinery",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Production,MapIconTag.Static,
+            MapIconTag.Production,
+            MapIconTag.Static,
             MapIconTag.Refinery
         ]
     },
     {
         "id": MapIcon.Factory,
         "apiName": "Factory",
+        "iconFileName": "Factory",
         "displayName": "Factory",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Production,MapIconTag.Static,
+            MapIconTag.Production,
+            MapIconTag.Static,
             MapIconTag.Factory
         ]
     },
     {
         "id": MapIcon.Mass_Production_Factory,
         "apiName": "Mass Production Factory",
+        "iconFileName": "MassProductionFactory",
         "displayName": "Mass Production Factory",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Production,MapIconTag.Static,
+            MapIconTag.Production,
+            MapIconTag.Static,
             MapIconTag.Factory,
             MapIconTag.Mass_Production_Factory
         ]
@@ -309,20 +343,26 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Seaport,
         "apiName": "Seaport",
+        "iconFileName": "Seaport",
         "displayName": "Seaport",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Storage,MapIconTag.Static,
+            MapIconTag.Logistics,
+            MapIconTag.Storage,
+            MapIconTag.Static,
             MapIconTag.Seaport
         ]
     },
     {
         "id": MapIcon.Storage_Facility,
         "apiName": "Storage Facility",
+        "iconFileName": "StorageFacility",
         "displayName": "Storage Facility",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Storage,MapIconTag.Static,
+            MapIconTag.Logistics,
+            MapIconTag.Storage,
+            MapIconTag.Static,
             MapIconTag.Storage_Facility
         ]
     },
@@ -330,10 +370,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Salvage_Field,
         "apiName": "Salvage Field",
+        "iconFileName": "Salvage",
         "displayName": "Salvage Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Salvage,
             MapIconTag.Salvage_Field
         ]
@@ -341,10 +383,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Component_Field,
         "apiName": "Component Field",
+        "iconFileName": "Components",
         "displayName": "Component Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Component,
             MapIconTag.Component_Field
         ]
@@ -352,10 +396,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Fuel_Field,
         "apiName": "Fuel Field",
+        "iconFileName": "Fuel",
         "displayName": "Fuel Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Fuel,
             MapIconTag.Fuel_Field
         ]
@@ -363,10 +409,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Sulfur_Field,
         "apiName": "Sulfur Field",
+        "iconFileName": "Sulfur",
         "displayName": "Sulfur Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Sulfur,
             MapIconTag.Sulfur_Field
         ]
@@ -374,10 +422,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Coal_Field,
         "apiName": "Coal Field",
+        "iconFileName": "Coal",
         "displayName": "Coal Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Coal,
             MapIconTag.Coal_Field
         ]
@@ -385,10 +435,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Oil_Field,
         "apiName": "Oil Field",
+        "iconFileName": "OilWell",
         "displayName": "Oil Field",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Field,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Field,
             MapIconTag.Resource_Oil,
             MapIconTag.Oil_Field
         ]
@@ -397,10 +449,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Salvage_Mine,
         "apiName": "Salvage Mine",
+        "iconFileName": "SalvageMine",
         "displayName": "Salvage Mine",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Mine,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Mine,
             MapIconTag.Resource_Salvage,
             MapIconTag.Salvage_Mine
         ]
@@ -408,10 +462,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Component_Mine,
         "apiName": "Component Mine",
+        "iconFileName": "ComponentMine",
         "displayName": "Component Mine",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Mine,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Mine,
             MapIconTag.Resource_Component,
             MapIconTag.Component_Mine
         ]
@@ -419,10 +475,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Sulfur_Mine,
         "apiName": "Sulfur Mine",
+        "iconFileName": "SulfurMine",
         "displayName": "Sulfur Mine",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Mine,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Mine,
             MapIconTag.Resource_Sulfur,
             MapIconTag.Sulfur_Mine
         ]
@@ -430,10 +488,12 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Oil_Rig,
         "apiName": "Oil Rig",
+        "iconFileName": "FacilityMineOilRig",
         "displayName": "Facility Mine Oil Rig",
         "tags": [
             MapIconTag.Economy,
-            MapIconTag.Resource,MapIconTag.Resource_Mine,
+            MapIconTag.Resource,
+            MapIconTag.Resource_Mine,
             MapIconTag.Resource_Oil,
             MapIconTag.Oil_Rig
         ]
@@ -442,6 +502,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Storm_Cannon,
         "apiName": "Storm Cannon",
+        "iconFileName": "StormCannon",
         "displayName": "Storm Cannon",
         "tags": [
             MapIconTag.Utility,
@@ -450,26 +511,31 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Coastal_Gun,
         "apiName": "Coastal Gun",
+        "iconFileName": "CoastalGun",
         "displayName": "Coastal Gun",
         "tags": [
             MapIconTag.Utility,
-            MapIconTag.Static,MapIconTag.Defense,
+            MapIconTag.Static,
+            MapIconTag.Defense,
             MapIconTag.Coastal_Gun
         ]
     },
     {
         "id": MapIcon.Mortar_House,
         "apiName": "Mortar House",
-        "displayName": "Mortar Hous",
+        "iconFileName": "MortarHouse",
+        "displayName": "Mortar House",
         "tags": [
             MapIconTag.Utility,
-            MapIconTag.Static,MapIconTag.Defense,
+            MapIconTag.Static,
+            MapIconTag.Defense,
             MapIconTag.Mortar_House
         ]
     },
     {
         "id": MapIcon.Soul_Factory,
         "apiName": "Soul Factory",
+        "iconFileName": "SoulFactory",
         "displayName": "Soul Factory",
         "tags": [
             MapIconTag.Utility,
@@ -480,6 +546,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Intel_Center,
         "apiName": "Intel Center",
+        "iconFileName": "IntelCenter",
         "displayName": "Intel Center",
         "tags": [
             MapIconTag.Utility,
@@ -489,6 +556,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Weather_Station,
         "apiName": "Weather Station",
+        "iconFileName": "WeatherStation",
         "displayName": "Weather Station",
         "tags": [
             MapIconTag.Utility,
@@ -498,6 +566,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Tech_Center,
         "apiName": "Tech Center",
+        "iconFileName": "TechCenter",
         "displayName": "Tech Center",
         "tags": [
             MapIconTag.Utility,
@@ -507,6 +576,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Observation_Tower,
         "apiName": "Observation Tower",
+        "iconFileName": "ObservationTower",
         "displayName": "Observation Tower",
         "tags": [
             MapIconTag.Utility,
@@ -517,6 +587,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Rocket_Site,
         "apiName": "Rocket Site",
+        "iconFileName": "RocketSite",
         "displayName": "Rocket Site",
         "tags": [
             MapIconTag.Rocket,
@@ -526,6 +597,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Rocket_Site_With_Rocket,
         "apiName": "Rocket Site With Rocket",
+        "iconFileName": "RocketSiteArmed",
         "displayName": "Rocket Site With Rocket",
         "tags": [
             MapIconTag.Rocket,
@@ -535,6 +607,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Rocket_Target,
         "apiName": "Rocket Target",
+        "iconFileName": "RocketTarget",
         "displayName": "Rocket Target",
         "tags": [
             MapIconTag.Rocket,
@@ -544,6 +617,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Rocket_Ground_Zero,
         "apiName": "Rocket Ground Zero",
+        "iconFileName": "RocketGroundZero",
         "displayName": "Rocket Ground Zero",
         "tags": [
             MapIconTag.Rocket,
@@ -551,33 +625,39 @@ const mapIcons: Array<MapIconStruct> = [
         ]
     },
 
-    {        "id": MapIcon.World_Map_Tent,
+    {        
+        "id": MapIcon.World_Map_Tent,
         "apiName": "World Map Tent",
+        "iconFileName": "WorldMapTent",
         "displayName": "World Map Tent",
         "tags": [
             MapIconTag.Static,
-            MapIconTag.Utility,MapIconTag.World_Map_Tent
+            MapIconTag.Utility,
+            MapIconTag.World_Map_Tent
         ]
     },
     {
         "id": MapIcon.Travel_Tent,
         "apiName": "Travel Tent",
+        "iconFileName": "TravelTent",
         "displayName": "Travel Tent",
         "tags": [
             MapIconTag.Static,
-            MapIconTag.Utility,MapIconTag.Travel_Tent
+            MapIconTag.Utility,
+            MapIconTag.Travel_Tent
         ]
     },
     {
         "id": MapIcon.Training_Area,
         "apiName": "Training Area",
-        "displayName": "Training Are",
+        "iconFileName": "TrainingArea",
+        "displayName": "Training Area",
         "tags": [
             MapIconTag.Static,
-            MapIconTag.Utility,MapIconTag.Training_Area
+            MapIconTag.Utility,
+            MapIconTag.Training_Area
         ]
     }
 ]
 
-export { MapIcon, MapIconTag };
-export default mapIcons;
+export { MapIcon, MapIconTag, mapIcons };

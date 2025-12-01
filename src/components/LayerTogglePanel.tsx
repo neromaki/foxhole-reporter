@@ -1,10 +1,24 @@
 import React from 'react';
 import { useMapStore, LayerKey } from '../state/useMapStore';
+import { MapIcon, MapIconTag } from '../data/map-icons';
+
+// Map which tags each layer controls. Extend as needed.
+export const layerTagsByKey: Partial<Record<LayerKey, MapIconTag[]>> = {
+  logistics: [MapIconTag.Logistics],
+  resources: [MapIconTag.Resource, MapIconTag.Refinery],
+  salvage: [MapIconTag.Resource_Salvage, MapIconTag.Refinery],
+  components: [MapIconTag.Resource_Component, MapIconTag.Refinery],
+  // mining: [MapIconTag.Resource_Mine, MapIconTag.Resource_Field, MapIconTag.Resource_Oil, MapIconTag.Resource_Coal, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Component, MapIconTag.Resource_Salvage],
+  // production: [MapIconTag.Factory, MapIconTag.Production, MapIconTag.Economy, MapIconTag.Construction],
+  // intel: [/* add relevant tags */],
+};
 
 const labels: Record<LayerKey, string> = {
   territory: 'Territory (dynamic)',
   logistics: 'Logistics',
-  mining: 'Mining',
+  resources: 'Resources & Refineries',
+  salvage: 'Salvage mining',
+  components: 'Component mining',
   production: 'Production',
   intel: 'Intel/Reports',
   frontline: 'Front Lines',

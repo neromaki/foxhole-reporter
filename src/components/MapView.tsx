@@ -7,31 +7,15 @@ import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
-import StaticMapLayer from './StaticMapLayer';
+import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import { getHexByApiName } from '../lib/hexLayout';
-import { getIconUrl, getIconSize } from '../lib/icons';
+import { getIconUrl, getIconSize, getMapIconsByTag } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
-
-// Map WarAPI icon type to human-readable label
-function getIconLabel(iconType: number): string {
-  const iconMap: Record<number, string> = {
-    11: 'Hospital', 12: 'Vehicle Factory', 17: 'Refinery', 18: 'Shipyard',
-    19: 'Engineering Center', 20: 'Salvage Field', 21: 'Component Field',
-    22: 'Fuel Field', 23: 'Sulfur Field', 27: 'Keep', 28: 'Observation Tower',
-    29: 'Fort', 32: 'Sulfur Mine', 33: 'Storage Facility', 34: 'Factory',
-    35: 'Garrison Station', 37: 'Rocket Site', 38: 'Salvage Mine',
-    39: 'Construction Yard', 40: 'Component Mine', 45: 'Relic Base',
-    51: 'Mass Production Factory', 52: 'Seaport', 53: 'Coastal Gun',
-    54: 'Soul Factory', 56: 'Town Base 1', 57: 'Town Base 2', 58: 'Town Base 3',
-    59: 'Storm Cannon', 60: 'Intel Center', 61: 'Coal Field', 62: 'Oil Field',
-    70: 'Rocket Target', 71: 'Rocket Ground Zero', 72: 'Rocket Site (Armed)',
-    75: 'Oil Rig', 83: 'Weather Station', 84: 'Mortar House'
-  };
-  return iconMap[iconType] ?? `Icon ${iconType}`;
-}
+import { getIconLabel } from '../lib/icons';
+import { layerTagsByKey } from './LayerTogglePanel';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -67,7 +51,7 @@ export default function MapView() {
       className="h-full w-full bg-gray-900"
     >
       <SharedTooltipProvider>
-        <ZoomLogger />
+        <StaticIconLayer visible={activeLayers.static} />
         <TerritoryLayer 
           snapshot={snapshot}
           activeLayers={activeLayers}
@@ -75,12 +59,10 @@ export default function MapView() {
           changedWeekly={changedWeekly}
         />
         <HexTileLayer />
-        <StaticMapLayer 
-          visible={activeLayers.static}
+        <StaticLabelLayer 
           majorVisible={activeLayers.labelsMajor}
           minorVisible={activeLayers.labelsMinor}
         />
-        {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
     </MapContainer>
@@ -93,27 +75,6 @@ function ownerColor(owner: TerritoryTile['owner']) {
     case 'Warden': return '#1d4ed8';
     default: return '#6b7280';
   }
-}
-
-// Logs zoom level on wheel/zoom events
-function ZoomLogger() {
-  const map = useMap();
-  useMapEvents({
-    zoom: () => {
-      console.log('[MapView] Zoom event, zoom:', map.getZoom());
-    },
-  });
-  React.useEffect(() => {
-    const container = map.getContainer();
-    const onWheel = () => {
-      console.log('[MapView] Wheel event, zoom:', map.getZoom());
-    };
-    container.addEventListener('wheel', onWheel);
-    return () => {
-      container.removeEventListener('wheel', onWheel);
-    };
-  }, [map]);
-  return null;
 }
 
 // Territory markers rendered with icon sizes that scale by zoom
@@ -300,6 +261,20 @@ function TerritoryLayer({
     return padded.contains([lat, lng] as any);
   }
 
+  const excludedIconTypes = useMemo<Set<number>>(() => {
+    const excluded = new Set<number>();
+    for (const [key, isOn] of Object.entries(activeLayers)) {
+      if (isOn) continue;
+      const tags = (layerTagsByKey as any)[key] as any[] | undefined;
+      if (!tags || tags.length === 0) continue;
+      for (const tag of tags) {
+        const icons = getMapIconsByTag(tag as any);
+        for (const mi of icons) excluded.add(mi.id);
+      }
+    }
+    return excluded;
+  }, [activeLayers]);
+
   React.useEffect(() => {
     if (!map) return;
     let rafId: number | null = null;
@@ -307,7 +282,9 @@ function TerritoryLayer({
 
     const recompute = () => {
       const bounds = map.getBounds();
-      const filtered = projectedTerritories.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
+      const filtered = projectedTerritories
+        .filter(({ t }) => !excludedIconTypes.has(t.iconType))
+        .filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
       setVisibleTerritories(filtered);
     };
 
@@ -332,7 +309,7 @@ function TerritoryLayer({
       map.off('zoom', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
-  }, [map, projectedTerritories]);
+  }, [map, projectedTerritories, excludedIconTypes]);
 
   // Prune stale marker refs when visibleTerritories changes
   React.useEffect(() => {
