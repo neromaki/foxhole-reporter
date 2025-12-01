@@ -16,6 +16,8 @@ import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { getIconLabel } from '../lib/icons';
 import { layerTagsByKey } from './LayerTogglePanel';
+import { getJobViewFilter } from '../state/jobViews';
+import { getMapIcon } from '../lib/icons';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -30,6 +32,7 @@ export default function MapView() {
   const changedWeekly = SHOW_WEEKLY_REPORT ? useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]) : false;
 
   const activeLayers = useMapStore((s) => s.activeLayers);
+  const activeJobViewId = useMapStore(s => s.activeJobViewId);
 
   useEffect(() => {
     console.log('[MapView] Data source (config):', DATA_SOURCE);
@@ -61,7 +64,7 @@ export default function MapView() {
         <HexTileLayer />
         <StaticLabelLayer 
           majorVisible={activeLayers.labelsMajor}
-          minorVisible={activeLayers.labelsMinor}
+          minorVisible={activeLayers.labelsMinor && !activeJobViewId}
         />
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
@@ -261,6 +264,7 @@ function TerritoryLayer({
     return padded.contains([lat, lng] as any);
   }
 
+  const activeJobViewId = useMapStore(s => s.activeJobViewId);
   const excludedIconTypes = useMemo<Set<number>>(() => {
     const excluded = new Set<number>();
     for (const [key, isOn] of Object.entries(activeLayers)) {
@@ -275,6 +279,12 @@ function TerritoryLayer({
     return excluded;
   }, [activeLayers]);
 
+  // Job view filter function
+  const jobViewFilter = useMemo(() => {
+    if (!activeJobViewId) return null;
+    return getJobViewFilter(activeJobViewId);
+  }, [activeJobViewId]);
+
   React.useEffect(() => {
     if (!map) return;
     let rafId: number | null = null;
@@ -282,9 +292,17 @@ function TerritoryLayer({
 
     const recompute = () => {
       const bounds = map.getBounds();
-      const filtered = projectedTerritories
-        .filter(({ t }) => !excludedIconTypes.has(t.iconType))
-        .filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
+      let base = projectedTerritories;
+      if (jobViewFilter) {
+        base = base.filter(({ t }) => {
+          const mi = getMapIcon(t.iconType);
+          if (!mi) return false; // exclude unknown
+          return jobViewFilter(mi.tags);
+        });
+      } else {
+        base = base.filter(({ t }) => !excludedIconTypes.has(t.iconType));
+      }
+      const filtered = base.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
       setVisibleTerritories(filtered);
     };
 
@@ -309,7 +327,7 @@ function TerritoryLayer({
       map.off('zoom', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
-  }, [map, projectedTerritories, excludedIconTypes]);
+  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter]);
 
   // Prune stale marker refs when visibleTerritories changes
   React.useEffect(() => {
@@ -357,7 +375,8 @@ function TerritoryLayer({
     hide(200);
   }, [hide]);
 
-  if (!activeLayers.territory) return null;
+  const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
+  if (!activeLayers.territory && !activeJobViewIdTop) return null;
 
   return (
     <LayerGroup>

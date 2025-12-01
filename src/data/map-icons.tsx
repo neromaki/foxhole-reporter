@@ -150,6 +150,7 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_1
         ]
@@ -162,6 +163,7 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_2
         ]
@@ -174,6 +176,7 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
+            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_3,
             MapIconTag.Victory_Point

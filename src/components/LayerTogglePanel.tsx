@@ -5,20 +5,13 @@ import { MapIcon, MapIconTag } from '../data/map-icons';
 // Map which tags each layer controls. Extend as needed.
 export const layerTagsByKey: Partial<Record<LayerKey, MapIconTag[]>> = {
   logistics: [MapIconTag.Logistics],
-  resources: [MapIconTag.Resource, MapIconTag.Refinery],
-  salvage: [MapIconTag.Resource_Salvage, MapIconTag.Refinery],
-  components: [MapIconTag.Resource_Component, MapIconTag.Refinery],
-  // mining: [MapIconTag.Resource_Mine, MapIconTag.Resource_Field, MapIconTag.Resource_Oil, MapIconTag.Resource_Coal, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Component, MapIconTag.Resource_Salvage],
-  // production: [MapIconTag.Factory, MapIconTag.Production, MapIconTag.Economy, MapIconTag.Construction],
-  // intel: [/* add relevant tags */],
+  // Extend with other layer->tag mappings as needed
 };
 
 const labels: Record<LayerKey, string> = {
   territory: 'Territory (dynamic)',
   logistics: 'Logistics',
-  resources: 'Resources & Refineries',
-  salvage: 'Salvage mining',
-  components: 'Component mining',
+  mining: 'Mining',
   production: 'Production',
   intel: 'Intel/Reports',
   frontline: 'Front Lines',
@@ -30,6 +23,7 @@ const labels: Record<LayerKey, string> = {
 export default function LayerTogglePanel() {
   const active = useMapStore((s) => s.activeLayers);
   const toggle = useMapStore((s) => s.toggleLayer);
+  const activeJobViewId = useMapStore(s => s.activeJobViewId);
 
   return (
     <div className="p-4 space-y-3 overflow-y-auto">
@@ -40,8 +34,12 @@ export default function LayerTogglePanel() {
           return (
             <li key={k}>
               <button
-                onClick={() => toggle(k)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                onClick={() => {
+                  if (activeJobViewId && (k === 'territory' || k === 'labelsMinor')) return; // locked under job view
+                  toggle(k);
+                }}
+                disabled={!!activeJobViewId && (k === 'territory' || k === 'labelsMinor')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'} ${activeJobViewId && (k === 'territory' || k === 'labelsMinor') ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span>{label}</span>
                 <span className={`h-3 w-3 rounded-full ${active[k] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
@@ -50,6 +48,11 @@ export default function LayerTogglePanel() {
           );
         })}
       </ul>
+      {activeJobViewId && (
+        <div className="mt-2 text-[10px] text-gray-400 space-y-0.5">
+          <div>Job View active: territory forced on; minor labels hidden.</div>
+        </div>
+      )}
     </div>
   );
 }
