@@ -26,7 +26,9 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       permanent: false,
       direction: 'top',
       offset: [0, -10],
-      className: 'shared-tooltip'
+      className: 'shared-tooltip',
+      interactive: true,
+      sticky: true
     });
     tooltipRef.current = tooltip;
     return () => {
@@ -48,6 +50,23 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       tooltip.setLatLng([lat, lng] as any);
       tooltip.setContent(html);
       tooltip.addTo(map);
+
+      // Ensure the tooltip stays open while hovered
+      const el = (tooltip as any).getElement?.() || (tooltip as any)._container;
+      if (el) {
+        // Remove previously attached listeners to avoid duplicates
+        el.onmouseenter = null;
+        el.onmouseleave = null;
+        el.addEventListener('mouseenter', () => {
+          if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+          }
+        });
+        el.addEventListener('mouseleave', () => {
+          hide(150);
+        });
+      }
     }, openDelay);
   };
 

@@ -9,7 +9,7 @@ import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import { getHexByApiName } from '../lib/hexLayout';
-import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag } from '../lib/icons';
+import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl } from '../lib/icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
@@ -348,7 +348,11 @@ function TerritoryLayer({
     const isScorched = (t.flags & 0x10) !== 0;
     const isBuildSite = (t.flags & 0x04) !== 0;
     const parts = [];
-    parts.push(`<div class="font-semibold">${getIconLabel(t.iconType)}</div>`);
+    const wikiUrl = getIconWikiUrl(t.iconType);
+    const labelHtml = wikiUrl
+      ? `<a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="font-semibold underline decoration-dotted">${getIconLabel(t.iconType)}</a>`
+      : `<span class="font-semibold">${getIconLabel(t.iconType)}</span>`;
+    parts.push(labelHtml);
     if (t.owner !== 'Neutral') parts.push(`<div>${t.owner}</div>`);
     parts.push(`<div class="text-gray-400">${getHexByApiName(t.region)?.displayName}</div>`);
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');

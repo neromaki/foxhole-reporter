@@ -43,6 +43,27 @@ export function getMapIconsByTag(tag: MapIconTag) {
   return taggedMapIcons;
 }
 
+// Build a wiki URL for an icon type. If a specific wikiPage is provided in data, use it.
+// Otherwise, fall back to heuristics based on displayName.
+export function getIconWikiUrl(iconType: number): string | null {
+  const mi = getMapIcon(iconType);
+  if (!mi) return null;
+  const base = 'https://foxhole.wiki.gg/wiki/';
+  const slug = mi.wikiPage
+    ? mi.wikiPage
+    : heuristicWikiSlug(mi.displayName);
+  return slug ? base + slug : null;
+}
+
+function heuristicWikiSlug(name: string): string {
+  // Prefer underscores for spaces, strip apostrophes and commas
+  const cleaned = name
+    .replace(/['’,]/g, '')
+    .replace(/\s+/g, '_')
+    .trim();
+  return cleaned;
+}
+
 export function getIconSize(iconType: number): [number, number] {
   // Provide reasonable default sizing; adjust specific icons if needed
   switch (iconType) {
