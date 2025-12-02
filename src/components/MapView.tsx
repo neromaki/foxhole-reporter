@@ -16,6 +16,7 @@ import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
+import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -78,6 +79,11 @@ function ownerColor(owner: TerritoryTile['owner']) {
   }
 }
 
+function getOwnerIcon(owner: TerritoryTile['owner']) {
+  const iconFilename = `logo_${owner}.png`
+  return new URL(`../images/${iconFilename}`, import.meta.url).href;
+}
+
 // Territory markers rendered with icon sizes that scale by zoom
 function TerritoryLayer({
   snapshot,
@@ -100,6 +106,42 @@ function TerritoryLayer({
   const ownerById = React.useRef<Map<string, TerritoryTile['owner']>>(new Map());
 
   const { show, hide } = useSharedTooltip();
+
+  // Load static maps to access projected Major labels for nearest-location lookup
+  const { data: staticMaps } = useStaticMaps(true);
+
+  const majorLabelsByMap = useMemo(() => {
+    const m = new Map<string, Array<{ lat: number; lng: number; text: string }>>();
+    (staticMaps ?? []).forEach(entry => {
+      const arr: Array<{ lat: number; lng: number; text: string }> = [];
+      entry.data.mapTextItems.forEach(txt => {
+        if (txt.mapMarkerType === 'Major') {
+          const projected = projectRegionPoint(entry.mapName, txt.x, txt.y);
+          if (projected) {
+            const [lat, lng] = projected;
+            arr.push({ lat, lng, text: txt.text });
+          }
+        }
+      });
+      m.set(entry.mapName, arr);
+    });
+    return m;
+  }, [staticMaps]);
+
+  function nearestMajorLabel(region: string, lat: number, lng: number): string | null {
+    const arr = majorLabelsByMap.get(region);
+    if (!arr || arr.length === 0) return null;
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < arr.length; i++) {
+      const lab = arr[i];
+      const dx = lab.lat - lat;
+      const dy = lab.lng - lng;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    }
+    return bestIdx >= 0 ? arr[bestIdx].text : null;
+  }
 
   function getUrl(iconType: number, owner?: TerritoryTile['owner']): string {
     const key = `${iconType}|${owner ?? 'none'}`;
@@ -343,7 +385,7 @@ function TerritoryLayer({
 
 
   // Helper to build tooltip content
-  const getTooltipContent = React.useCallback((t: TerritoryTile) => {
+  const getTooltipContent = React.useCallback((t: TerritoryTile, lat: number, lng: number) => {
     const isVictoryBase = (t.flags & 0x01) !== 0;
     const isScorched = (t.flags & 0x10) !== 0;
     const isBuildSite = (t.flags & 0x04) !== 0;
@@ -353,8 +395,11 @@ function TerritoryLayer({
       ? `<a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="font-semibold underline decoration-dotted">${getIconLabel(t.iconType)}</a>`
       : `<span class="font-semibold">${getIconLabel(t.iconType)}</span>`;
     parts.push(labelHtml);
-    if (t.owner !== 'Neutral') parts.push(`<div>${t.owner}</div>`);
-    parts.push(`<div class="text-gray-400">${getHexByApiName(t.region)?.displayName}</div>`);
+    const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
+    if (nearbyMajor) parts.push(`<div class="text-gray-400">${nearbyMajor}</div>`);
+    const hexName = getHexByApiName(t.region)?.displayName;
+    if (hexName) parts.push(`<div class="text-gray-500">${hexName}</div>`);
+    if (t.owner !== 'Neutral') parts.push(`<div class="flex"><img src="${getOwnerIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>${t.owner}</div>`);
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
     if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');
@@ -365,11 +410,11 @@ function TerritoryLayer({
       parts.push('<div class="text-amber-400">Changed 7d</div>');
     }
     return `<div class="text-xs">${parts.join('')}</div>`;
-  }, [changedDaily, changedWeekly]);
+  }, [changedDaily, changedWeekly, majorLabelsByMap]);
 
   // Hover handlers
   const handleMouseOver = React.useCallback((t: TerritoryTile, lat: number, lng: number) => {
-    show(getTooltipContent(t), lat, lng, 100);
+    show(getTooltipContent(t, lat, lng), lat, lng, 100);
   }, [show, getTooltipContent]);
 
   const handleMouseOut = React.useCallback(() => {
