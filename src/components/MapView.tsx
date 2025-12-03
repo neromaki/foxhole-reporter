@@ -45,6 +45,7 @@ export default function MapView() {
     }
   }, [snapshot, activeLayers.territory]);
 
+
   return (
     <MapContainer 
       center={[0, 0] as [number, number]} 
@@ -58,16 +59,16 @@ export default function MapView() {
         <StaticIconLayer visible={true} />
         <TerritoryLayer 
           snapshot={snapshot}
-          activeLayers={activeLayers}
+          activeLayers={activeLayers} // hide territory layer at zooms < 0
           changedDaily={changedDaily}
           changedWeekly={changedWeekly}
         />
         <HexTileLayer />
-        <HexNameLabels />
         <StaticLabelLayer 
           majorVisible={activeLayers.majorLocations}
           minorVisible={activeLayers.minorLocations && !activeJobViewId}
         />
+        <HexNameLabels />
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
     </MapContainer>
@@ -100,6 +101,14 @@ function TerritoryLayer({
   changedWeekly: Set<string>;
 }) {
   const map = useMap();
+  const [zoom, setZoom] = React.useState(map.getZoom());
+
+  React.useEffect(() => {
+    const handler = () => setZoom(map.getZoom());
+    map.on('zoomend', handler);
+    return () => { map.off('zoomend', handler); };
+  }, [map]);
+
   // Caches for performance
   const iconUrlCache = React.useRef<Map<string, string>>(new Map());
   const iconSizeCache = React.useRef<Map<number, [number, number]>>(new Map());
@@ -456,7 +465,8 @@ function TerritoryLayer({
   }, [reportMode, changedDaily, changedWeekly]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
-  if (!activeLayers.territory && !activeJobViewIdTop) return null;
+  // Hide TerritoryLayer when zoomed out to -1 or lower, unless a Job View is active
+  if ((!activeLayers.territory || zoom < -1)) return null;
 
   return (
     <LayerGroup>

@@ -196,7 +196,7 @@ export function StaticLabelLayer({ majorVisible, minorVisible }: { majorVisible:
       {visibleLabels
         .filter(l => (l.isMajor ? (majorVisible && zoom >= MAJOR_LABEL_MIN_ZOOM) : (minorVisible && zoom >= MINOR_LABEL_MIN_ZOOM)))
         .map(label => {
-          const sizeClass = label.isMajor ? 'text-[13px] font-extrabold' : 'text-[9px] font-semibold';
+          const sizeClass = label.isMajor ? 'text-[13px] font-bold' : 'text-[9px] font-semibold';
           return (
             <Marker position={[label.lat, label.lng]} key={label.key} icon={L.divIcon({
               className: `map-label map-label-major ${sizeClass}`,
