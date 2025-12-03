@@ -55,6 +55,7 @@ export function useTerritoryDiff(period: 'daily' | 'weekly') {
           console.error('[Queries] Territory diff fetch error:', error);
           throw error;
         }
+        console.log('[Queries] Territory diff fetched for period', period, ':', data);
         return data as unknown as TerritoryDiff | null;
       } catch (e) {
         console.error('[Queries] Exception during territory diff fetch:', e);

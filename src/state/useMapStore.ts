@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-export type LayerKey = 'territory' | 'logistics' | 'mining' | 'production' | 'intel' | 'frontline' | 'static' | 'labelsMajor' | 'labelsMinor';
+export type LayerKey = 'territory' | 'resources' | 'majorLocations' | 'minorLocations';
+
+type ReportMode = 'daily' | 'weekly' | null;
 
 interface MapState {
   activeLayers: Record<LayerKey, boolean>;
@@ -9,18 +11,15 @@ interface MapState {
   activeJobViewId: string | null;
   previousLayersSnapshot: Record<LayerKey, boolean> | null;
   setActiveJobView: (viewId: string | null) => void;
+  activeReportMode: ReportMode;
+  setActiveReportMode: (mode: ReportMode) => void;
 }
 
 const defaultLayers: Record<LayerKey, boolean> = {
   territory: true,
-  logistics: true,
-  mining: true,
-  production: true,
-  intel: true,
-  frontline: true,
-  static: true,
-  labelsMajor: true,
-  labelsMinor: true,
+  resources: true,
+  majorLocations: true,
+  minorLocations: true,
 };
 
 export const useMapStore = create<MapState>((set, get) => ({
@@ -45,5 +44,11 @@ export const useMapStore = create<MapState>((set, get) => ({
       // Switching directly between job views (no restore)
       set({ activeJobViewId: viewId });
     }
+  },
+  activeReportMode: null,
+  setActiveReportMode: (mode) => {
+    const state = get();
+    const next = mode === state.activeReportMode ? null : mode;
+    set({ activeReportMode: next });
   }
 }));

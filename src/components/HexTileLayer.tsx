@@ -2,9 +2,12 @@ import React from 'react';
 import { ImageOverlay, useMap } from 'react-leaflet';
 import { HEX_LAYOUT, hexToLeafletBounds, HEX_CONFIG } from '../lib/hexLayout';
 import { LatLngBounds } from 'leaflet';
+import { useMapStore } from '../state/useMapStore';
 
 export default function HexTileLayer() {
   const map = useMap();
+  const reportMode = useMapStore(s => s.activeReportMode);
+  const darken = !!reportMode;
 
   React.useEffect(() => {
     // Set initial map bounds to show the whole world
@@ -25,7 +28,7 @@ export default function HexTileLayer() {
             key={hex.apiName}
             url={imageUrl}
             bounds={bounds}
-            opacity={1.0}
+            opacity={darken ? 0.6 : 1.0}
             zIndex={1}
           />
         );

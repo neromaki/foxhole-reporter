@@ -7,12 +7,14 @@ import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
+import HexNameLabels from './HexNameLabels';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl } from '../lib/icons';
+import { MapIconTag } from '../data/map-icons';
 import L from 'leaflet';
 import type { TerritoryTile } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
@@ -24,11 +26,11 @@ export default function MapView() {
   const { data: warApiSnapshot } = useWarApiDirect({ enabled: DATA_SOURCE === 'warapi' });
   const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
   
-  const { data: dailyDiff } = SHOW_DAILY_REPORT ? useTerritoryDiff('daily') : { data: undefined };
-  const changedDaily = SHOW_DAILY_REPORT ? useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]) : false;
-  
-  const { data: weeklyDiff } = SHOW_WEEKLY_REPORT ? useTerritoryDiff('weekly') : { data: undefined };
-  const changedWeekly = SHOW_WEEKLY_REPORT ? useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]) : false;
+  const { data: dailyDiff } = useTerritoryDiff('daily');
+  const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
+
+  const { data: weeklyDiff } = useTerritoryDiff('weekly');
+  const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
@@ -53,7 +55,7 @@ export default function MapView() {
       className="h-full w-full bg-gray-900"
     >
       <SharedTooltipProvider>
-        <StaticIconLayer visible={activeLayers.static} />
+        <StaticIconLayer visible={true} />
         <TerritoryLayer 
           snapshot={snapshot}
           activeLayers={activeLayers}
@@ -61,9 +63,10 @@ export default function MapView() {
           changedWeekly={changedWeekly}
         />
         <HexTileLayer />
+        <HexNameLabels />
         <StaticLabelLayer 
-          majorVisible={activeLayers.labelsMajor}
-          minorVisible={activeLayers.labelsMinor && !activeJobViewId}
+          majorVisible={activeLayers.majorLocations}
+          minorVisible={activeLayers.minorLocations && !activeJobViewId}
         />
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
@@ -93,8 +96,8 @@ function TerritoryLayer({
 }: {
   snapshot: { territories?: TerritoryTile[] } | undefined | null;
   activeLayers: any;
-  changedDaily: Set<string> | false;
-  changedWeekly: Set<string> | false;
+  changedDaily: Set<string>;
+  changedWeekly: Set<string>;
 }) {
   const map = useMap();
   // Caches for performance
@@ -106,6 +109,7 @@ function TerritoryLayer({
   const ownerById = React.useRef<Map<string, TerritoryTile['owner']>>(new Map());
 
   const { show, hide } = useSharedTooltip();
+  const reportMode = useMapStore(s => s.activeReportMode);
 
   // Load static maps to access projected Major labels for nearest-location lookup
   const { data: staticMaps } = useStaticMaps(true);
@@ -204,16 +208,19 @@ function TerritoryLayer({
     }
   }
 
-  function applySmoothScale(marker: L.Marker, iconType: number, z: number) {
-    const el = marker.getElement();
-    if (!el) return;
-    const img = el.querySelector('img.leaflet-marker-icon') as HTMLImageElement | null;
+  function markerIconElement(marker: L.Marker): HTMLElement | null {
+    const el = marker.getElement() as HTMLElement | null;
+    if (!el) return null;
+    if (el.tagName === 'IMG' || el.classList.contains('leaflet-marker-icon')) return el;
+    const inside = el.querySelector('img.leaflet-marker-icon, .leaflet-marker-icon') as HTMLElement | null;
+    return inside ?? el;
+  }
+
+  function applySmoothScale(marker: L.Marker, iconType: number, z: number, highlighted: boolean) {
+    const img = markerIconElement(marker);
     if (!img) return;
-    const maxScale = scaleForZoom(MAP_MAX_ZOOM);
-    const currentScale = scaleForZoom(z) / maxScale;
-    img.style.transition = `transform ${ICON_SMOOTH_DURATION_MS}ms ease-out`;
-    img.style.transformOrigin = 'center center';
-    img.style.transform = `scale(${currentScale})`;
+    img.style.transition = `opacity 120ms ease-out`;
+    img.style.opacity = reportMode ? (highlighted ? '1' : `${REPORT_UNAFFECTED_ICON_OPACITY}`) : '1';
   }
 
   function updateIconsForZoom(z: number) {
@@ -222,7 +229,12 @@ function TerritoryLayer({
       for (const [id, marker] of markerRefs.current) {
         const iconType = iconTypeById.current.get(id);
         if (iconType == null) continue;
-        applySmoothScale(marker, iconType, z);
+        const highlighted = reportMode === 'daily'
+          ? !!(changedDaily && (changedDaily as Set<string>).has(id))
+          : reportMode === 'weekly'
+          ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
+          : false;
+        applySmoothScale(marker, iconType, z, highlighted);
       }
     } else {
       const bucket = zoomBucket(z);
@@ -238,6 +250,16 @@ function TerritoryLayer({
         const owner = ownerById.current.get(id);
         if (iconType == null) continue;
         marker.setIcon(getIcon(iconType, z, owner));
+        const highlighted = reportMode === 'daily'
+          ? !!(changedDaily && (changedDaily as Set<string>).has(id))
+          : reportMode === 'weekly'
+          ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
+          : false;
+        const img = markerIconElement(marker);
+        if (img) {
+          img.style.transition = `opacity 120ms ease-out`;
+          img.style.opacity = reportMode ? (highlighted ? '1' : `${REPORT_UNAFFECTED_ICON_OPACITY}`) : '1';
+        }
       }
     }
   }
@@ -342,6 +364,13 @@ function TerritoryLayer({
       } else {
         base = base.filter(({ t }) => !excludedIconTypes.has(t.iconType));
       }
+      // Report mode: restrict to Base-tag markers only
+      if (reportMode) {
+        base = base.filter(({ t }) => {
+          const mi = getMapIcon(t.iconType);
+          return mi ? mi.tags.includes(MapIconTag.Base) : false;
+        });
+      }
       const filtered = base.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
       setVisibleTerritories(filtered);
     };
@@ -367,7 +396,7 @@ function TerritoryLayer({
       map.off('zoom', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
-  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter]);
+  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportMode]);
 
   // Prune stale marker refs when visibleTerritories changes
   React.useEffect(() => {
@@ -403,10 +432,10 @@ function TerritoryLayer({
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
     if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');
-    if (SHOW_DAILY_REPORT && changedDaily && (changedDaily as Set<string>).has(t.id)) {
+    if (SHOW_DAILY_REPORT && changedDaily.has(t.id)) {
       parts.push('<div class="text-purple-400">Changed 24h</div>');
     }
-    if (SHOW_WEEKLY_REPORT && changedWeekly && (changedWeekly as Set<string>).has(t.id)) {
+    if (SHOW_WEEKLY_REPORT && changedWeekly.has(t.id)) {
       parts.push('<div class="text-amber-400">Changed 7d</div>');
     }
     return `<div class="text-xs">${parts.join('')}</div>`;
@@ -420,6 +449,11 @@ function TerritoryLayer({
   const handleMouseOut = React.useCallback(() => {
     hide(200);
   }, [hide]);
+
+  // Re-apply styles when report mode or diff sets change
+  React.useEffect(() => {
+    updateIconsForZoom(map.getZoom());
+  }, [reportMode, changedDaily, changedWeekly]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   if (!activeLayers.territory && !activeJobViewIdTop) return null;
@@ -449,16 +483,14 @@ function TerritoryLayer({
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);
               if (ref && ICON_SMOOTH_SCALE) {
-                // Apply initial scale without animation
-                const el = ref.getElement();
-                if (el) {
-                  const img = el.querySelector('img.leaflet-marker-icon') as HTMLImageElement | null;
-                  if (img) {
-                    const maxScale = scaleForZoom(MAP_MAX_ZOOM);
-                    const currentScale = scaleForZoom(map.getZoom()) / maxScale;
-                    img.style.transformOrigin = 'center center';
-                    img.style.transform = `scale(${currentScale})`;
-                  }
+                const img = markerIconElement(ref as unknown as L.Marker);
+                if (img) {
+                  const highlighted = reportMode === 'daily'
+                    ? !!(changedDaily && (changedDaily as Set<string>).has(t.id))
+                    : reportMode === 'weekly'
+                    ? !!(changedWeekly && (changedWeekly as Set<string>).has(t.id))
+                    : false;
+                  img.style.opacity = reportMode ? (highlighted ? '1' : '0.35') : '1';
                 }
               }
             }}
