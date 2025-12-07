@@ -26,3 +26,7 @@ export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf pan
 
 // Reports
 export const REPORT_UNAFFECTED_ICON_OPACITY = 0.25; // Opacity for unaffected icons in report mode
+
+// Victory bar display
+export const WARSTATE_GRAPH_SHOW_NEUTRAL = true;
+export const WARSTATE_GRAPH_SHOW_SCORCHED = true;

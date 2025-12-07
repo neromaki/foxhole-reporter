@@ -112,6 +112,7 @@ export interface WarState {
   winner: string;
   conquestStartTime: number | null;
   conquestEndTime: number | null;
+  requiredVictoryTowns?: number;
 }
 
 // Dynamic map items (bases / structures with ownership info)
