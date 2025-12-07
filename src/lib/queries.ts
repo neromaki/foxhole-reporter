@@ -118,3 +118,30 @@ export function useWarState(options?: { enabled?: boolean }) {
     }
   });
 }
+
+export function useSnapshotsSince(hours: number, options?: { enabled?: boolean }) {
+  return useQuery<Snapshot[]>({
+    queryKey: ['snapshotsSince', hours],
+    enabled: (options?.enabled ?? true) && !!supabase,
+    queryFn: async () => {
+      if (!supabase) return [];
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+      try {
+        const { data, error } = await supabase
+          .from('snapshots')
+          .select('*')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false });
+        if (error) {
+          console.error('[Queries] snapshotsSince error:', error);
+          throw error;
+        }
+        return (data ?? []) as unknown as Snapshot[];
+      } catch (e) {
+        console.error('[Queries] Exception during snapshotsSince fetch:', e);
+        return [];
+      }
+    },
+    staleTime: 60_000,
+  });
+}

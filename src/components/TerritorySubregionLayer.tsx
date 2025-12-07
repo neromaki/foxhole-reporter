@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ImageOverlay, useMap } from 'react-leaflet';
+import tinycolor from "tinycolor2";
+import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
 import { REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
 import { useMapStore } from '../state/useMapStore';
-import { getTownByApiName } from '../data/towns';
+import { getTownByApiName, getTownById } from '../data/towns';
+import { useSharedTooltip } from '../lib/sharedTooltip';
+import { projectRegionPoint } from '../lib/projection';
+import { getOwnerIcon } from './MapView';
 
 // Dynamically load all SVGs from src/map/subregions directory
 const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
@@ -34,22 +38,54 @@ function ownerColor(owner: LocationTile['owner'] | undefined): string {
     case 'Warden':
       return 'rgba(47, 112, 198, 0.5)';
     case 'Neutral':
-      return 'rgba(255, 255, 255, 0.9)'; // Neutral
+      return 'rgba(255, 255, 255, 0.2)'; // Neutral
     default:
       return 'rgba(255, 0, 0, 0.4)'; // Unknown
   }
 }
+
+type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
+type TerritoryHistory = {
+  name: string;
+  currentOwner: LocationTile['owner'];
+  events: TerritoryHistoryEntry[];
+};
 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
   changedDaily: Set<string>;
   changedWeekly: Set<string>;
   visible: boolean;
+  historyById: Map<string, TerritoryHistory>;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible }: Props) {
+interface PathInfo {
+  key: string;
+  d: string;
+  territoryId: string | null;
+  owner: LocationTile['owner'] | null;
+  highlighted: boolean;
+  baseColor: string;
+  baseOpacity: number;
+  stroke: string;
+  strokeWidth: number;
+  lat?: number;
+  lng?: number;
+}
+
+interface RegionOverlay {
+  region: string;
+  bounds: any;
+  viewBox: string;
+  paths: PathInfo[];
+}
+
+export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById }: Props) {
   const map = useMap();
   const reportMode = useMapStore((s) => s.activeReportMode);
+  const { show, hide } = useSharedTooltip();
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [stickyId, setStickyId] = useState<string | null>(null);
   /*
   const [zoom, setZoom] = useState(map.getZoom());
 
@@ -70,6 +106,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       if (pane) pane.style.zIndex = '400';
     }
   }, [map]);
+
+  useEffect(() => {
+    if (!reportMode) {
+      setHoveredId(null);
+      setStickyId(null);
+      hide(0);
+    }
+  }, [reportMode, hide]);
 
   // Load raw SVG text once per region
   const [svgByRegion, setSvgByRegion] = useState<Record<string, string>>({});
@@ -118,7 +162,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const territoryById = useMemo(() => {
     const map = new Map<string, LocationTile>();
     (snapshot?.territories ?? []).forEach((t) => map.set(t.id, t));
-    console.log(`[TerritorySubregion] Built territoryById map with ${map.size} territories`);
     return map;
   }, [snapshot]);
 
@@ -128,118 +171,163 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     return null;
   }, [reportMode, changedDaily, changedWeekly]);
 
-  // Render SVG overlays, recoloring paths by owning town/territory
   const overlays = useMemo(() => {
     const parser = new DOMParser();
-    const processed: Array<JSX.Element> = [];
-
-    console.log('[TerritorySubregion] Rendering overlays, svgByRegion keys:', Object.keys(svgByRegion));
+    const processed: RegionOverlay[] = [];
 
     Object.entries(svgByRegion).forEach(([region, svgText]) => {
-      if (!svgText) {
-        console.warn(`[TerritorySubregion] Skipping ${region}: empty SVG`);
-        return;
-      }
+      if (!svgText) return;
 
       const hex = getHexByApiName(region);
-      if (!hex) {
-        console.warn(`[TerritorySubregion] No hex found for region: ${region}`);
-        return;
-      }
+      if (!hex) return;
       const bounds = hexToLeafletBounds(hex);
-      console.log(`[TerritorySubregion] Processing ${region}, bounds:`, bounds);
 
       const doc = parser.parseFromString(String(svgText), 'image/svg+xml');
       const root = doc.documentElement.cloneNode(true) as SVGSVGElement;
-
+      const viewBox = root.getAttribute('viewBox') || `0 0 ${root.getAttribute('width') || 1000} ${root.getAttribute('height') || 1000}`;
       const territoriesGroup = root.querySelector('#Territories');
-      if (!territoriesGroup) {
-        console.warn(`[TerritorySubregion] No <g id="Territories"> found in ${region}`);
-        return;
+      if (!territoriesGroup) return;
+
+      const pathsEls = Array.from(territoriesGroup.querySelectorAll<SVGPathElement>('path[id]'));
+      const paths: PathInfo[] = [];
+
+      for (const p of pathsEls) {
+        const pathId = p.getAttribute('id');
+        const d = p.getAttribute('d');
+        if (!pathId || !d) continue;
+
+        const matchedTown = getTownByApiName(pathId);
+        const territory = matchedTown?.id ? territoryById.get(matchedTown.id) : undefined;
+        if (!territory) continue;
+
+        const highlighted = !!(changedSet && changedSet.has(territory.id));
+        const baseColor = ownerColor(territory.owner);
+        const baseOpacity = reportMode ? (highlighted ? 0.85 : REPORT_UNAFFECTED_ICON_OPACITY) : 0.5;
+        const projected = projectRegionPoint(territory.region, territory.x, territory.y);
+
+        paths.push({
+          key: `${region}-${pathId}`,
+          d,
+          territoryId: territory.id,
+          owner: territory.owner,
+          highlighted,
+          baseColor,
+          baseOpacity,
+          stroke: '#0f172a',
+          strokeWidth: 0.5,
+          lat: projected ? projected[0] : undefined,
+          lng: projected ? projected[1] : undefined,
+        });
       }
 
-      const paths = Array.from(territoriesGroup.querySelectorAll<SVGPathElement>('path[id]'));
-      console.log(`[TerritorySubregion] Found ${paths.length} territory paths in ${region}`);
-
-      let matchedCount = 0;
-      let unmatchedCount = 0;
-
-      paths.forEach((p) => {
-        const pathId = p.getAttribute('id');
-        if (!pathId) return;
-
-        // Find territory matching this path by looking through territories in this region
-        console.log(`[TerritorySubregion] Processing path id=${pathId} in region=${region}`);
-        const matchedTown = getTownByApiName(pathId);
-        console.log(`[TerritorySubregion] Matched town (${matchedTown?.id ?? 'null'}) for pathId=${pathId}:`, matchedTown);
-        
-        if (!matchedTown) {
-          console.warn(`[TerritorySubregion] No location match for path: region=${region}, pathId=${pathId}`);
-          p.setAttribute('fill', '#d946ef');
-          p.setAttribute('fill-opacity', '0.8');
-          p.setAttribute('stroke', '#0f172a');
-          p.setAttribute('stroke-width', '0.5');
-          unmatchedCount++;
-          return;
-        }
-
-        const territory = Array.from(territoryById.values()).find(
-          (t) => t.region === region && `${region}-${t.x.toFixed(4)}-${t.y.toFixed(4)}` === matchedTown?.id
-        );
-
-        if (!territory) {
-          console.warn(`[TerritorySubregion] No territory match for path: matchedTownId=${matchedTown?.id ?? 'null'}, pathId=${pathId}`);
-          p.setAttribute('fill', '#9333ea');
-          p.setAttribute('fill-opacity', '0.7');
-          p.setAttribute('stroke', '#0f172a');
-          p.setAttribute('stroke-width', '0.5');
-          unmatchedCount++;
-          return;
-        }
-
-        console.log(`[TerritorySubregion] Matched territory for pathId=${pathId}:`, territory);
-
-        const owner = territory.owner;
-        const color = ownerColor(owner);
-        const highlighted = !!(changedSet && changedSet.has(territory.id));
-        const opacity = reportMode ? (highlighted ? 0.9 : REPORT_UNAFFECTED_ICON_OPACITY) : 0.85;
-
-        p.setAttribute('fill', color);
-        p.setAttribute('fill-opacity', `${opacity}`);
-        p.setAttribute('stroke', '#0f172a');
-        p.setAttribute('stroke-width', '0.5');
-        matchedCount++;
-        console.log(`[TerritorySubregion] Set ${pathId} fill=${color} opacity=${opacity} owner=${owner}`);
-      });
-
-      console.log(`[TerritorySubregion] ${region}: ${matchedCount} matched, ${unmatchedCount} unmatched`);
-
-      const serializer = new XMLSerializer();
-      const serialized = serializer.serializeToString(root);
-      const encoded = `data:image/svg+xml;utf8,${encodeURIComponent(serialized)}`;
-
-      processed.push(
-        <ImageOverlay
-          key={region}
-          bounds={bounds}
-          url={encoded}
-          opacity={1}
-          pane="territories-pane"
-          className="territory-subregions"
-        />
-      );
+      processed.push({ region, bounds, viewBox, paths });
     });
 
-    console.log(`[TerritorySubregion] Created ${processed.length} overlay elements`);
     return processed;
   }, [svgByRegion, territoryById, changedSet, reportMode]);
 
+  const handleHover = (p: PathInfo) => {
+    if (reportMode !== 'daily' || !p.highlighted) return;
+    setHoveredId(p.territoryId);
+    showTooltipFor(p);
+  };
+
+  const handleLeave = (p: PathInfo) => {
+    if (stickyId && stickyId === p.territoryId) return;
+    setHoveredId((prev) => (prev === p.territoryId ? null : prev));
+    hide(120);
+  };
+
+  const handleClick = (p: PathInfo) => {
+    if (reportMode !== 'daily' || !p.highlighted) return;
+    if (stickyId === p.territoryId) {
+      setStickyId(null);
+      hide(0);
+    } else {
+      setStickyId(p.territoryId);
+      showTooltipFor(p);
+    }
+  };
+
+  const showTooltipFor = (p: PathInfo) => {
+    if (!p.lat || !p.lng || !p.territoryId) return;
+    const hist = historyById.get(p.territoryId);
+    const name = hist?.name ?? getTownById(p.territoryId)?.displayName ?? p.territoryId;
+    const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
+    const lines: string[] = [];
+    lines.push(`<div class="font-semibold">${name}</div>`);
+    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getOwnerIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}</div>`);
+    if (reportMode === 'daily') {
+      lines.push('<div class="mt-1 font-semibold">History:</div>');
+      const events = hist?.events ?? [];
+      if (events.length === 0) {
+        lines.push(`<div class="flex">
+              <img src="${getOwnerIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
+              <span class="mr-2">${owner}</span>
+              <span>(24 hrs ago)</span>
+          </div>`);
+      } else {
+        events.forEach((ev) => {
+          (ev.owner !== 'Neutral') ? lines.push(
+            `<div class="flex">
+              <img src="${getOwnerIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
+              <span class="mr-2">${ev.owner}</span>
+              <span>(${formatTimeAgo(ev.at)})</span>
+            </div>`) : '';
+        });
+      }
+    }
+    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0);
+  };
+
+
   if (!visible || !snapshot?.territories?.length) {
-    if (!visible) console.log('[TerritorySubregion] Not rendering: visible=false');
-    if (!snapshot?.territories?.length) console.log('[TerritorySubregion] Not rendering: no territories in snapshot');
     return null;
   }
 
-  console.log('[TerritorySubregion] Rendering with overlays:', overlays.length);
-  return <>{overlays}</>;
+  return (
+    <>
+      {overlays.map((o) => (
+        <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
+          <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
+            <g id="Territories">
+              {o.paths.map((p) => {
+                const active = (!!p.highlighted && (hoveredId === p.territoryId || stickyId === p.territoryId));
+                const fill = active ? tinycolor(p.baseColor).lighten(10).saturate(10).setAlpha(1).toString() : tinycolor(p.baseColor).setAlpha(0.8).toString();
+                const fillOpacity = active ? Math.min(1, p.baseOpacity + 0.15 * (1 - p.baseOpacity)) : p.baseOpacity;
+                const interactive = reportMode === 'daily' && p.highlighted;
+                return (
+                  <path
+                    key={p.key}
+                    d={p.d}
+                    fill={fill}
+                    fillOpacity={fillOpacity}
+                    stroke={p.stroke}
+                    strokeWidth={p.strokeWidth}
+                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease' }}
+                    onMouseEnter={() => handleHover(p)}
+                    onMouseLeave={() => handleLeave(p)}
+                    onClick={() => handleClick(p)}
+                    onTouchStart={() => handleClick(p)}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+        </SVGOverlay>
+      ))}
+    </>
+  );
+}
+
+
+
+function formatTimeAgo(iso: string): string {
+  const diff = Date.now() - Date.parse(iso);
+  const mins = Math.max(1, Math.round(diff / 60000));
+  if (mins >= 60) {
+    const hours = Math.round(mins / 60);
+    return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  }
+  return `${mins} min${mins === 1 ? '' : 's'} ago`;
 }

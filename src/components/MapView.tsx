@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { MapContainer, LayerGroup, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSnapshot, useTerritoryDiff } from '../lib/queries';
+import { useLatestSnapshot, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
@@ -14,12 +14,13 @@ import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl } from '../lib/icons';
 import { MapIconTag } from '../data/map-icons';
 import L from 'leaflet';
-import type { LocationTile } from '../types/war';
+import type { LocationTile, Snapshot } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
+import { getTownById } from '../data/towns';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -36,6 +37,13 @@ export default function MapView() {
   const activeLayers = useMapStore((s) => s.activeLayers);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
+
+  const { data: recentSnapshots } = useSnapshotsSince(24, { enabled: DATA_SOURCE === 'supabase' && reportMode === 'daily' });
+
+  const historyByTerritoryId = useMemo(() => {
+    if (!recentSnapshots || recentSnapshots.length === 0) return new Map<string, TerritoryHistory>();
+    return buildTerritoryHistory(recentSnapshots as any);
+  }, [recentSnapshots]);
 
   const effectiveLayers = useMemo(() => {
     if (!reportMode) return activeLayers;
@@ -76,6 +84,7 @@ export default function MapView() {
           changedDaily={changedDaily}
           changedWeekly={changedWeekly}
           visible={effectiveLayers.territories}
+          historyById={historyByTerritoryId}
         />
         <HexTileLayer />
         <StaticLabelLayer 
@@ -89,6 +98,53 @@ export default function MapView() {
   );
 }
 
+type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
+type TerritoryHistory = {
+  name: string;
+  currentOwner: LocationTile['owner'];
+  events: TerritoryHistoryEntry[];
+};
+
+function buildTerritoryHistory(snapshots: Snapshot[]): Map<string, TerritoryHistory> {
+  const sorted = [...snapshots].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  if (sorted.length === 0) return new Map();
+
+  const latest = sorted[0];
+  const history = new Map<string, TerritoryHistory>();
+
+  for (const t of latest.territories ?? []) {
+    const town = getTownById(t.id);
+    history.set(t.id, {
+      name: town?.displayName ?? t.id,
+      currentOwner: t.owner,
+      events: [],
+    });
+  }
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const curr = sorted[i];
+    const next = sorted[i + 1];
+    const nextMap = new Map<string, LocationTile>();
+    for (const t of next.territories ?? []) nextMap.set(t.id, t);
+
+    for (const t of curr.territories ?? []) {
+      const prev = nextMap.get(t.id);
+      if (!prev) continue;
+      if (prev.owner !== t.owner) {
+        const entry = history.get(t.id) ?? {
+          name: getTownById(t.id)?.displayName ?? t.id,
+          currentOwner: t.owner,
+          events: [],
+        };
+        entry.events.push({ owner: t.owner, at: curr.created_at });
+        history.set(t.id, entry);
+      }
+    }
+  }
+
+  return history;
+}
+
 function ownerColor(owner: LocationTile['owner']) {
   switch (owner) {
     case 'Colonial': return '#16a34a';
@@ -97,7 +153,7 @@ function ownerColor(owner: LocationTile['owner']) {
   }
 }
 
-function getOwnerIcon(owner: LocationTile['owner']) {
+export function getOwnerIcon(owner: LocationTile['owner']) {
   const iconFilename = `logo_${owner}.png`
   return new URL(`../images/${iconFilename}`, import.meta.url).href;
 }

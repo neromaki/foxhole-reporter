@@ -3,7 +3,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 interface SharedTooltipContextValue {
-  show(html: string, lat: number, lng: number, openDelay?: number): void;
+  show(html: string, lat: number, lng: number, openDelay?: number, sticky?: boolean): void;
   hide(closeDelay?: number): void;
 }
 
@@ -20,6 +20,7 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
   const tooltipRef = useRef<L.Tooltip | null>(null);
   const openTimeoutRef = useRef<number | null>(null);
   const closeTimeoutRef = useRef<number | null>(null);
+  const stickyModeRef = useRef<boolean>(false);
 
   useEffect(() => {
     const tooltip = L.tooltip({
@@ -38,12 +39,13 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [map]);
 
-  const show = (html: string, lat: number, lng: number, openDelay: number = 120) => {
+  const show = (html: string, lat: number, lng: number, openDelay: number = 120, sticky: boolean = false) => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
     if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
+    stickyModeRef.current = sticky;
     openTimeoutRef.current = window.setTimeout(() => {
       const tooltip = tooltipRef.current;
       if (!tooltip) return;
@@ -51,7 +53,7 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       tooltip.setContent(html);
       tooltip.addTo(map);
 
-      // Ensure the tooltip stays open while hovered
+      // Ensure the tooltip stays open while hovered (unless in sticky mode)
       const el = (tooltip as any).getElement?.() || (tooltip as any)._container;
       if (el) {
         // Remove previously attached listeners to avoid duplicates
@@ -63,9 +65,11 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
             closeTimeoutRef.current = null;
           }
         });
-        el.addEventListener('mouseleave', () => {
-          hide(150);
-        });
+        if (!sticky) {
+          el.addEventListener('mouseleave', () => {
+            hide(150);
+          });
+        }
       }
     }, openDelay);
   };

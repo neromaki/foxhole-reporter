@@ -16,9 +16,9 @@ interface MapState {
 }
 
 const defaultLayers: Record<LayerKey, boolean> = {
-  locations: false,
+  locations: true,
   territories: true,
-  resources: true,
+  resources: false,
   majorLocations: true,
   minorLocations: true,
 };
