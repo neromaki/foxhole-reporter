@@ -9,7 +9,8 @@ export const layerTagsByKey: Partial<Record<LayerKey, MapIconTag[]>> = {
 };
 
 const labels: Record<LayerKey, string> = {
-  territory: 'Territory (dynamic)',
+  locations: 'Locations',
+  territories: 'Territories',
   resources: 'Resources',
   majorLocations: 'Major locations',
   minorLocations: 'Minor locations',
@@ -30,11 +31,11 @@ export default function LayerTogglePanel() {
             <li key={k}>
               <button
                 onClick={() => {
-                  if (activeJobViewId && (k === 'territory' || k === 'majorLocations')) return; // locked under job view
+                  if (activeJobViewId && (k === 'locations' || k === 'majorLocations')) return; // locked under job view
                   toggle(k);
                 }}
-                disabled={!!activeJobViewId && (k === 'territory' || k === 'minorLocations')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'} ${activeJobViewId && (k === 'territory' || k === 'minorLocations') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!!activeJobViewId && (k === 'locations' || k === 'minorLocations')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'} ${activeJobViewId && (k === 'locations' || k === 'minorLocations') ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span>{label}</span>
                 <span className={`h-3 w-3 rounded-full ${active[k] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
@@ -45,7 +46,7 @@ export default function LayerTogglePanel() {
       </ul>
       {activeJobViewId && (
         <div className="mt-2 text-[10px] text-gray-400 space-y-0.5">
-          <div>Job View active: territory forced on; minor labels hidden.</div>
+          <div>Job View active: locations forced on; minor labels hidden.</div>
         </div>
       )}
     </div>

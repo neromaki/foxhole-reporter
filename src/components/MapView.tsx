@@ -9,11 +9,12 @@ import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
 import HexNameLabels from './HexNameLabels';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
+import TerritorySubregionLayer from './TerritorySubregionLayer';
 import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl } from '../lib/icons';
 import { MapIconTag } from '../data/map-icons';
 import L from 'leaflet';
-import type { TerritoryTile } from '../types/war';
+import type { LocationTile } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
@@ -33,17 +34,23 @@ export default function MapView() {
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
+  const reportMode = useMapStore((s) => s.activeReportMode);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
+
+  const effectiveLayers = useMemo(() => {
+    if (!reportMode) return activeLayers;
+    return { ...activeLayers, locations: true, territories: true };
+  }, [activeLayers, reportMode]);
 
   useEffect(() => {
     console.log('[MapView] Data source (config):', DATA_SOURCE);
     console.log('[MapView] Snapshot data:', snapshot);
-    console.log('[MapView] Territory count:', snapshot?.territories?.length ?? 0);
-    console.log('[MapView] Territory layer active:', activeLayers.territory);
+    console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
+    console.log('[MapView] Location layer active:', activeLayers.locations);
     if (snapshot?.territories && snapshot.territories.length > 0) {
-      console.log('[MapView] Sample territory:', snapshot.territories[0]);
+      console.log('[MapView] Sample locations:', snapshot.territories[0]);
     }
-  }, [snapshot, activeLayers.territory]);
+  }, [snapshot, activeLayers.locations]);
 
 
   return (
@@ -57,11 +64,17 @@ export default function MapView() {
     >
       <SharedTooltipProvider>
         <StaticIconLayer visible={true} />
-        <TerritoryLayer 
+        <LocationsLayer 
           snapshot={snapshot}
-          activeLayers={activeLayers} // hide territory layer at zooms < 0
+          activeLayers={effectiveLayers} // hide location layer at zooms < 0
           changedDaily={changedDaily}
           changedWeekly={changedWeekly}
+        />
+        <TerritorySubregionLayer
+          snapshot={snapshot}
+          changedDaily={changedDaily}
+          changedWeekly={changedWeekly}
+          visible={effectiveLayers.territories}
         />
         <HexTileLayer />
         <StaticLabelLayer 
@@ -75,7 +88,7 @@ export default function MapView() {
   );
 }
 
-function ownerColor(owner: TerritoryTile['owner']) {
+function ownerColor(owner: LocationTile['owner']) {
   switch (owner) {
     case 'Colonial': return '#16a34a';
     case 'Warden': return '#1d4ed8';
@@ -83,19 +96,19 @@ function ownerColor(owner: TerritoryTile['owner']) {
   }
 }
 
-function getOwnerIcon(owner: TerritoryTile['owner']) {
+function getOwnerIcon(owner: LocationTile['owner']) {
   const iconFilename = `logo_${owner}.png`
   return new URL(`../images/${iconFilename}`, import.meta.url).href;
 }
 
 // Territory markers rendered with icon sizes that scale by zoom
-function TerritoryLayer({
+function LocationsLayer({
   snapshot,
   activeLayers,
   changedDaily,
   changedWeekly,
 }: {
-  snapshot: { territories?: TerritoryTile[] } | undefined | null;
+  snapshot: { territories?: LocationTile[] } | undefined | null;
   activeLayers: any;
   changedDaily: Set<string>;
   changedWeekly: Set<string>;
@@ -115,7 +128,7 @@ function TerritoryLayer({
   const iconInstanceCache = React.useRef<Map<string, L.Icon>>(new Map());
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
-  const ownerById = React.useRef<Map<string, TerritoryTile['owner']>>(new Map());
+  const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
 
   const { show, hide } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
@@ -156,7 +169,7 @@ function TerritoryLayer({
     return bestIdx >= 0 ? arr[bestIdx].text : null;
   }
 
-  function getUrl(iconType: number, owner?: TerritoryTile['owner']): string {
+  function getUrl(iconType: number, owner?: LocationTile['owner']): string {
     const key = `${iconType}|${owner ?? 'none'}`;
     if (iconUrlCache.current.has(key)) return iconUrlCache.current.get(key)!;
     const url = getIconUrl(iconType, owner);
@@ -179,7 +192,7 @@ function TerritoryLayer({
     return Math.pow(1.25, z - 1);
   }
 
-  function getIcon(iconType: number, z: number, owner?: TerritoryTile['owner']): L.Icon {
+  function getIcon(iconType: number, z: number, owner?: LocationTile['owner']): L.Icon {
     if (ICON_SMOOTH_SCALE) {
       // Single icon per iconType at max zoom size
       const key = `${iconType}|max|${owner ?? 'none'}`; // include owner in cache key
@@ -310,11 +323,11 @@ function TerritoryLayer({
   // Memoize projection of territory positions so zoom changes don't recompute
   const projectedTerritories = useMemo(() => {
     if (!snapshot?.territories) return [] as Array<{
-      t: TerritoryTile;
+      t: LocationTile;
       lat: number;
       lng: number;
     }>;
-    const out: Array<{ t: TerritoryTile; lat: number; lng: number }> = [];
+    const out: Array<{ t: LocationTile; lat: number; lng: number }> = [];
     for (const t of snapshot.territories) {
       const projected = projectRegionPoint(t.region, t.x, t.y);
       if (!projected) continue;
@@ -325,7 +338,7 @@ function TerritoryLayer({
   }, [snapshot]);
 
   // Viewport culling: only render markers within current map bounds (with padding)
-  const [visibleTerritories, setVisibleTerritories] = React.useState<Array<{ t: TerritoryTile; lat: number; lng: number }>>([]);
+  const [visibleTerritories, setVisibleTerritories] = React.useState<Array<{ t: LocationTile; lat: number; lng: number }>>([]);
 
   function isInBounds(lat: number, lng: number, b: L.LatLngBounds, pad: number): boolean {
     const padded = L.latLngBounds(
@@ -423,7 +436,7 @@ function TerritoryLayer({
 
 
   // Helper to build tooltip content
-  const getTooltipContent = React.useCallback((t: TerritoryTile, lat: number, lng: number) => {
+  const getTooltipContent = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     const isVictoryBase = (t.flags & 0x01) !== 0;
     const isScorched = (t.flags & 0x10) !== 0;
     const isBuildSite = (t.flags & 0x04) !== 0;
@@ -451,7 +464,7 @@ function TerritoryLayer({
   }, [changedDaily, changedWeekly, majorLabelsByMap]);
 
   // Hover handlers
-  const handleMouseOver = React.useCallback((t: TerritoryTile, lat: number, lng: number) => {
+  const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     show(getTooltipContent(t, lat, lng), lat, lng, 100);
   }, [show, getTooltipContent]);
 
@@ -465,8 +478,8 @@ function TerritoryLayer({
   }, [reportMode, changedDaily, changedWeekly]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
-  // Hide TerritoryLayer when zoomed out to -1 or lower, unless a Job View is active
-  if ((!activeLayers.territory || zoom < -1)) return null;
+  // Hide LocationsLayer when zoomed out to -1 or lower, unless a Job View is active
+  if ((!activeLayers.locations || zoom < -1)) return null;
 
   return (
     <LayerGroup>

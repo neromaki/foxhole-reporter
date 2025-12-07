@@ -3,7 +3,7 @@
 import { mapIcons, MapIconTag } from '../data/map-icons';
 
 export function getIconUrl(iconType: number, owner?: string): string {
-  console.log(`Getting icon URL for iconType: ${iconType}, owner: ${owner}`);
+  //console.log(`Getting icon URL for iconType: ${iconType}, owner: ${owner}`);
   const name = iconTypeToFilename(iconType, owner);
   return new URL(`../map/icons/${name}`, import.meta.url).href;
 }
@@ -13,7 +13,7 @@ export function iconTypeToFilename(iconType: number, owner?: string): string {
   const suffix = ownerSuffix(owner);
   const base = "MapIcon" + (mapIcon?.iconFileName ?? 'Unknown');
   const filename = base + (suffix ? suffix : '') + ".png";
-  console.log(`Mapped iconType ${iconType} to filename: ${filename}`);
+  //console.log(`Mapped iconType ${iconType} to filename: ${filename}`);
   return filename;
 }
 
@@ -37,9 +37,9 @@ export function getMapIcon(iconType: number) {
 }
 
 export function getMapIconsByTag(tag: MapIconTag) {
-  console.log(`Getting map icons with tag: ${tag}`);
+  //console.log(`Getting map icons with tag: ${tag}`);
   const taggedMapIcons = mapIcons.filter(icon => icon.tags.includes(tag));
-  console.log(`Found ${taggedMapIcons.length} icons with tag: ${tag}`);
+  //console.log(`Found ${taggedMapIcons.length} icons with tag: ${tag}`);
   return taggedMapIcons;
 }
 

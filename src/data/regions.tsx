@@ -56,7 +56,7 @@ export const regions: Array<RegionStruct> = [
     {name: Region.FarranacCoast, apiName: "FarranacCoastHex", displayName: "Farranac Coast"},
     {name: Region.EndlessShore, apiName: "EndlessShoreHex", displayName: "Endless Shore"},
     {name: Region.StlicanShelf, apiName: "StlicanShelfHex", displayName: "Stlican Shelf"},
-    {name: Region.Oarbreaker, apiName: "OarbreakerHex", displayName: "Oarbreaker"},
+    {name: Region.Oarbreaker, apiName: "OarbreakerHex", displayName: "Oarbreaker Isles"},
     {name: Region.FishermansRow, apiName: "FishermansRowHex", displayName: "Fisherman's Row"},
     {name: Region.StemaLanding, apiName: "StemaLandingHex", displayName: "Stema Landing"},
     {name: Region.Godcrofts, apiName: "GodcroftsHex", displayName: "Godcrofts"},

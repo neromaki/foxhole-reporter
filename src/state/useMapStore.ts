@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type LayerKey = 'territory' | 'resources' | 'majorLocations' | 'minorLocations';
+export type LayerKey = 'locations' | 'territories' | 'resources' | 'majorLocations' | 'minorLocations';
 
 type ReportMode = 'daily' | 'weekly' | null;
 
@@ -16,7 +16,8 @@ interface MapState {
 }
 
 const defaultLayers: Record<LayerKey, boolean> = {
-  territory: true,
+  locations: false,
+  territories: true,
   resources: true,
   majorLocations: true,
   minorLocations: true,

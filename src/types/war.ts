@@ -1,4 +1,4 @@
-export interface TerritoryTile {
+export interface LocationTile {
   id: string; // unique identifier: mapName-x-y
   owner: 'Colonial' | 'Warden' | 'Neutral';
   x: number; // normalized [0-1]
@@ -13,13 +13,13 @@ export interface Snapshot {
   created_at: string;
   war_number: number;
   day_number: number;
-  territories: TerritoryTile[];
+  territories: LocationTile[];
 }
 
 export interface TerritoryDiffEntry {
   id: string; // tile id
-  previousOwner: TerritoryTile['owner'];
-  newOwner: TerritoryTile['owner'];
+  previousOwner: LocationTile['owner'];
+  newOwner: LocationTile['owner'];
   changed_at_snapshot: string; // snapshot id
 }
 
