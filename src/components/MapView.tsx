@@ -39,7 +39,8 @@ export default function MapView() {
 
   const effectiveLayers = useMemo(() => {
     if (!reportMode) return activeLayers;
-    return { ...activeLayers, locations: true, territories: true };
+    // In report mode: hide locations (icons), only show territories (SVG)
+    return { ...activeLayers, locations: false, territories: true };
   }, [activeLayers, reportMode]);
 
   useEffect(() => {
@@ -386,13 +387,6 @@ function LocationsLayer({
       } else {
         base = base.filter(({ t }) => !excludedIconTypes.has(t.iconType));
       }
-      // Report mode: restrict to Base-tag markers only
-      if (reportMode) {
-        base = base.filter(({ t }) => {
-          const mi = getMapIcon(t.iconType);
-          return mi ? mi.tags.includes(MapIconTag.Base) : false;
-        });
-      }
       const filtered = base.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
       setVisibleTerritories(filtered);
     };
@@ -478,8 +472,8 @@ function LocationsLayer({
   }, [reportMode, changedDaily, changedWeekly]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
-  // Hide LocationsLayer when zoomed out to -1 or lower, unless a Job View is active
-  if ((!activeLayers.locations || zoom < -1)) return null;
+  // Hide LocationsLayer when zoomed out to -1 or lower, in report mode, or when layer is off
+  if ((!activeLayers.locations || zoom < -1 || reportMode)) return null;
 
   return (
     <LayerGroup>
