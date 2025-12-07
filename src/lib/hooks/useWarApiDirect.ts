@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchMapList, fetchDynamicMap, DynamicMapItem } from '../warApi';
+import { DEBUG_MODE } from '../appConfig';
 
 interface TerritoryItem {
   id: string;
@@ -28,16 +29,16 @@ export function useWarApiDirect(options?: { enabled?: boolean }) {
     queryKey: ['warApiDirect'],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
-      console.log('[useWarApiDirect] Fetching map list...');
+      DEBUG_MODE ?? console.log('[useWarApiDirect] Fetching map list...');
       const mapList = await fetchMapList();
       const validMaps = mapList.filter(m => !m.startsWith('HomeRegion'));
-      console.log('[useWarApiDirect] Valid maps:', validMaps);
+      DEBUG_MODE ?? console.log('[useWarApiDirect] Valid maps:', validMaps);
 
       const territories: TerritoryItem[] = [];
 
       for (const mapName of validMaps) {
         try {
-          console.log(`[useWarApiDirect] Fetching ${mapName}...`);
+          DEBUG_MODE ?? console.log(`[useWarApiDirect] Fetching ${mapName}...`);
           const mapData = await fetchDynamicMap(mapName);
           
           for (const item of mapData.mapItems as DynamicMapItem[]) {
@@ -51,13 +52,13 @@ export function useWarApiDirect(options?: { enabled?: boolean }) {
               flags: item.flags
             });
           }
-          console.log(`[useWarApiDirect] ${mapName}: ${mapData.mapItems.length} items`);
+          DEBUG_MODE ?? console.log(`[useWarApiDirect] ${mapName}: ${mapData.mapItems.length} items`);
         } catch (e) {
           console.error(`[useWarApiDirect] Failed to fetch ${mapName}:`, e);
         }
       }
 
-      console.log('[useWarApiDirect] Total territories:', territories.length);
+      DEBUG_MODE ?? console.log('[useWarApiDirect] Total territories:', territories.length);
       return { territories };
     },
     staleTime: 60000, // 1 minute

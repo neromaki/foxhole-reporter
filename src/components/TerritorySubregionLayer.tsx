@@ -9,6 +9,7 @@ import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
 import { getOwnerIcon } from './MapView';
+import { DEBUG_MODE } from '../lib/appConfig';
 
 // Dynamically load all SVGs from src/map/subregions directory
 const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
@@ -126,7 +127,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       }
       const SUBREGION_SVGS = SUBREGION_SVGS_CACHE;
       
-      console.log('[TerritorySubregion] Loading SVGs:', Object.keys(SUBREGION_SVGS));
+      DEBUG_MODE ?? console.log('[TerritorySubregion] Loading SVGs:', Object.keys(SUBREGION_SVGS));
       const entries = await Promise.all(
         Object.entries(SUBREGION_SVGS).map(async ([region, url]) => {
           try {
@@ -136,7 +137,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
               return [region, ''] as const;
             }
             const text = await res.text();
-            console.log(`[TerritorySubregion] Loaded ${region}, size: ${text.length} bytes`);
+            DEBUG_MODE ?? console.log(`[TerritorySubregion] Loaded ${region}, size: ${text.length} bytes`);
             return [region, text] as const;
           } catch (e) {
             console.error(`[TerritorySubregion] Error loading ${region}:`, e);
@@ -150,7 +151,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
           next[region] = text;
         });
         setSvgByRegion(next);
-        console.log('[TerritorySubregion] SVGs loaded:', Object.keys(next));
+        DEBUG_MODE ?? console.log('[TerritorySubregion] SVGs loaded:', Object.keys(next));
       }
     })();
     return () => {

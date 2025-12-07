@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DEBUG_MODE } from '../lib/appConfig.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const subregionsDir = path.join(__dirname, '..', 'src', 'map', 'subregions');
@@ -37,6 +38,6 @@ const code = `const SUBREGION_SVGS: Record<string, string> = {
 ${imports}
 };`;
 
-console.log('[generate-subregion-svgs] Generated SUBREGION_SVGS for files:', svgFiles);
-console.log('\n' + code + '\n');
-console.log('[generate-subregion-svgs] Copy the above into TerritorySubregionLayer.tsx');
+DEBUG_MODE ?? console.log('[generate-subregion-svgs] Generated SUBREGION_SVGS for files:', svgFiles);
+DEBUG_MODE ?? console.log('\n' + code + '\n');
+DEBUG_MODE ?? console.log('[generate-subregion-svgs] Copy the above into TerritorySubregionLayer.tsx');

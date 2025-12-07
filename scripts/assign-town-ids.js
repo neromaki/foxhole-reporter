@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DEBUG_MODE } from '../lib/appConfig.js';
 const fetchFn = globalThis.fetch;
 
 const WAR_API_BASE = 'https://war-service-live.foxholeservices.com/api';
@@ -84,7 +85,7 @@ function updateTownId(tsx, town, newId) {
 
 async function main() {
   const mapNames = (await fetchMapList()).filter((m) => !m.startsWith('HomeRegion'));
-  console.log('Fetched map list:', mapNames.length);
+  DEBUG_MODE ?? console.log('Fetched map list:', mapNames.length);
 
   const townFile = fs.readFileSync(townsPath, 'utf-8');
   const townRegex = /\{\s*"apiName":\s*"([^"]*)",\s*"displayName":\s*"([^"]+)",\s*"region":\s*Region\.(\w+),\s*"major":\s*(true|false),\s*"x":\s*([-\d.]+),\s*"y":\s*([-\d.]+)(?:,\s*"id":\s*"([^"]*)")?\s*\}/g;
@@ -101,7 +102,7 @@ async function main() {
       id: m[7] || null,
     });
   }
-  console.log('Parsed towns:', towns.length);
+  DEBUG_MODE ?? console.log('Parsed towns:', towns.length);
 
   let updated = townFile;
   let assigned = 0;
@@ -113,7 +114,7 @@ async function main() {
     const [dyn, stat] = await Promise.all([fetchDynamic(mapName), fetchStatic(mapName)]);
     const regionEnum = mapNameToRegion(mapName);
     const majors = dyn.mapItems.filter((d) => MAJOR_ICON_TYPES.has(d.iconType));
-    console.log(`Map ${mapName}: ${majors.length} major bases`);
+    DEBUG_MODE ?? console.log(`Map ${mapName}: ${majors.length} major bases`);
     for (const item of majors) {
       const label = nearestMajorLabel(stat, item.x, item.y);
       if (!label) {
@@ -139,11 +140,11 @@ async function main() {
   }
 
   fs.writeFileSync(townsPath, updated, 'utf-8');
-  console.log('Assigned ids:', assigned, 'missing labels:', missingLabel, 'missing towns:', missingTown);
+  DEBUG_MODE ?? console.log('Assigned ids:', assigned, 'missing labels:', missingLabel, 'missing towns:', missingTown);
   if (missingTownEntries.size) {
-    console.log('Missing town matches:');
+    DEBUG_MODE ?? console.log('Missing town matches:');
     for (const [key, info] of missingTownEntries.entries()) {
-      console.log(`  ${key} -> ${info.label} (id ${info.id})`);
+      DEBUG_MODE ?? console.log(`  ${key} -> ${info.label} (id ${info.id})`);
     }
   }
 }

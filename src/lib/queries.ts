@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabaseClient';
 import { fetchWarState } from './warApi';
 import type { Snapshot, TerritoryDiff, War } from '../types/war';
+import { DEBUG_MODE } from './appConfig';
 
 export function useLatestSnapshot(options?: { enabled?: boolean }) {
-  console.log('[Queries] useLatestSnapshot called with options:', options);
+  DEBUG_MODE ?? console.log('[Queries] useLatestSnapshot called with options:', options);
   return useQuery<Snapshot | null>({
     queryKey: ['latestSnapshot'],
     enabled: options?.enabled ?? true,
@@ -13,7 +14,7 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
         console.warn('[Queries] Supabase client not initialized');
         return null;
       }
-      console.log('[Queries] Fetching latest snapshot from supabase');
+      DEBUG_MODE ?? console.log('[Queries] Fetching latest snapshot from supabase');
       try {
         const { data, error } = await supabase
           .from('snapshots')
@@ -25,7 +26,7 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
           console.error('[Queries] Snapshot fetch error:', error);
           throw error;
         }
-        console.log('[Queries] Latest snapshot fetched:', data);
+        DEBUG_MODE ?? console.log('[Queries] Latest snapshot fetched:', data);
         return data as unknown as Snapshot | null;
       } catch (e) {
         console.error('[Queries] Exception during snapshot fetch:', e);
@@ -36,7 +37,7 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
 }
 
 export function useTerritoryDiff(period: 'daily' | 'weekly') {
-  console.log('[Queries] useTerritoryDiff called with period:', period);
+  DEBUG_MODE ?? console.log('[Queries] useTerritoryDiff called with period:', period);
   return useQuery<TerritoryDiff | null>({
     queryKey: ['territoryDiff', period],
     queryFn: async () => {
@@ -56,7 +57,7 @@ export function useTerritoryDiff(period: 'daily' | 'weekly') {
           console.error('[Queries] Territory diff fetch error:', error);
           throw error;
         }
-        console.log('[Queries] Territory diff fetched for period', period, ':', data);
+        DEBUG_MODE ?? console.log('[Queries] Territory diff fetched for period', period, ':', data);
         return data as unknown as TerritoryDiff | null;
       } catch (e) {
         console.error('[Queries] Exception during territory diff fetch:', e);

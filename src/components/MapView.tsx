@@ -21,6 +21,7 @@ import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { getTownById } from '../data/towns';
+import { DEBUG_MODE } from '../lib/appConfig';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -52,12 +53,12 @@ export default function MapView() {
   }, [activeLayers, reportMode]);
 
   useEffect(() => {
-    console.log('[MapView] Data source (config):', DATA_SOURCE);
-    console.log('[MapView] Snapshot data:', snapshot);
-    console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
-    console.log('[MapView] Location layer active:', activeLayers.locations);
+    DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
+    DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
+    DEBUG_MODE ?? console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
+    DEBUG_MODE ?? console.log('[MapView] Location layer active:', activeLayers.locations);
     if (snapshot?.territories && snapshot.territories.length > 0) {
-      console.log('[MapView] Sample locations:', snapshot.territories[0]);
+      DEBUG_MODE ?? console.log('[MapView] Sample locations:', snapshot.territories[0]);
     }
   }, [snapshot, activeLayers.locations]);
 
@@ -480,7 +481,7 @@ function LocationsLayer({
       }
     }
     if (DEBUG_PERF_OVERLAY) {
-      //console.log('[Perf] After prune: visible=', visibleTerritories.length, 'refs=', markerRefs.current.size);
+      DEBUG_MODE ?? console.log('[Perf] After prune: visible=', visibleTerritories.length, 'refs=', markerRefs.current.size);
     }
   }, [visibleTerritories]);
 
