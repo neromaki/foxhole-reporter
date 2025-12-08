@@ -20,7 +20,8 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
   const tooltipRef = useRef<L.Tooltip | null>(null);
   const openTimeoutRef = useRef<number | null>(null);
   const closeTimeoutRef = useRef<number | null>(null);
-  const stickyModeRef = useRef<boolean>(false);
+  const enterHandlerRef = useRef<((e: Event) => void) | null>(null);
+  const leaveHandlerRef = useRef<((e: Event) => void) | null>(null);
 
   useEffect(() => {
     const tooltip = L.tooltip({
@@ -45,7 +46,6 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       closeTimeoutRef.current = null;
     }
     if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
-    stickyModeRef.current = sticky;
     openTimeoutRef.current = window.setTimeout(() => {
       const tooltip = tooltipRef.current;
       if (!tooltip) return;
@@ -56,19 +56,29 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       // Ensure the tooltip stays open while hovered (unless in sticky mode)
       const el = (tooltip as any).getElement?.() || (tooltip as any)._container;
       if (el) {
-        // Remove previously attached listeners to avoid duplicates
-        el.onmouseenter = null;
-        el.onmouseleave = null;
-        el.addEventListener('mouseenter', () => {
+        // remove old listeners if present
+        if (enterHandlerRef.current) {
+          el.removeEventListener('mouseenter', enterHandlerRef.current);
+        }
+        if (leaveHandlerRef.current) {
+          el.removeEventListener('mouseleave', leaveHandlerRef.current);
+        }
+
+        const enterHandler = () => {
           if (closeTimeoutRef.current) {
             clearTimeout(closeTimeoutRef.current);
             closeTimeoutRef.current = null;
           }
-        });
+        };
+        enterHandlerRef.current = enterHandler;
+        el.addEventListener('mouseenter', enterHandler);
+
         if (!sticky) {
-          el.addEventListener('mouseleave', () => {
-            hide(150);
-          });
+          const leaveHandler = () => hide(150);
+          leaveHandlerRef.current = leaveHandler;
+          el.addEventListener('mouseleave', leaveHandler);
+        } else {
+          leaveHandlerRef.current = null;
         }
       }
     }, openDelay);

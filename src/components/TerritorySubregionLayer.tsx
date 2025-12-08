@@ -234,6 +234,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   };
 
   const handleLeave = (p: PathInfo) => {
+    if (reportMode === 'daily') return; // keep tooltip open in report mode
     if (stickyId && stickyId === p.territoryId) return;
     setHoveredId((prev) => (prev === p.territoryId ? null : prev));
     hide(120);
@@ -305,7 +306,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     fillOpacity={fillOpacity}
                     stroke={p.stroke}
                     strokeWidth={p.strokeWidth}
-                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease' }}
+                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease', outline: 'none' }}
                     onMouseEnter={() => handleHover(p)}
                     onMouseLeave={() => handleLeave(p)}
                     onClick={() => handleClick(p)}
