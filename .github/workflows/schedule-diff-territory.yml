@@ -3,7 +3,6 @@ name: Diff Territory Scheduler
 on:
   schedule:
     - cron: '5 0 * * *'      # daily at 00:05 UTC
-    - cron: '10 0 * * 1'     # weekly Monday at 00:10 UTC
   workflow_dispatch: {}
 
 jobs:
