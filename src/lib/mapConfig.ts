@@ -25,7 +25,10 @@ export const ICON_SMOOTH_DURATION_MS = 25; // ms for transition easing
 export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf panel
 
 // Reports
-export const REPORT_UNAFFECTED_ICON_OPACITY = 0.25; // Opacity for unaffected icons in report mode
+export const TERRITORY_NORMAL_OPACITY = 0.5;
+export const TERRITORY_REPORT_UNAFFECTED_OPACITY = 0.2;
+export const TERRITORY_REPORT_AFFECTED_OPACITY = 0.7;
+export const TERRITORY_REPORT_HIGHLIGHTED_OPACITY = 0.8;
 
 // Victory bar display
 export const WARSTATE_GRAPH_SHOW_NEUTRAL = true;

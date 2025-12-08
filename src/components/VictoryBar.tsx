@@ -1,4 +1,5 @@
 import React from 'react';
+import { getTeamData } from '../data/teams';
 
 export type VictoryCounts = {
   colonial: number;
@@ -15,13 +16,11 @@ interface VictoryBarProps {
   warNumber?: number | null;
 }
 
-const colonialColor = '#16a34a';
-const wardenColor = '#1d4ed8';
-const neutralColor = '#f8fafc';
-const scorchedColor = '#0b0f19';
+const Colonials = getTeamData('Colonial');
+const Wardens = getTeamData('Warden');
+const Neutral = getTeamData('Neutral');
 
-const colonialLogo = new URL('../images/logo_Colonial.png', import.meta.url).href;
-const wardenLogo = new URL('../images/logo_Warden.png', import.meta.url).href;
+const scorchedColor = '#6B4C3B'; // Brownish
 
 function clamp01(v: number) {
   return Math.min(1, Math.max(0, v));
@@ -54,14 +53,14 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
 
       <div className="flex flex-row items-start justify-between mt-2 space-x-2">
         <div className="flex items-center flex-col gap-2">
-          <img src={colonialLogo} alt="Colonial" className="h-8 w-8" />
-          <span className="font-medium" style={{ color: colonialColor }}>Colonials</span>
+          <img src={Colonials?.icon} alt="Colonial" className="h-8 w-8" />
+          <span className="font-medium" style={{ color: Colonials?.colors.light }}>Colonials</span>
         </div>
 
       <div className="flex-grow relative h-7 overflow-hidden rounded bg-gray-700">
         <div className="flex h-full w-full justify-between">
           {counts.colonial > 0 && (
-            <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: colonialColor }}>
+            <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.base }}>
                 <span className="text-lg font-semibold text-gray-200 text-left ml-2">{counts.colonial}</span>
             </div>
           )}
@@ -69,10 +68,10 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
             <div className="h-full" style={{ width: pct(scorchedVal), backgroundColor: scorchedColor }} />
           )}
           {neutralVal > 0 && (
-            <div className="h-full" style={{ width: pct(neutralVal), backgroundColor: neutralColor }} />
+            <div className="h-full" style={{ width: pct(neutralVal), backgroundColor: Neutral?.colors.base }} />
           )}
           {counts.warden > 0 && (
-            <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: wardenColor }}>
+            <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.base }}>
                 <span className="text-gray-200 text-right text-lg font-semibold mr-2">{counts.warden}</span>
             </div>
           )}
@@ -84,15 +83,15 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
       </div>
 
         <div className="flex items-center flex-col gap-2">
-          <img src={wardenLogo} alt="Warden" className="h-8 w-8" />
-          <span className="font-medium" style={{ color: wardenColor }}>Wardens</span>
+          <img src={Wardens?.icon} alt="Warden" className="h-8 w-8" />
+          <span className="font-medium" style={{ color: Wardens?.colors.light }}>Wardens</span>
         </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-300">
         {showNeutral && neutralVal > 0 && (
           <div className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: neutralColor }} />
+            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: Neutral?.colors.base }} />
             <span>Neutral {counts.neutral}</span>
           </div>
         )}

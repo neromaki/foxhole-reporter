@@ -15,13 +15,14 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { MapIconTag } from '../data/map-icons';
 import L from 'leaflet';
 import type { LocationTile, Snapshot } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
+import { getTeamIcon } from '../data/teams';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -146,18 +147,6 @@ function buildTerritoryHistory(snapshots: Snapshot[]): Map<string, TerritoryHist
   return history;
 }
 
-function ownerColor(owner: LocationTile['owner']) {
-  switch (owner) {
-    case 'Colonial': return '#16a34a';
-    case 'Warden': return '#1d4ed8';
-    default: return '#6b7280';
-  }
-}
-
-export function getOwnerIcon(owner: LocationTile['owner']) {
-  const iconFilename = `logo_${owner}.png`
-  return new URL(`../images/${iconFilename}`, import.meta.url).href;
-}
 
 // Territory markers rendered with icon sizes that scale by zoom
 function LocationsLayer({
@@ -300,7 +289,7 @@ function LocationsLayer({
     const img = markerIconElement(marker);
     if (!img) return;
     img.style.transition = `opacity 120ms ease-out`;
-    img.style.opacity = reportMode ? (highlighted ? '1' : `${REPORT_UNAFFECTED_ICON_OPACITY}`) : '1';
+    img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
   }
 
   function updateIconsForZoom(z: number) {
@@ -338,7 +327,7 @@ function LocationsLayer({
         const img = markerIconElement(marker);
         if (img) {
           img.style.transition = `opacity 120ms ease-out`;
-          img.style.opacity = reportMode ? (highlighted ? '1' : `${REPORT_UNAFFECTED_ICON_OPACITY}`) : '1';
+          img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
         }
       }
     }
@@ -501,7 +490,7 @@ function LocationsLayer({
     if (nearbyMajor) parts.push(`<div class="text-gray-400">${nearbyMajor}</div>`);
     const hexName = getHexByApiName(t.region)?.displayName;
     if (hexName) parts.push(`<div class="text-gray-500">${hexName}</div>`);
-    if (t.owner !== 'Neutral') parts.push(`<div class="flex"><img src="${getOwnerIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>${t.owner}</div>`);
+    if (t.owner !== 'Neutral') parts.push(`<div class="flex"><img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>${t.owner}</div>`);
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
     if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');

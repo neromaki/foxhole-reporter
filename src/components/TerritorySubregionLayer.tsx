@@ -3,13 +3,13 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { REPORT_UNAFFECTED_ICON_OPACITY } from '../lib/mapConfig';
+import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { useMapStore } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
-import { getOwnerIcon } from './MapView';
 import { DEBUG_MODE } from '../lib/appConfig';
+import { Colors, getTeamColors, getTeamIcon } from '../data/teams';
 
 // Dynamically load all SVGs from src/map/subregions directory
 const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
@@ -31,19 +31,6 @@ const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
 };
 
 let SUBREGION_SVGS_CACHE: Record<string, string> | null = null;
-
-function ownerColor(owner: LocationTile['owner'] | undefined): string {
-  switch (owner) {
-    case 'Colonial':
-      return 'rgba(60, 236, 75, 0.4)';
-    case 'Warden':
-      return 'rgba(47, 112, 198, 0.5)';
-    case 'Neutral':
-      return 'rgba(255, 255, 255, 0.2)'; // Neutral
-    default:
-      return 'rgba(255, 0, 0, 0.4)'; // Unknown
-  }
-}
 
 type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
 type TerritoryHistory = {
@@ -83,21 +70,12 @@ interface RegionOverlay {
 
 export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById }: Props) {
   const map = useMap();
+  const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const { show, hide } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stickyId, setStickyId] = useState<string | null>(null);
-  /*
-  const [zoom, setZoom] = useState(map.getZoom());
 
-  useEffect(() => {
-    const handler = () => setZoom(map.getZoom());
-    map.on('zoomend', handler);
-    return () => {
-      map.off('zoomend', handler);
-    };
-  }, [map]);
-*/
 
   // Ensure pane exists with deterministic stacking under markers/labels
   useEffect(() => {
@@ -200,10 +178,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         const matchedTown = getTownByApiName(pathId);
         const territory = matchedTown?.id ? territoryById.get(matchedTown.id) : undefined;
         if (!territory) continue;
-
         const highlighted = !!(changedSet && changedSet.has(territory.id));
-        const baseColor = ownerColor(territory.owner);
-        const baseOpacity = reportMode ? (highlighted ? 0.85 : REPORT_UNAFFECTED_ICON_OPACITY) : 0.5;
+        const baseColor = getTeamColors(territory.owner)?.saturated ?? Colors.Neutral;
+        const baseOpacity = TERRITORY_NORMAL_OPACITY;
         const projected = projectRegionPoint(territory.region, territory.x, territory.y);
 
         paths.push({
@@ -258,13 +235,13 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
     const lines: string[] = [];
     lines.push(`<div class="font-semibold">${name}</div>`);
-    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getOwnerIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}</div>`);
+    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}</div>`);
     if (reportMode === 'daily') {
       lines.push('<div class="mt-1 font-semibold">History:</div>');
       const events = hist?.events ?? [];
       if (events.length === 0) {
         lines.push(`<div class="flex">
-              <img src="${getOwnerIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
+              <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
               <span class="mr-2">${owner}</span>
               <span>(24 hrs ago)</span>
           </div>`);
@@ -272,14 +249,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         events.forEach((ev) => {
           (ev.owner !== 'Neutral') ? lines.push(
             `<div class="flex">
-              <img src="${getOwnerIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
+              <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
               <span class="mr-2">${ev.owner}</span>
               <span>(${formatTimeAgo(ev.at)})</span>
             </div>`) : '';
         });
       }
     }
-    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0);
+    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true);
   };
 
 
@@ -293,10 +270,28 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
           <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
             <g id="Territories">
-              {o.paths.map((p) => {
-                const active = (!!p.highlighted && (hoveredId === p.territoryId || stickyId === p.territoryId));
-                const fill = active ? tinycolor(p.baseColor).lighten(10).saturate(10).setAlpha(1).toString() : tinycolor(p.baseColor).setAlpha(0.8).toString();
-                const fillOpacity = active ? Math.min(1, p.baseOpacity + 0.15 * (1 - p.baseOpacity)) : p.baseOpacity;
+              {o.paths.map((p) => {                
+                const affected = p.highlighted; 
+                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);
+
+                let fill = p.baseColor;
+                let fillOpacity = p.baseOpacity;
+
+                if (reportModeActive) {
+                  if (affected) {
+                    if (active) {
+                      fill = tinycolor(p.baseColor).brighten(20).toString();
+                      fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
+                    } else {
+                      fillOpacity = TERRITORY_REPORT_AFFECTED_OPACITY;
+                    }
+                  } else {
+                    fillOpacity = TERRITORY_REPORT_UNAFFECTED_OPACITY;
+                  }
+                } else {
+                  fillOpacity = TERRITORY_NORMAL_OPACITY;
+                }
+                
                 const interactive = reportMode === 'daily' && p.highlighted;
                 return (
                   <path
