@@ -205,20 +205,20 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [svgByRegion, territoryById, changedSet, reportMode]);
 
   const handleHover = (p: PathInfo) => {
-    if (reportMode !== 'daily' || !p.highlighted) return;
+    if (!reportModeActive || !p.highlighted) return;
     setHoveredId(p.territoryId);
     showTooltipFor(p);
   };
 
   const handleLeave = (p: PathInfo) => {
-    if (reportMode === 'daily') return; // keep tooltip open in report mode
+    if (reportModeActive) return; // keep tooltip open in report mode
     if (stickyId && stickyId === p.territoryId) return;
     setHoveredId((prev) => (prev === p.territoryId ? null : prev));
     hide(120);
   };
 
   const handleClick = (p: PathInfo) => {
-    if (reportMode !== 'daily' || !p.highlighted) return;
+    if (!reportModeActive || !p.highlighted) return;
     if (stickyId === p.territoryId) {
       setStickyId(null);
       hide(0);
@@ -235,8 +235,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
     const lines: string[] = [];
     lines.push(`<div class="font-semibold">${name}</div>`);
-    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}</div>`);
-    if (reportMode === 'daily') {
+    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner} gain</div>`);
+    if (reportMode == 'daily') {
       lines.push('<div class="mt-1 font-semibold">History:</div>');
       const events = hist?.events ?? [];
       if (events.length === 0) {
@@ -292,7 +292,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                   fillOpacity = TERRITORY_NORMAL_OPACITY;
                 }
                 
-                const interactive = reportMode === 'daily' && p.highlighted;
+                const interactive = reportModeActive && p.highlighted;
                 return (
                   <path
                     key={p.key}

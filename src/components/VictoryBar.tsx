@@ -54,13 +54,13 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
       <div className="flex flex-row items-start justify-between mt-2 space-x-2">
         <div className="flex items-center flex-col gap-2">
           <img src={Colonials?.icon} alt="Colonial" className="h-8 w-8" />
-          <span className="font-medium" style={{ color: Colonials?.colors.light }}>Colonials</span>
+          <span className="font-medium" style={{ color: Colonials?.colors.light }}>{Colonials?.namePlural}</span>
         </div>
 
       <div className="flex-grow relative h-7 overflow-hidden rounded bg-gray-700">
         <div className="flex h-full w-full justify-between">
           {counts.colonial > 0 && (
-            <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.base }}>
+            <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.saturated }}>
                 <span className="text-lg font-semibold text-gray-200 text-left ml-2">{counts.colonial}</span>
             </div>
           )}
@@ -71,7 +71,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
             <div className="h-full" style={{ width: pct(neutralVal), backgroundColor: Neutral?.colors.base }} />
           )}
           {counts.warden > 0 && (
-            <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.base }}>
+            <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.saturated }}>
                 <span className="text-gray-200 text-right text-lg font-semibold mr-2">{counts.warden}</span>
             </div>
           )}
@@ -84,7 +84,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
 
         <div className="flex items-center flex-col gap-2">
           <img src={Wardens?.icon} alt="Warden" className="h-8 w-8" />
-          <span className="font-medium" style={{ color: Wardens?.colors.light }}>Wardens</span>
+          <span className="font-medium" style={{ color: Wardens?.colors.light }}>{Wardens?.namePlural}</span>
         </div>
       </div>
 
