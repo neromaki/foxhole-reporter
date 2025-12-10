@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import MapView from './components/MapView';
 import LayerTogglePanel from './components/LayerTogglePanel';
 import JobViewPanel from './components/JobViewPanel';
-import TerritoryLegend from './components/TerritoryLegend';
+import ReportModes from './components/ReportModes';
 import VictoryBar, { VictoryCounts } from './components/VictoryBar';
 import { useLatestSnapshot, useWarState } from './lib/queries';
 import { useWarApiDirect } from './lib/hooks/useWarApiDirect';
@@ -23,7 +23,15 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <aside className="w-[28rem] bg-gray-800 border-r border-gray-700 flex flex-col">
+      <VictoryBar
+        counts={victoryCounts}
+        requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
+        showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
+        showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
+        warNumber={warState?.warNumber}
+        className="visible absolute top-0 inset-x-3 z-[1000] md:hidden"
+      />
+      <aside className="w-[28rem] bg-gray-800 border-r border-gray-700 md:flex flex-col hidden md:visible">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold">Foxhole Reporter</h1>
           <p className="text-xs text-gray-400">Live territory & logistics overlays</p>
@@ -34,6 +42,7 @@ export default function App() {
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
           />
+          <ReportModes />
         </div>
         <div className="flex flex-1 overflow-hidden">
           <div className="w-1/2 overflow-y-auto">
@@ -43,7 +52,6 @@ export default function App() {
             <JobViewPanel />
           </div>
         </div>
-        <TerritoryLegend />
       </aside>
       <main className="flex-1">
         <MapView />

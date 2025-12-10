@@ -3,7 +3,7 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM } from '../lib/mapConfig';
 import { useMapStore } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
@@ -51,6 +51,7 @@ interface PathInfo {
   key: string;
   d: string;
   territoryId: string | null;
+  name: string | null;
   owner: LocationTile['owner'] | null;
   highlighted: boolean;
   baseColor: string;
@@ -70,6 +71,13 @@ interface RegionOverlay {
 
 export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById }: Props) {
   const map = useMap();
+  const [zoom, setZoom] = React.useState(map.getZoom());
+
+  React.useEffect(() => {
+    const handler = () => { setZoom(map.getZoom()); };
+    map.on('zoomend', handler);
+    return () => { map.off('zoomend', handler); };
+  }, [map]);
   const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const { show, hide } = useSharedTooltip();
@@ -188,6 +196,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
           d,
           territoryId: territory.id,
           owner: territory.owner,
+          name: matchedTown?.displayName || null,
           highlighted,
           baseColor,
           baseOpacity,
@@ -205,8 +214,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [svgByRegion, territoryById, changedSet, reportMode]);
 
   const handleHover = (p: PathInfo) => {
-    if (!reportModeActive || !p.highlighted) return;
     setHoveredId(p.territoryId);
+    //if (!reportModeActive || !p.highlighted) return;
     showTooltipFor(p);
   };
 
@@ -230,32 +239,35 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   const showTooltipFor = (p: PathInfo) => {
     if (!p.lat || !p.lng || !p.territoryId) return;
+    if (!reportModeActive && zoom > MAJOR_LABEL_MIN_ZOOM) return;
+    const name = p.name ?? p.territoryId;
     const hist = historyById.get(p.territoryId);
-    const name = hist?.name ?? getTownById(p.territoryId)?.displayName ?? p.territoryId;
     const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
     const lines: string[] = [];
     lines.push(`<div class="font-semibold">${name}</div>`);
-    if (owner !== 'Neutral') lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner} gain</div>`);
-    if (reportMode == 'daily') {
-      lines.push('<div class="mt-1 font-semibold">History:</div>');
-      const events = hist?.events ?? [];
-      if (events.length === 0) {
-        lines.push(`<div class="flex">
-              <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
-              <span class="mr-2">${owner}</span>
-              <span>(24 hrs ago)</span>
-          </div>`);
-      } else {
-        events.forEach((ev) => {
-          (ev.owner !== 'Neutral') ? lines.push(
-            `<div class="flex">
-              <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
-              <span class="mr-2">${ev.owner}</span>
-              <span>(${formatTimeAgo(ev.at)})</span>
-            </div>`) : '';
-        });
+    lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}${reportModeActive ? ' gain' : ''}</div>`);
+    if(reportModeActive) {
+      if (reportMode == 'daily') {
+        lines.push('<div class="mt-1 font-semibold">History:</div>');
+        const events = hist?.events ?? [];
+        if (events.length === 0) {
+          lines.push(`<div class="flex">
+                <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
+                <span class="mr-2">${owner}</span>
+                <span>(24 hrs ago)</span>
+            </div>`);
+        } else {
+          events.forEach((ev) => {
+            (ev.owner !== 'Neutral') ? lines.push(
+              `<div class="flex">
+                <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
+                <span class="mr-2">${ev.owner}</span>
+                <span>(${formatTimeAgo(ev.at)})</span>
+              </div>`) : '';
+          });
+        }
       }
-    }
+    } 
     show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true);
   };
 
@@ -270,9 +282,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
           <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
             <g id="Territories">
-              {o.paths.map((p) => {                
+              {o.paths.map((p) => {   
                 const affected = p.highlighted; 
-                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);
+                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);            
 
                 let fill = p.baseColor;
                 let fillOpacity = p.baseOpacity;
@@ -289,10 +301,13 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     fillOpacity = TERRITORY_REPORT_UNAFFECTED_OPACITY;
                   }
                 } else {
+                  if (active) {
+                    fill = tinycolor(p.baseColor).brighten(20).toString();
+                  }
                   fillOpacity = TERRITORY_NORMAL_OPACITY;
                 }
                 
-                const interactive = reportModeActive && p.highlighted;
+                const interactive = reportModeActive ? p.highlighted ? true : false : true;
                 return (
                   <path
                     key={p.key}
@@ -301,11 +316,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     fillOpacity={fillOpacity}
                     stroke={p.stroke}
                     strokeWidth={p.strokeWidth}
-                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease', outline: 'none' }}
+                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
                     onMouseEnter={() => handleHover(p)}
                     onMouseLeave={() => handleLeave(p)}
                     onClick={() => handleClick(p)}
                     onTouchStart={() => handleClick(p)}
+                    className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
                 );
               })}

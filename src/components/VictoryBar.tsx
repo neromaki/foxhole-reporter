@@ -1,5 +1,6 @@
 import React from 'react';
 import { getTeamData } from '../data/teams';
+import ReportModes from './ReportModes';
 
 export type VictoryCounts = {
   colonial: number;
@@ -14,6 +15,7 @@ interface VictoryBarProps {
   showNeutral: boolean;
   showScorched: boolean;
   warNumber?: number | null;
+  className?: string;
 }
 
 const Colonials = getTeamData('Colonial');
@@ -26,7 +28,7 @@ function clamp01(v: number) {
   return Math.min(1, Math.max(0, v));
 }
 
-export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScorched, warNumber }: VictoryBarProps) {
+export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScorched, warNumber, className }: VictoryBarProps) {
   if (!counts || requiredVictoryTowns == null) return null;
 
   const neutralVal = showNeutral ? counts.neutral : 0;
@@ -40,7 +42,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
   const thresholdLeft = `${clamp01(requiredVictoryTowns / scale) * 100}%`;
 
   return (
-    <div className="mt-3 rounded border border-gray-700 bg-gray-800 p-3 text-sm text-gray-200">
+    <div className={`mt-3 rounded border border-gray-700 bg-gray-800 p-3 pb-0 text-sm text-gray-200 ${className ?? ''}`}>
       <div className="flex">
         <span className="font-bold">{warNumber ? <div className="text-xs text-gray-400">War #{warNumber}</div> : null}</span>
       </div>

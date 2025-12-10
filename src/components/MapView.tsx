@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { MapContainer, LayerGroup, Marker, useMap, useMapEvents } from 'react-leaflet';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { MapContainer, LayerGroup, Marker, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
@@ -23,6 +23,7 @@ import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
+import { ZoomControls } from './ZoomControls';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -65,14 +66,16 @@ export default function MapView() {
 
 
   return (
-    <MapContainer 
+    <MapContainer
       center={[0, 0] as [number, number]} 
       zoom={MAP_MIN_ZOOM}
       minZoom={MAP_MIN_ZOOM}
       maxZoom={MAP_MAX_ZOOM}
       crs={CRS.Simple}
+      zoomControl={false}
       className="h-full w-full bg-gray-900"
     >
+      <ZoomControls />
       <SharedTooltipProvider>
         <StaticIconLayer visible={true} />
         <LocationsLayer 
@@ -164,7 +167,7 @@ function LocationsLayer({
   const [zoom, setZoom] = React.useState(map.getZoom());
 
   React.useEffect(() => {
-    const handler = () => setZoom(map.getZoom());
+    const handler = () => { setZoom(map.getZoom()); };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
@@ -483,13 +486,13 @@ function LocationsLayer({
     const parts = [];
     const wikiUrl = getIconWikiUrl(t.iconType);
     const labelHtml = wikiUrl
-      ? `<a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="font-semibold underline decoration-dotted">${getIconLabel(t.iconType)}</a>`
+      ? `<a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="font-medium underline decoration-dotted">${getIconLabel(t.iconType)}</a>`
       : `<span class="font-semibold">${getIconLabel(t.iconType)}</span>`;
     parts.push(labelHtml);
     const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
-    if (nearbyMajor) parts.push(`<div class="text-gray-400">${nearbyMajor}</div>`);
+    if (nearbyMajor) parts.push(`<div class="font-semibold">${nearbyMajor}</div>`);
     const hexName = getHexByApiName(t.region)?.displayName;
-    if (hexName) parts.push(`<div class="text-gray-500">${hexName}</div>`);
+    if (hexName) parts.push(`<div class="text-gray-800">${hexName}</div>`);
     if (t.owner !== 'Neutral') parts.push(`<div class="flex"><img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>${t.owner}</div>`);
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
@@ -503,13 +506,17 @@ function LocationsLayer({
     return `<div class="text-xs">${parts.join('')}</div>`;
   }, [changedDaily, changedWeekly, majorLabelsByMap]);
 
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    setHoveredId(t.id);
     show(getTooltipContent(t, lat, lng), lat, lng, 100);
   }, [show, getTooltipContent]);
 
   const handleMouseOut = React.useCallback(() => {
     hide(200);
+    setHoveredId(null);
   }, [hide]);
 
   // Re-apply styles when report mode or diff sets change

@@ -26,10 +26,10 @@ export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf pan
 
 // Reports
 export const TERRITORY_NORMAL_OPACITY = 0.5;
-export const TERRITORY_REPORT_UNAFFECTED_OPACITY = 0.2;
+export const TERRITORY_REPORT_UNAFFECTED_OPACITY = 0.25;
 export const TERRITORY_REPORT_AFFECTED_OPACITY = 0.7;
 export const TERRITORY_REPORT_HIGHLIGHTED_OPACITY = 0.8;
 
 // Victory bar display
-export const WARSTATE_GRAPH_SHOW_NEUTRAL = true;
-export const WARSTATE_GRAPH_SHOW_SCORCHED = true;
+export const WARSTATE_GRAPH_SHOW_NEUTRAL = false;
+export const WARSTATE_GRAPH_SHOW_SCORCHED = false;
