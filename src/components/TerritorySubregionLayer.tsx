@@ -82,6 +82,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [map]);
   const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
   const reportMode = useMapStore((s) => s.activeReportMode);
+  const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const { show, hide } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stickyId, setStickyId] = useState<string | null>(null);
@@ -222,6 +223,18 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
     return processed;
   }, [svgByRegion, territoryById, changedSet, reportMode]);
+
+  // Update disabled hexes in store
+  useEffect(() => {
+    const disabled = new Set<string>();
+    overlays.forEach((o) => {
+      if (!o.hasAnyTerritory) {
+        if (disabled.has(o.region)) return;
+        disabled.add(o.region);
+      }
+    });
+    setDisabledHexes(disabled);
+  }, [overlays, setDisabledHexes]);
 
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);

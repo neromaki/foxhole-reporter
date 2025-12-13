@@ -7,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        coalition: '#16a34a',
+        colonial: '#16a34a',
         warden: '#1d4ed8',
         neutral: '#fefefe'
       }

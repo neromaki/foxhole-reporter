@@ -13,6 +13,8 @@ interface MapState {
   setActiveJobView: (viewId: string | null) => void;
   activeReportMode: ReportMode;
   setActiveReportMode: (mode: ReportMode) => void;
+  disabledHexes: Set<string>;
+  setDisabledHexes: (hexes: Set<string>) => void;
 }
 
 const defaultLayers: Record<LayerKey, boolean> = {
@@ -29,6 +31,8 @@ export const useMapStore = create<MapState>((set, get) => ({
   setLayers: (layers) => set((s) => ({ activeLayers: { ...s.activeLayers, ...layers } })),
   activeJobViewId: null,
   previousLayersSnapshot: null,
+  disabledHexes: new Set<string>(),
+  setDisabledHexes: (hexes) => set({ disabledHexes: hexes }),
   setActiveJobView: (viewId) => {
     const state = get();
     if (viewId && !state.activeJobViewId) {

@@ -3,10 +3,12 @@ import { LayerGroup, Marker, Pane, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { HEX_LAYOUT, hexToLeafletBounds } from '../lib/hexLayout';
 import { MAP_MIN_ZOOM } from '../lib/mapConfig';
+import { useMapStore } from '../state/useMapStore';
 
 export default function HexNameLabels() {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
+  const disabledHexes = useMapStore((s) => s.disabledHexes);
 
   React.useEffect(() => {
     const handler = () => setZoom(map.getZoom());
@@ -21,8 +23,10 @@ export default function HexNameLabels() {
         const [[south, west], [north, east]] = hexToLeafletBounds(hex);
         const centerLat = (south + north) / 2;
         const centerLng = (west + east) / 2;
+        const isDisabled = disabledHexes.has(hex.apiName);
+        const text = isDisabled ? 'text-gray-400/40' : 'text-gray-100 font-extrabold';
         const icon = L.divIcon({
-          className: `hex-name-label map-label text-center text-[${zoom >= -1 ? '18px' : '14px'}] font-extrabold text-gray-100 drop-shadow`,
+          className: `hex-name-label map-label z-[1000] text-center text-[${zoom >= -1 ? '18px' : '14px'}] ${text} whitespace-nowrap`,
           html: `<span>${hex.displayName}</span>`,
           iconSize: [east - west, 30]
         });
