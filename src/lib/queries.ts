@@ -84,8 +84,7 @@ export function useWarState(options?: { enabled?: boolean }) {
           const { data, error } = await supabase
             .from('wars')
             .select('*')
-            .order('war_start_time', { ascending: false, nullsLast: true })
-            .order('war_number', { ascending: false, nullsLast: true })
+            .order('warNumber', { ascending: false, nullsLast: true })
             .limit(1)
             .maybeSingle();
 
