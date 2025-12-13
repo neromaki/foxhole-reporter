@@ -1,0 +1,36 @@
+name: Poll War State
+
+on:
+  schedule:
+    - cron: '5 0 * * *'      # daily at 00:05 UTC
+  workflow_dispatch: {} # allows manual trigger
+
+jobs:
+  call-poll-warapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call poll-war Edge Function
+        env:
+          FUNCTION_URL: "https://${{ secrets.VITE_SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/poll-war"
+          FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }} # optional
+        run: |
+          set -euo pipefail
+          echo "Calling poll-war at $FUNCTION_URL"
+          if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+              -d '{}' || true)
+          else
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -d '{}' || true)
+          fi
+
+          # ensure variable is defined before numeric comparison (avoid set -u failure)
+          http_status="${http_status:-0}"
+          echo "HTTP status: $http_status"
+          if [ "$http_status" -ge 400 ]; then
+            echo "Function returned error status $http_status"
+            exit 1
+          fi
