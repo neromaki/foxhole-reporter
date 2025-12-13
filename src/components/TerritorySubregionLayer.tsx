@@ -10,6 +10,7 @@ import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { Colors, getTeamColors, getTeamIcon } from '../data/teams';
+import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 
 // Dynamically load all SVGs from src/map/subregions directory
 const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
@@ -67,6 +68,7 @@ interface RegionOverlay {
   bounds: any;
   viewBox: string;
   paths: PathInfo[];
+  hasAnyTerritory?: boolean;
 }
 
 export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById }: Props) {
@@ -173,10 +175,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       const root = doc.documentElement.cloneNode(true) as SVGSVGElement;
       const viewBox = root.getAttribute('viewBox') || `0 0 ${root.getAttribute('width') || 1000} ${root.getAttribute('height') || 1000}`;
       const territoriesGroup = root.querySelector('#Territories');
-      if (!territoriesGroup) return;
+      if (!territoriesGroup) {
+        console.warn(`[TerritorySubregion] No Territories group in SVG for region ${region}`);
+        return;
+      } 
 
       const pathsEls = Array.from(territoriesGroup.querySelectorAll<SVGPathElement>('path[id]'));
       const paths: PathInfo[] = [];
+      let hasAnyTerritory = false;
 
       for (const p of pathsEls) {
         const pathId = p.getAttribute('id');
@@ -185,7 +191,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
         const matchedTown = getTownByApiName(pathId);
         const territory = matchedTown?.id ? territoryById.get(matchedTown.id) : undefined;
-        if (!territory) continue;
+        if (!territory) {
+          DEBUG_MODE ?? console.log(`[TerritorySubregion] No territory data for path ${pathId} in region ${region}`);
+          continue;
+        }
+        hasAnyTerritory = true;
         const highlighted = !!(changedSet && changedSet.has(territory.id));
         const baseColor = getTeamColors(territory.owner)?.saturated ?? Colors.Neutral;
         const baseOpacity = TERRITORY_NORMAL_OPACITY;
@@ -207,7 +217,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         });
       }
 
-      processed.push({ region, bounds, viewBox, paths });
+      processed.push({ region, bounds, viewBox, paths, hasAnyTerritory });
     });
 
     return processed;
@@ -271,7 +281,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true);
   };
 
-
   if (!visible || !snapshot?.territories?.length) {
     return null;
   }
@@ -326,6 +335,15 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 );
               })}
             </g>
+            {!o.hasAnyTerritory && (
+              <image 
+                href={disabledHexOverlay} 
+                width="100%" 
+                height="100%" 
+                preserveAspectRatio="xMidYMid meet"
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
           </svg>
         </SVGOverlay>
       ))}
