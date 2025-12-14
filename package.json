@@ -10,7 +10,8 @@
     "lint": "eslint ./src --ext .ts,.tsx",
     "deploy": "npm run bundle:territories && npm run build:sprite && vite build",
     "bundle:territories": "node scripts/bundle-territory-svgs.js",
-    "build:sprite": "node scripts/generate-icon-sprite.js"
+    "build:sprite": "node scripts/generate-icon-sprite.js",
+    "convert:tiles": "node scripts/convert-tiles-webp.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",

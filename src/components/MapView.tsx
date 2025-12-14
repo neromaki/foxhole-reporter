@@ -13,7 +13,7 @@ import TerritorySubregionLayer from './TerritorySubregionLayer';
 import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
 import { MapIconTag } from '../data/map-icons';
-import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, getIconSpritePositionScaled } from '../data/icon-sprite';
+import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
@@ -256,11 +256,18 @@ function LocationsLayer({
     // Try to use sprite first, fallback to individual icon
     const sprite = getIconSprite(iconType, owner);
     if (sprite) {
-      // Get icon name for scaled position calculation
+      // Get icon name and pre-calculate scaled values once (avoid function call overhead)
       const iconName = iconTypeToFilename(iconType, owner).replace('.png', '');
-      const scaledPosition = getIconSpritePositionScaled(iconName, s);
+      const coords = ICON_SPRITE_METADATA[iconName];
+      
+      // Pre-calculate scaled position inline
+      const scaledX = coords ? coords.x * s : 0;
+      const scaledY = coords ? coords.y * s : 0;
+      const scaledBgSize = SPRITE_WIDTH * s;
+      const scaledBgHeight = SPRITE_HEIGHT * s;
+      
       const icon = L.divIcon({
-        html: `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:${scaledPosition};background-size:${SPRITE_WIDTH * s}px ${SPRITE_HEIGHT * s}px;background-repeat:no-repeat"></div>`,
+        html: `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:-${scaledX}px -${scaledY}px;background-size:${scaledBgSize}px ${scaledBgHeight}px;background-repeat:no-repeat"></div>`,
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
         className: 'drop-shadow-sm icon-sprite-marker',

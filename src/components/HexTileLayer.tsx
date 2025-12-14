@@ -20,8 +20,12 @@ export default function HexTileLayer() {
     <>
       {HEX_LAYOUT.map((hex) => {
         const bounds = hexToLeafletBounds(hex);
-        // Vite will resolve this to the correct path
-        const imageUrl = new URL(`../map/tiles/${hex.imageName}`, import.meta.url).href;
+        // Try WebP first with PNG fallback for older browsers
+        const webpUrl = new URL(`../map/tiles/${hex.imageName.replace('.png', '.webp')}`, import.meta.url).href;
+        const pngUrl = new URL(`../map/tiles/${hex.imageName}`, import.meta.url).href;
+        
+        // Use WebP with PNG fallback
+        const imageUrl = webpUrl;
         
         return (
           <ImageOverlay
