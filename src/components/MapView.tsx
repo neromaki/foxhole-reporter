@@ -498,12 +498,34 @@ function LocationsLayer({
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     setHoveredId(t.id);
     show(getTooltipContent(t, lat, lng), lat, lng, 100);
+    
+    // Apply brightness filter to hovered icon
+    const marker = markerRefs.current.get(t.id);
+    if (marker) {
+      const img = markerIconElement(marker);
+      if (img) {
+        img.style.filter = 'brightness(1.3)';
+        img.style.transition = 'filter 120ms ease';
+      }
+    }
   }, [show, getTooltipContent]);
 
   const handleMouseOut = React.useCallback(() => {
     hide(200);
+    
+    // Remove brightness filter from previously hovered icon
+    if (hoveredId) {
+      const marker = markerRefs.current.get(hoveredId);
+      if (marker) {
+        const img = markerIconElement(marker);
+        if (img) {
+          img.style.filter = 'none';
+        }
+      }
+    }
+    
     setHoveredId(null);
-  }, [hide]);
+  }, [hide, hoveredId]);
 
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {
