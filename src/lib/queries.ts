@@ -4,9 +4,29 @@ import { fetchWarState } from './warApi';
 import type { Snapshot, TerritoryDiff, War } from '../types/war';
 import { DEBUG_MODE } from './appConfig';
 import { quantizeSnapshot, logPayloadAnalysis } from './snapshotOptimization';
+import { snapshotCache, logCacheStatus } from './snapshotCache';
+import { useRealtimeSnapshot } from './hooks/useRealtimeSnapshot';
+import { useMapStore } from '../state/useMapStore';
+
+export const REALTIME_SNAPSHOTS_ENABLED = true; // Feature flag for realtime snapshots
 
 export function useLatestSnapshot(options?: { enabled?: boolean }) {
   DEBUG_MODE ?? console.log('[Queries] useLatestSnapshot called with options:', options);
+  
+  const setRealtimeStatus = useMapStore((s) => s.setRealtimeStatus);
+
+  // Realtime subscription (runs in background to listen for updates)
+  const realtimeOptions = {
+    enabled: (options?.enabled ?? true) && REALTIME_SNAPSHOTS_ENABLED,
+    onStatusChange: (status: string) => {
+      setRealtimeStatus(status as any);
+      if (status === 'connected') {
+        DEBUG_MODE ?? console.log('[Queries] Realtime snapshot subscription connected');
+      }
+    },
+  };
+  useRealtimeSnapshot(realtimeOptions);
+
   return useQuery<Snapshot | null>({
     queryKey: ['latestSnapshot'],
     enabled: options?.enabled ?? true,
@@ -15,7 +35,16 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
         console.warn('[Queries] Supabase client not initialized');
         return null;
       }
-      DEBUG_MODE ?? console.log('[Queries] Fetching latest snapshot from supabase');
+
+      // Check cache first - if valid, return cached snapshot
+      const cached = snapshotCache.getLatest();
+      if (cached) {
+        DEBUG_MODE ?? console.log('[Queries] Returning cached snapshot (within 15-min update interval)');
+        DEBUG_MODE ?? logCacheStatus();
+        return cached;
+      }
+
+      DEBUG_MODE ?? console.log('[Queries] Fetching latest snapshot from supabase (cache miss or stale)');
       try {
         const { data, error } = await supabase
           .from('snapshots')
@@ -36,14 +65,21 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
             logPayloadAnalysis(snapshot);
           }
           // Apply coordinate quantization to reduce memory and network payload
-          return quantizeSnapshot(snapshot);
+          const quantized = quantizeSnapshot(snapshot);
+          // Cache the quantized snapshot for future queries
+          snapshotCache.setLatest(quantized);
+          return quantized;
         }
         return null;
       } catch (e) {
         console.error('[Queries] Exception during snapshot fetch:', e);
         return null;
       }
-    }
+    },
+    // Stale time: 15 minutes (Supabase update interval)
+    // Realtime invalidates cache on new events, triggering refetch much faster
+    // If realtime is unavailable, falls back to polling every 15 minutes
+    staleTime: REALTIME_SNAPSHOTS_ENABLED ? 10 * 60 * 1000 : 15 * 60 * 1000, // 10 or 15 minutes
   });
 }
 

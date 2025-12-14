@@ -136,6 +136,61 @@ logPayloadAnalysis(snapshot);
 3. **Binary encoding** - Use Protocol Buffers for 40-60% further reduction
 4. **Precision tuning** - Adjust COORDINATE_PRECISION based on zoom level usage patterns
 
+## Snapshot Caching
+
+### Problem
+Snapshots are fetched on every app reload or page refresh, even when the latest snapshot was fetched moments earlier. Since Supabase only updates snapshots every 15 minutes, any refresh within that window is redundant and causes unnecessary network round-trips.
+
+### Solution
+Implemented client-side snapshot cache in `src/lib/snapshotCache.ts` that:
+1. **Validates cache freshness** - Checks if cached snapshot was created within the 15-minute update interval
+2. **Smart invalidation** - Automatically invalidates cache when snapshot age exceeds 15 minutes
+3. **Transparent operation** - Integrated into `useLatestSnapshot()` with zero API changes
+4. **Debug logging** - `logCacheStatus()` provides visibility into cache hits/misses
+
+**Key Parameters:**
+- `SNAPSHOT_UPDATE_INTERVAL_MS = 15 * 60 * 1000` - Server update frequency
+- React Query `staleTime = 15 minutes` - Aligns with server update frequency
+
+### Impact
+- **Zero network requests** when refreshing page < 15 minutes after last fetch
+- **Prevents redundant Supabase queries** during user browsing sessions
+- **Estimated savings**: 50-80% fewer snapshot queries for typical 1-2 hour sessions
+- **Memory efficient**: Single cached snapshot (~45KB) vs repeated fetches
+
+### Usage
+Caching is automatic and transparent:
+```typescript
+// First load: fetches from Supabase, caches result
+const snapshot1 = useLatestSnapshot();
+
+// Refresh within 15 minutes: returns cached snapshot (instant)
+const snapshot2 = useLatestSnapshot();  // No network request
+
+// After 15 minutes: refetch from Supabase
+const snapshot3 = useLatestSnapshot();  // Network request triggered
+```
+
+**Check cache status in browser console:**
+```typescript
+import { logCacheStatus } from 'src/lib/snapshotCache';
+logCacheStatus();
+
+// Output:
+// 💾 Snapshot Cache Status
+// Has cached snapshot: true
+// Cache is valid: true
+// Cache age: 5m 23s
+// Snapshot age: 5m 23s
+// Update interval: 15m 0s
+// Snapshot ID: abc123
+// Territory count: 381
+```
+
+### Files Modified
+- `src/lib/snapshotCache.ts` - New module with cache logic and debug utilities
+- `src/lib/queries.ts` - Integrated cache check in `useLatestSnapshot()`
+
 ## Future Optimizations
 
 ### High Priority

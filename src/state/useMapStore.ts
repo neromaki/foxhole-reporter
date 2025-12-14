@@ -4,6 +4,8 @@ export type LayerKey = 'locations' | 'territories' | 'resources' | 'majorLocatio
 
 type ReportMode = 'daily' | 'weekly' | null;
 
+export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
 interface MapState {
   activeLayers: Record<LayerKey, boolean>;
   toggleLayer: (key: LayerKey) => void;
@@ -15,6 +17,8 @@ interface MapState {
   setActiveReportMode: (mode: ReportMode) => void;
   disabledHexes: Set<string>;
   setDisabledHexes: (hexes: Set<string>) => void;
+  realtimeStatus: RealtimeConnectionStatus;
+  setRealtimeStatus: (status: RealtimeConnectionStatus) => void;
 }
 
 const defaultLayers: Record<LayerKey, boolean> = {
@@ -33,6 +37,8 @@ export const useMapStore = create<MapState>((set, get) => ({
   previousLayersSnapshot: null,
   disabledHexes: new Set<string>(),
   setDisabledHexes: (hexes) => set({ disabledHexes: hexes }),
+  realtimeStatus: 'disconnected',
+  setRealtimeStatus: (status) => set({ realtimeStatus: status }),
   setActiveJobView: (viewId) => {
     const state = get();
     if (viewId && !state.activeJobViewId) {
