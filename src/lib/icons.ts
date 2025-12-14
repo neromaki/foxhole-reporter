@@ -1,8 +1,28 @@
 // Map WarAPI iconType to icon image URLs (PNG converted from TGA)
-// Uses Vite's import.meta.url to resolve asset paths at build time
+// Uses sprite atlas for efficient loading
 import { mapIcons, MapIconTag } from '../data/map-icons';
-import { DEBUG_MODE } from './appConfig';
+import { DEBUG_MODE, ICON_SIZE } from './appConfig';
+import { ICON_SPRITE_PATH, ICON_SPRITE_METADATA, getIconSpritePosition, hasIconInSprite } from '../data/icon-sprite';
 
+// Returns sprite path and background position for use with CSS
+export function getIconSprite(iconType: number, owner?: string): { spritePath: string; position: string; size: number } | null {
+  const name = iconTypeToFilename(iconType, owner);
+  const iconName = name.replace('.png', '');
+  
+  if (!hasIconInSprite(iconName)) {
+    DEBUG_MODE ?? console.warn(`Icon not in sprite: ${iconName}`);
+    return null;
+  }
+  
+  return {
+    spritePath: ICON_SPRITE_PATH,
+    position: getIconSpritePosition(iconName),
+    size: ICON_SIZE
+  };
+}
+
+// Legacy function for backward compatibility - returns individual icon URL
+// This will be used as fallback if sprite lookup fails
 export function getIconUrl(iconType: number, owner?: string): string {
   DEBUG_MODE ?? console.log(`Getting icon URL for iconType: ${iconType}, owner: ${owner}`);
   const name = iconTypeToFilename(iconType, owner);
@@ -66,16 +86,7 @@ function heuristicWikiSlug(name: string): string {
 }
 
 export function getIconSize(iconType: number): [number, number] {
-  // Provide reasonable default sizing; adjust specific icons if needed
-  switch (iconType) {
-    case 56:
-    case 57:
-    case 58:
-      return [24, 24];
-    case 37:
-    case 59:
-      return [24, 24];
-    default:
-      return [24, 24];
-  }
+  // All icons are standardized to ICON_SIZE in the sprite atlas
+  // Adjust specific icons if needed for special cases
+  return [ICON_SIZE, ICON_SIZE];
 }

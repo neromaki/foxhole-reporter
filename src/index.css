@@ -8,3 +8,12 @@ html, body, #root { height: 100%; }
 .map-label-major { z-index: 9999 !important;}
 .shared-tooltip { width: max-content; max-width: none; }
 svg { outline: none;}
+
+/* Icon sprite optimization */
+.icon-sprite-marker {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+.icon-sprite-marker > div {
+  will-change: transform;
+}

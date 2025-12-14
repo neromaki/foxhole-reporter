@@ -11,11 +11,12 @@ import HexNameLabels from './HexNameLabels';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import TerritorySubregionLayer from './TerritorySubregionLayer';
 import { getHexByApiName } from '../lib/hexLayout';
-import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl } from '../lib/icons';
+import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
 import { MapIconTag } from '../data/map-icons';
+import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, getIconSpritePositionScaled } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, ICON_SMOOTH_SCALE, ICON_SMOOTH_DURATION_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
@@ -167,7 +168,7 @@ function LocationsLayer({
   const [zoom, setZoom] = React.useState(map.getZoom());
 
   React.useEffect(() => {
-    const handler = () => { setZoom(map.getZoom()); };
+    const handler = () => { setZoom(map.getZoom()); console.log('Zoom changed to', map.getZoom()) };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
@@ -175,7 +176,7 @@ function LocationsLayer({
   // Caches for performance
   const iconUrlCache = React.useRef<Map<string, string>>(new Map());
   const iconSizeCache = React.useRef<Map<number, [number, number]>>(new Map());
-  const iconInstanceCache = React.useRef<Map<string, L.Icon>>(new Map());
+  const iconInstanceCache = React.useRef<Map<string, L.Icon | L.DivIcon>>(new Map());
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
   const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
@@ -242,33 +243,31 @@ function LocationsLayer({
     return Math.pow(1.25, z - 1);
   }
 
-  function getIcon(iconType: number, z: number, owner?: LocationTile['owner']): L.Icon {
-    if (ICON_SMOOTH_SCALE) {
-      // Single icon per iconType at max zoom size
-      const key = `${iconType}|max|${owner ?? 'none'}`; // include owner in cache key
-      const cached = iconInstanceCache.current.get(key);
-      if (cached) return cached;
-      const [bw, bh] = getBaseSize(iconType);
-      const maxScale = scaleForZoom(MAP_MAX_ZOOM);
-      const w = Math.max(8, Math.round(bw * maxScale));
-      const h = Math.max(8, Math.round(bh * maxScale));
-      const icon = L.icon({
-        iconUrl: getUrl(iconType, owner),
+  function getIcon(iconType: number, z: number, owner?: LocationTile['owner']): L.Icon | L.DivIcon {
+    const bucket = zoomBucket(z);
+    const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
+    const cached = iconInstanceCache.current.get(key);
+    if (cached) return cached;
+    const [bw, bh] = getBaseSize(iconType);
+    const s = scaleForZoom(z);
+    const w = Math.max(8, Math.round(bw * s));
+    const h = Math.max(8, Math.round(bh * s));
+    
+    // Try to use sprite first, fallback to individual icon
+    const sprite = getIconSprite(iconType, owner);
+    if (sprite) {
+      // Get icon name for scaled position calculation
+      const iconName = iconTypeToFilename(iconType, owner).replace('.png', '');
+      const scaledPosition = getIconSpritePositionScaled(iconName, s);
+      const icon = L.divIcon({
+        html: `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:${scaledPosition};background-size:${SPRITE_WIDTH * s}px ${SPRITE_HEIGHT * s}px;background-repeat:no-repeat"></div>`,
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
-        className: 'drop-shadow-sm smooth-icon-base',
+        className: 'drop-shadow-sm icon-sprite-marker',
       });
       iconInstanceCache.current.set(key, icon);
       return icon;
     } else {
-      const bucket = zoomBucket(z);
-      const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
-      const cached = iconInstanceCache.current.get(key);
-      if (cached) return cached;
-      const [bw, bh] = getBaseSize(iconType);
-      const s = scaleForZoom(z);
-      const w = Math.max(8, Math.round(bw * s));
-      const h = Math.max(8, Math.round(bh * s));
       const icon = L.icon({
         iconUrl: getUrl(iconType, owner),
         iconSize: [w, h],
@@ -284,7 +283,8 @@ function LocationsLayer({
     const el = marker.getElement() as HTMLElement | null;
     if (!el) return null;
     if (el.tagName === 'IMG' || el.classList.contains('leaflet-marker-icon')) return el;
-    const inside = el.querySelector('img.leaflet-marker-icon, .leaflet-marker-icon') as HTMLElement | null;
+    // For divIcon (sprite), look for the inner div with background-image
+    const inside = el.querySelector('div[style*="background-image"], img.leaflet-marker-icon, .leaflet-marker-icon') as HTMLElement | null;
     return inside ?? el;
   }
 
@@ -296,42 +296,28 @@ function LocationsLayer({
   }
 
   function updateIconsForZoom(z: number) {
-    if (ICON_SMOOTH_SCALE) {
-      // Just adjust transform scale; icons created at max size.
-      for (const [id, marker] of markerRefs.current) {
-        const iconType = iconTypeById.current.get(id);
-        if (iconType == null) continue;
-        const highlighted = reportMode === 'daily'
-          ? !!(changedDaily && (changedDaily as Set<string>).has(id))
-          : reportMode === 'weekly'
-          ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
-          : false;
-        applySmoothScale(marker, iconType, z, highlighted);
+    const bucket = zoomBucket(z);
+    for (const [id, iconType] of iconTypeById.current) {
+      const owner = ownerById.current.get(id);
+      const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
+      if (!iconInstanceCache.current.has(key)) {
+        iconInstanceCache.current.set(key, getIcon(iconType, z, owner));
       }
-    } else {
-      const bucket = zoomBucket(z);
-      for (const [id, iconType] of iconTypeById.current) {
-        const owner = ownerById.current.get(id);
-        const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
-        if (!iconInstanceCache.current.has(key)) {
-          iconInstanceCache.current.set(key, getIcon(iconType, z, owner));
-        }
-      }
-      for (const [id, marker] of markerRefs.current) {
-        const iconType = iconTypeById.current.get(id);
-        const owner = ownerById.current.get(id);
-        if (iconType == null) continue;
-        marker.setIcon(getIcon(iconType, z, owner));
-        const highlighted = reportMode === 'daily'
-          ? !!(changedDaily && (changedDaily as Set<string>).has(id))
-          : reportMode === 'weekly'
-          ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
-          : false;
-        const img = markerIconElement(marker);
-        if (img) {
-          img.style.transition = `opacity 120ms ease-out`;
-          img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
-        }
+    }
+    for (const [id, marker] of markerRefs.current) {
+      const iconType = iconTypeById.current.get(id);
+      const owner = ownerById.current.get(id);
+      if (iconType == null) continue;
+      marker.setIcon(getIcon(iconType, z, owner));
+      const highlighted = reportMode === 'daily'
+        ? !!(changedDaily && (changedDaily as Set<string>).has(id))
+        : reportMode === 'weekly'
+        ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
+        : false;
+      const img = markerIconElement(marker);
+      if (img) {
+        img.style.transition = `opacity 120ms ease-out`;
+        img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
       }
     }
   }
@@ -552,7 +538,7 @@ function LocationsLayer({
             }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);
-              if (ref && ICON_SMOOTH_SCALE) {
+              if (ref) {
                 const img = markerIconElement(ref as unknown as L.Marker);
                 if (img) {
                   const highlighted = reportMode === 'daily'

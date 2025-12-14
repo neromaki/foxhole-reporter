@@ -16,11 +16,6 @@ export type ZoomIconUpdateMode = 'zoomend' | 'throttle';
 export const ZOOM_ICON_UPDATE_MODE: ZoomIconUpdateMode = 'zoomend';
 export const ZOOM_THROTTLE_MS = 100; // Only used when mode is 'throttle'
 
-// Smooth visual scaling of icons using CSS transform rather than recreating icons per zoom.
-// When enabled, we create each icon at its max-zoom size and apply a transform scale for lower zooms.
-export const ICON_SMOOTH_SCALE = true;
-export const ICON_SMOOTH_DURATION_MS = 25; // ms for transition easing
-
 // Debug performance overlay flag
 export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf panel
 

@@ -5,8 +5,9 @@ import L from 'leaflet';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { projectRegionPoint } from '../lib/projection';
 import { MINOR_LABEL_MIN_ZOOM, MAJOR_LABEL_MIN_ZOOM } from '../lib/mapConfig';
-import { getIconUrl, getIconSize } from '../lib/icons';
+import { getIconSprite, getIconUrl, getIconSize } from '../lib/icons';
 import { getHexByApiName } from '../lib/hexLayout';
+import { ICON_SPRITE_PATH } from '../data/icon-sprite';
 
 export function StaticIconLayer({ visible }: { visible: boolean }) {
   const map = useMap();
@@ -94,12 +95,23 @@ export function StaticIconLayer({ visible }: { visible: boolean }) {
     <LayerGroup>
       {visibleIcons.map(icon => {
         const [w, h] = getIconSize(icon.iconType);
-        const leafletIcon = L.icon({
-          iconUrl: getIconUrl(icon.iconType),
-          iconSize: [w, h],
-          iconAnchor: [w/2, h/2],
-          className: 'opacity-90'
-        });
+        const sprite = getIconSprite(icon.iconType);
+        
+        // Use sprite if available, otherwise fallback to individual icon
+        const leafletIcon = sprite
+          ? L.divIcon({
+              html: `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:${sprite.position};background-repeat:no-repeat;opacity:0.9"></div>`,
+              iconSize: [w, h],
+              iconAnchor: [w/2, h/2],
+              className: 'icon-sprite-marker'
+            })
+          : L.icon({
+              iconUrl: getIconUrl(icon.iconType),
+              iconSize: [w, h],
+              iconAnchor: [w/2, h/2],
+              className: 'opacity-90'
+            });
+        
         return (
           <Marker
             position={[icon.lat, icon.lng]}
