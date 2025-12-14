@@ -11,27 +11,9 @@ import { projectRegionPoint } from '../lib/projection';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { Colors, getTeamColors, getTeamIcon } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
+import { TERRITORY_PATHS } from '../data/territory-paths';
 
-// Dynamically load all SVGs from src/map/subregions directory
-const loadSubregionSvgs = async (): Promise<Record<string, string>> => {
-  const svgs: Record<string, string> = {};
-  
-  // Use import.meta.glob to get all .svg files in the subregions directory
-  const modules = import.meta.glob<string>('../map/subregions/*.svg', { as: 'url' });
-  
-  for (const [path, urlLoader] of Object.entries(modules)) {
-    // Extract filename and convert to key (e.g., Kalokai.svg -> KalokaiHex)
-    const filename = path.split('/').pop()?.replace(/\.svg$/, '') || '';
-    const key = filename == "MarbanHollow" ? `${filename}` : `${filename}Hex`;
-    
-    const url = await urlLoader();
-    svgs[key] = url;
-  }
-  
-  return svgs;
-};
-
-let SUBREGION_SVGS_CACHE: Record<string, string> | null = null;
+// Remove dynamic SVG loading - now using pre-bundled paths
 
 type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
 type TerritoryHistory = {
@@ -105,49 +87,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     }
   }, [reportMode, hide]);
 
-  // Load raw SVG text once per region
-  const [svgByRegion, setSvgByRegion] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Load SVG URLs from dynamic loader
-      if (!SUBREGION_SVGS_CACHE) {
-        SUBREGION_SVGS_CACHE = await loadSubregionSvgs();
-      }
-      const SUBREGION_SVGS = SUBREGION_SVGS_CACHE;
-      
-      DEBUG_MODE ?? console.log('[TerritorySubregion] Loading SVGs:', Object.keys(SUBREGION_SVGS));
-      const entries = await Promise.all(
-        Object.entries(SUBREGION_SVGS).map(async ([region, url]) => {
-          try {
-            const res = await fetch(url as string);
-            if (!res.ok) {
-              console.warn(`[TerritorySubregion] Failed to fetch ${region}: ${res.status}`);
-              return [region, ''] as const;
-            }
-            const text = await res.text();
-            DEBUG_MODE ?? console.log(`[TerritorySubregion] Loaded ${region}, size: ${text.length} bytes`);
-            return [region, text] as const;
-          } catch (e) {
-            console.error(`[TerritorySubregion] Error loading ${region}:`, e);
-            return [region, ''] as const;
-          }
-        })
-      );
-      if (!cancelled) {
-        const next: Record<string, string> = {};
-        entries.forEach(([region, text]) => {
-          next[region] = text;
-        });
-        setSvgByRegion(next);
-        DEBUG_MODE ?? console.log('[TerritorySubregion] SVGs loaded:', Object.keys(next));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Build territory maps
   const territoryById = useMemo(() => {
     const map = new Map<string, LocationTile>();
@@ -162,38 +101,22 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [reportMode, changedDaily, changedWeekly]);
 
   const overlays = useMemo(() => {
-    const parser = new DOMParser();
     const processed: RegionOverlay[] = [];
 
-    Object.entries(svgByRegion).forEach(([region, svgText]) => {
-      if (!svgText) return;
-
+    // Use pre-bundled territory paths instead of runtime parsing
+    Object.entries(TERRITORY_PATHS).forEach(([region, regionData]) => {
       const hex = getHexByApiName(region);
       if (!hex) return;
       const bounds = hexToLeafletBounds(hex);
 
-      const doc = parser.parseFromString(String(svgText), 'image/svg+xml');
-      const root = doc.documentElement.cloneNode(true) as SVGSVGElement;
-      const viewBox = root.getAttribute('viewBox') || `0 0 ${root.getAttribute('width') || 1000} ${root.getAttribute('height') || 1000}`;
-      const territoriesGroup = root.querySelector('#Territories');
-      if (!territoriesGroup) {
-        console.warn(`[TerritorySubregion] No Territories group in SVG for region ${region}`);
-        return;
-      } 
-
-      const pathsEls = Array.from(territoriesGroup.querySelectorAll<SVGPathElement>('path[id]'));
       const paths: PathInfo[] = [];
       let hasAnyTerritory = false;
 
-      for (const p of pathsEls) {
-        const pathId = p.getAttribute('id');
-        const d = p.getAttribute('d');
-        if (!pathId || !d) continue;
-
-        const matchedTown = getTownByApiName(pathId);
+      for (const pathData of regionData.paths) {
+        const matchedTown = getTownByApiName(pathData.id);
         const territory = matchedTown?.id ? territoryById.get(matchedTown.id) : undefined;
         if (!territory) {
-          DEBUG_MODE ?? console.log(`[TerritorySubregion] No territory data for path ${pathId} in region ${region}`);
+          DEBUG_MODE ?? console.log(`[TerritorySubregion] No territory data for path ${pathData.id} in region ${region}`);
           continue;
         }
         hasAnyTerritory = true;
@@ -203,8 +126,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         const projected = projectRegionPoint(territory.region, territory.x, territory.y);
 
         paths.push({
-          key: `${region}-${pathId}`,
-          d,
+          key: `${region}-${pathData.id}`,
+          d: pathData.d,
           territoryId: territory.id,
           owner: territory.owner,
           name: matchedTown?.displayName || null,
@@ -218,11 +141,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         });
       }
 
-      processed.push({ region, bounds, viewBox, paths, hasAnyTerritory });
+      processed.push({ region, bounds, viewBox: regionData.viewBox, paths, hasAnyTerritory });
     });
 
     return processed;
-  }, [svgByRegion, territoryById, changedSet, reportMode]);
+  }, [territoryById, changedSet, reportMode]);
 
   // Update disabled hexes in store
   useEffect(() => {

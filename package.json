@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run bundle:territories && vite build",
     "preview": "vite preview",
     "lint": "eslint ./src --ext .ts,.tsx",
-    "deploy": "vite build"
+    "deploy": "npm run bundle:territories && vite build",
+    "bundle:territories": "node scripts/bundle-territory-svgs.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
