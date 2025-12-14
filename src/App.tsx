@@ -29,9 +29,9 @@ export default function App() {
         showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
         showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
         warNumber={warState?.warNumber}
-        className="visible absolute top-0 inset-x-3 z-[1000] md:hidden"
+        className="visible absolute top-0 inset-x-3 z-[1000] hidden"
       />
-      <aside className="w-[28rem] bg-gray-800 border-r border-gray-700 md:flex flex-col hidden md:visible">
+      <aside className="w-full md:w-[28rem] bg-gray-800 border-r border-gray-700 flex flex-col absolute -left-full md:relative md:left-0 z-[500]">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold">Foxhole Reporter</h1>
           <p className="text-xs text-gray-400">Live territory & logistics overlays</p>
@@ -41,6 +41,7 @@ export default function App() {
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
+            className="victory visible absolute md:static top-0 left-[103%] -right-[97%] z-[1000]"
           />
           <ReportModes />
         </div>
