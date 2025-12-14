@@ -168,7 +168,7 @@ function LocationsLayer({
   const [zoom, setZoom] = React.useState(map.getZoom());
 
   React.useEffect(() => {
-    const handler = () => { setZoom(map.getZoom()); console.log('Zoom changed to', map.getZoom()) };
+    const handler = () => { setZoom(map.getZoom()); };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);

@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import { fetchWarState } from './warApi';
 import type { Snapshot, TerritoryDiff, War } from '../types/war';
 import { DEBUG_MODE } from './appConfig';
+import { quantizeSnapshot, logPayloadAnalysis } from './snapshotOptimization';
 
 export function useLatestSnapshot(options?: { enabled?: boolean }) {
   DEBUG_MODE ?? console.log('[Queries] useLatestSnapshot called with options:', options);
@@ -27,7 +28,17 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
           throw error;
         }
         DEBUG_MODE ?? console.log('[Queries] Latest snapshot fetched:', data);
-        return data as unknown as Snapshot | null;
+        if (data) {
+          const snapshot = data as unknown as Snapshot;
+          // Log payload analysis on first load
+          if (!window.__snapshotAnalyzed) {
+            window.__snapshotAnalyzed = true;
+            logPayloadAnalysis(snapshot);
+          }
+          // Apply coordinate quantization to reduce memory and network payload
+          return quantizeSnapshot(snapshot);
+        }
+        return null;
       } catch (e) {
         console.error('[Queries] Exception during snapshot fetch:', e);
         return null;
@@ -136,7 +147,8 @@ export function useSnapshotsSince(hours: number, options?: { enabled?: boolean }
           console.error('[Queries] snapshotsSince error:', error);
           throw error;
         }
-        return (data ?? []) as unknown as Snapshot[];
+        // Apply coordinate quantization to reduce memory payload
+        return ((data ?? []) as unknown as Snapshot[]).map(snapshot => quantizeSnapshot(snapshot));
       } catch (e) {
         console.error('[Queries] Exception during snapshotsSince fetch:', e);
         return [];

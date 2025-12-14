@@ -8,3 +8,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Global window extensions
+declare global {
+  interface Window {
+    __snapshotAnalyzed?: boolean;
+  }
+}
