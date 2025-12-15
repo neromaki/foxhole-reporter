@@ -16,7 +16,7 @@ import { MapIconTag } from '../data/map-icons';
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_ICON_UPDATE_MODE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from './LayerTogglePanel';
 import { getJobViewFilter } from '../state/jobViews';
@@ -77,6 +77,7 @@ export default function MapView() {
       className="h-full w-full bg-gray-900"
     >
       <ZoomControls />
+      {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       <SharedTooltipProvider>
         <StaticIconLayer visible={true} />
         <LocationsLayer 
@@ -166,12 +167,33 @@ function LocationsLayer({
 }) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
+  const VERBOSE_ZOOM_LOG = false;
 
   React.useEffect(() => {
-    const handler = () => { setZoom(map.getZoom()); };
+    const handler = () => {
+      const z = map.getZoom();
+      if (VERBOSE_ZOOM_LOG) console.log('[Zoom][state] zoomend', { z });
+      setZoom(z);
+    };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
+
+  // Verbose zoom event logging to trace hitch points
+  React.useEffect(() => {
+    if (!VERBOSE_ZOOM_LOG) return;
+    const onZoomStart = () => VERBOSE_ZOOM_LOG && console.log('[Zoom][event] zoomstart', { z: map.getZoom(), markers: markerRefs.current.size, cacheSize: iconInstanceCache.current.size });
+    const onZoom = () => VERBOSE_ZOOM_LOG && console.log('[Zoom][event] zoom', { z: map.getZoom(), markers: markerRefs.current.size });
+    const onZoomEnd = () => VERBOSE_ZOOM_LOG && console.log('[Zoom][event] zoomend', { z: map.getZoom(), markers: markerRefs.current.size, cacheSize: iconInstanceCache.current.size });
+    map.on('zoomstart', onZoomStart);
+    map.on('zoom', onZoom);
+    map.on('zoomend', onZoomEnd);
+    return () => {
+      map.off('zoomstart', onZoomStart);
+      map.off('zoom', onZoom);
+      map.off('zoomend', onZoomEnd);
+    };
+  }, [map, VERBOSE_ZOOM_LOG]);
 
   // Caches for performance
   const iconUrlCache = React.useRef<Map<string, string>>(new Map());
@@ -247,7 +269,10 @@ function LocationsLayer({
     const bucket = zoomBucket(z);
     const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
     const cached = iconInstanceCache.current.get(key);
-    if (cached) return cached;
+    if (cached) {
+      if (VERBOSE_ZOOM_LOG) console.log('[Zoom][getIcon] use cache', { iconType, owner, bucket });
+      return cached;
+    }
     const [bw, bh] = getBaseSize(iconType);
     const s = scaleForZoom(z);
     const w = Math.max(8, Math.round(bw * s));
@@ -272,6 +297,7 @@ function LocationsLayer({
         iconAnchor: [w / 2, h / 2],
         className: 'drop-shadow-sm icon-sprite-marker',
       });
+      VERBOSE_ZOOM_LOG && console.log('[Zoom][getIcon] create sprite', { iconType, owner, bucket, w, h, scaledX, scaledY, scaledBgSize, scaledBgHeight });
       iconInstanceCache.current.set(key, icon);
       return icon;
     } else {
@@ -281,6 +307,7 @@ function LocationsLayer({
         iconAnchor: [w / 2, h / 2],
         className: 'drop-shadow-sm',
       });
+      VERBOSE_ZOOM_LOG && console.log('[Zoom][getIcon] create img', { iconType, owner, bucket, w, h });
       iconInstanceCache.current.set(key, icon);
       return icon;
     }
@@ -295,27 +322,17 @@ function LocationsLayer({
     return inside ?? el;
   }
 
-  function applySmoothScale(marker: L.Marker, iconType: number, z: number, highlighted: boolean) {
-    const img = markerIconElement(marker);
-    if (!img) return;
-    img.style.transition = `opacity 120ms ease-out`;
-    img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
-  }
-
-  function updateIconsForZoom(z: number) {
+  function updateIcons(z: number) {
+    VERBOSE_ZOOM_LOG && console.log('[Zoom][updateIconsForZoom] start', { z });
+    const t0 = performance.now();
     const bucket = zoomBucket(z);
-    for (const [id, iconType] of iconTypeById.current) {
-      const owner = ownerById.current.get(id);
-      const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
-      if (!iconInstanceCache.current.has(key)) {
-        iconInstanceCache.current.set(key, getIcon(iconType, z, owner));
-      }
-    }
+    let setCount = 0;
     for (const [id, marker] of markerRefs.current) {
       const iconType = iconTypeById.current.get(id);
       const owner = ownerById.current.get(id);
       if (iconType == null) continue;
       marker.setIcon(getIcon(iconType, z, owner));
+      setCount++;
       const highlighted = reportMode === 'daily'
         ? !!(changedDaily && (changedDaily as Set<string>).has(id))
         : reportMode === 'weekly'
@@ -327,41 +344,11 @@ function LocationsLayer({
         img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
       }
     }
-  }
-
-  // Attach zoom handlers based on config mode
-  React.useEffect(() => {
-    if (ZOOM_ICON_UPDATE_MODE === 'throttle') {
-      let scheduled = false;
-      let lastRun = 0;
-      const handler = () => {
-        const now = Date.now();
-        if (now - lastRun >= ZOOM_THROTTLE_MS) {
-          lastRun = now;
-          updateIconsForZoom(map.getZoom());
-          scheduled = false;
-        } else if (!scheduled) {
-          scheduled = true;
-          const delay = ZOOM_THROTTLE_MS - (now - lastRun);
-          setTimeout(() => {
-            lastRun = Date.now();
-            updateIconsForZoom(map.getZoom());
-            scheduled = false;
-          }, delay);
-        }
-      };
-      map.on('zoom', handler);
-      return () => {
-        map.off('zoom', handler);
-      };
-    } else {
-      const handler = () => updateIconsForZoom(map.getZoom());
-      map.on('zoomend', handler);
-      return () => {
-        map.off('zoomend', handler);
-      };
+    if (VERBOSE_ZOOM_LOG) {
+      const dt = (performance.now() - t0).toFixed(2);
+      console.log('[Zoom][updateIconsForZoom]', { z, bucket, setCount, totalMarkers: markerRefs.current.size, cacheSize: iconInstanceCache.current.size, ms: dt });
     }
-  }, [map]);
+  }
 
   // Memoize projection of territory positions so zoom changes don't recompute
   const projectedTerritories = useMemo(() => {
@@ -419,6 +406,7 @@ function LocationsLayer({
 
     const recompute = () => {
       const bounds = map.getBounds();
+      const t0 = performance.now();
       let base = projectedTerritories;
       if (jobViewFilter) {
         base = base.filter(({ t }) => {
@@ -429,32 +417,75 @@ function LocationsLayer({
       } else {
         base = base.filter(({ t }) => !excludedIconTypes.has(t.iconType));
       }
+      const baseCount = base.length;
       const filtered = base.filter(({ lat, lng }) => isInBounds(lat, lng, bounds, PAD));
+      if (VERBOSE_ZOOM_LOG) {
+        const dt = (performance.now() - t0).toFixed(2);
+        console.log('[Zoom][cull] recompute', { z: map.getZoom(), baseCount, filteredCount: filtered.length, pad: PAD, ms: dt });
+      }
       setVisibleTerritories(filtered);
     };
 
-    const schedule = () => {
-      if (rafId != null) return;
+    const schedule = (reason: string) => {
+      if (rafId != null) {
+        if (VERBOSE_ZOOM_LOG) console.log('[Zoom][cull] skip schedule (pending RAF)', { reason });
+        return;
+      }
       rafId = (window.requestAnimationFrame as any)(() => {
         rafId = null;
         recompute();
       });
+      if (VERBOSE_ZOOM_LOG) console.log('[Zoom][cull] scheduled recompute via RAF', { reason });
     };
 
     // Initial compute
     recompute();
 
-    const onMove = () => schedule();
-    const onZoom = () => schedule();
+    const onMove = () => schedule('move');
+    const onZoom = () => {
+      if (VERBOSE_ZOOM_LOG) console.log('[Zoom][cull] zoomend event scheduling recompute', { z: map.getZoom() });
+      schedule('zoomend');
+    };
     map.on('move', onMove);
-    map.on('zoom', onZoom);
+    map.on('zoomend', onZoom);
 
     return () => {
       map.off('move', onMove);
-      map.off('zoom', onZoom);
+      map.off('zoomend', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
   }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportMode]);
+
+  // Pre-compute all icon instances for all zoom levels when snapshot loads
+  React.useEffect(() => {
+    if (!snapshot?.territories || snapshot.territories.length === 0) return;
+    const t0 = performance.now();
+    
+    // Collect unique icon types and owners from snapshot
+    const iconSet = new Set<string>();
+    for (const t of snapshot.territories) {
+      const owner = t.owner;
+      iconSet.add(`${t.iconType}|${owner ?? 'none'}`);
+    }
+    
+    // Pre-compute all icons for all zoom levels
+    let totalCreated = 0;
+    for (let z = MAP_MIN_ZOOM; z <= MAP_MAX_ZOOM; z++) {
+      for (const key of iconSet) {
+        const [iconTypeStr, ownerStr] = key.split('|');
+        const iconType = parseInt(iconTypeStr, 10);
+        const owner = ownerStr === 'none' ? undefined : (ownerStr as LocationTile['owner']);
+        // getIcon will cache if not already present
+        getIcon(iconType, z, owner);
+        totalCreated++;
+      }
+    }
+    
+    if (VERBOSE_ZOOM_LOG) {
+      const dt = (performance.now() - t0).toFixed(2);
+      console.log('[Cache] Pre-computed icons for all zoom levels', { uniqueIcons: iconSet.size, zoomRange: `${MAP_MIN_ZOOM}-${MAP_MAX_ZOOM}`, totalCreated, ms: dt });
+    }
+  }, [snapshot]);
 
   // Prune stale marker refs when visibleTerritories changes
   React.useEffect(() => {
@@ -499,11 +530,8 @@ function LocationsLayer({
     return `<div class="text-xs">${parts.join('')}</div>`;
   }, [changedDaily, changedWeekly, majorLabelsByMap]);
 
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    setHoveredId(t.id);
     show(getTooltipContent(t, lat, lng), lat, lng, 100);
     
     // Apply brightness filter to hovered icon
@@ -517,27 +545,24 @@ function LocationsLayer({
     }
   }, [show, getTooltipContent]);
 
-  const handleMouseOut = React.useCallback(() => {
+  const handleMouseOut = React.useCallback((t: LocationTile) => {
     hide(200);
     
-    // Remove brightness filter from previously hovered icon
-    if (hoveredId) {
-      const marker = markerRefs.current.get(hoveredId);
-      if (marker) {
-        const img = markerIconElement(marker);
-        if (img) {
-          img.style.filter = 'none';
-        }
+    const marker = markerRefs.current.get(t.id);
+    if (marker) {
+      const img = markerIconElement(marker);
+      if (img) {
+        img.style.filter = 'none';
       }
     }
     
-    setHoveredId(null);
-  }, [hide, hoveredId]);
+  }, [hide]);
 
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {
-    updateIconsForZoom(map.getZoom());
-  }, [reportMode, changedDaily, changedWeekly]);
+    if (VERBOSE_ZOOM_LOG) console.log('[Zoom][effect] reapply due to report/diff change', { reportMode, daily: changedDaily.size, weekly: changedWeekly.size, z: map.getZoom() });
+    updateIcons(map.getZoom());
+  }, [reportMode, changedDaily, changedWeekly, map]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   // Hide LocationsLayer when zoomed out to -1 or lower, in report mode, or when layer is off
@@ -551,7 +576,7 @@ function LocationsLayer({
         const isScorched = (t.flags & 0x10) !== 0;
         const isBuildSite = (t.flags & 0x04) !== 0;
 
-        // Cache iconType by id and create initial icon using current zoom
+        // Cache iconType by id; icon is pre-computed in cache from load phase
         iconTypeById.current.set(t.id, t.iconType);
         ownerById.current.set(t.id, t.owner);
         const initialIcon = getIcon(t.iconType, map.getZoom(), t.owner);
@@ -563,7 +588,7 @@ function LocationsLayer({
             icon={initialIcon}
             eventHandlers={{
               mouseover: () => handleMouseOver(t, lat, lng),
-              mouseout: handleMouseOut,
+              mouseout: () => handleMouseOut(t),
             }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);

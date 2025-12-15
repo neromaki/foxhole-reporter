@@ -11,9 +11,6 @@ export const DATA_SOURCE: DataSourceType = 'supabase'; // 'warapi' for live data
 export const SHOW_DAILY_REPORT = true;  // Whether to show daily territory change report
 export const SHOW_WEEKLY_REPORT = false; // Whether to show weekly territory change report
 
-// Icon update strategy: 'zoomend' (best performance) or 'throttle' (live scaling)
-export type ZoomIconUpdateMode = 'zoomend' | 'throttle';
-export const ZOOM_ICON_UPDATE_MODE: ZoomIconUpdateMode = 'zoomend';
 export const ZOOM_THROTTLE_MS = 100; // Only used when mode is 'throttle'
 
 // Debug performance overlay flag

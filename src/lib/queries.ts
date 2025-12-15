@@ -59,11 +59,6 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
         DEBUG_MODE ?? console.log('[Queries] Latest snapshot fetched:', data);
         if (data) {
           const snapshot = data as unknown as Snapshot;
-          // Log payload analysis on first load
-          if (!window.__snapshotAnalyzed) {
-            window.__snapshotAnalyzed = true;
-            logPayloadAnalysis(snapshot);
-          }
           // Apply coordinate quantization to reduce memory and network payload
           const quantized = quantizeSnapshot(snapshot);
           // Cache the quantized snapshot for future queries
