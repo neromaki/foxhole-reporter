@@ -143,6 +143,22 @@ interface MapIconStruct {
     wikiPage?: string;
 }
 
+const MapTagHierarchy = {
+    Bases: [MapIconTag.Base_Town, MapIconTag.Base_Relic, MapIconTag.Base_Keep, MapIconTag.Base_Fort, MapIconTag.Base_Garrison, MapIconTag.Base_Hospital, MapIconTag.Base_Forward, MapIconTag.Base_Ship],
+    Logistics: [
+        { Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport] },
+        { Production: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory, MapIconTag.Refinery] },
+        { Construction: [MapIconTag.Vehicle_Factory, MapIconTag.Shipyard, MapIconTag.Construction_Yard] },
+    ],    
+    Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Fuel, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
+    Emplacements: [
+        { Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House] },
+        { Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero] },
+    ],
+    Utility: [MapIconTag.Intel_Center, MapIconTag.Weather_Station, MapIconTag.Tech_Center, MapIconTag.Observation_Tower],
+
+}
+
 const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Town_Base_1,
@@ -707,4 +723,4 @@ const mapIcons: Array<MapIconStruct> = [
     }
 ]
 
-export { MapIcon, MapIconTag, mapIcons };
+export { MapIcon, MapIconTag, MapTagHierarchy, mapIcons };

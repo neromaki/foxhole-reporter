@@ -12,13 +12,12 @@ import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import TerritorySubregionLayer from './TerritorySubregionLayer';
 import { getHexByApiName } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
-import { MapIconTag } from '../data/map-icons';
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
-import { layerTagsByKey } from './LayerTogglePanel';
+import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { getTownById } from '../data/towns';
@@ -51,19 +50,19 @@ export default function MapView() {
 
   const effectiveLayers = useMemo(() => {
     if (!reportMode) return activeLayers;
-    // In report mode: hide locations (icons), only show territories (SVG)
-    return { ...activeLayers, locations: false, territories: true };
+    // In report mode: hide structures (icons), only show territories (SVG)
+    return { ...activeLayers, structures: false, territories: true } as typeof activeLayers;
   }, [activeLayers, reportMode]);
 
   useEffect(() => {
     DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
     DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
     DEBUG_MODE ?? console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
-    DEBUG_MODE ?? console.log('[MapView] Location layer active:', activeLayers.locations);
+    DEBUG_MODE ?? console.log('[MapView] Structures layer active:', activeLayers.structures);
     if (snapshot?.territories && snapshot.territories.length > 0) {
       DEBUG_MODE ?? console.log('[MapView] Sample locations:', snapshot.territories[0]);
     }
-  }, [snapshot, activeLayers.locations]);
+  }, [snapshot, activeLayers.structures]);
 
 
   return (
@@ -565,8 +564,8 @@ function LocationsLayer({
   }, [reportMode, changedDaily, changedWeekly, map]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
-  // Hide LocationsLayer when zoomed out to -1 or lower, in report mode, or when layer is off
-  if ((!activeLayers.locations || zoom < -1 || reportMode)) return null;
+  // Hide Structures layer when zoomed out to -1 or lower, in report mode, or when layer is off
+  if ((!activeLayers.structures || zoom < -1 || reportMode)) return null;
 
   return (
     <LayerGroup>
