@@ -4,6 +4,7 @@ import {
   LayerState,
   getChildren,
   getAncestors,
+  getDescendants,
   getDefaultLayerState,
 } from './layers';
 
@@ -41,14 +42,35 @@ export const useMapStore = create<MapState>((set, get) => ({
         getAncestors(key).forEach((ancestor) => {
           nextActiveLayers[ancestor] = true;
         });
+      } else {
+        const ancestors = getAncestors(key);
+        ancestors.forEach((ancestor) => {
+          const children = getChildren(ancestor);
+          const allChildrenOff = children.every((child) => nextActiveLayers[child] === false);
+          if (allChildrenOff) {
+            nextActiveLayers[ancestor] = false;
+          }
+        });
       }
       return { activeLayers: nextActiveLayers };
     }
 
     const children = getChildren(key);
+    const descendants = getDescendants(key);
     const turnOn = !currentlyOn;
     const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: turnOn };
-    children.forEach((child) => { nextActiveLayers[child] = turnOn; });
+
+    if (turnOn) {
+      const anyDescendantOn = descendants.some((d) => s.activeLayers[d]);
+      if (!anyDescendantOn) {
+        descendants.forEach((d) => { nextActiveLayers[d] = true; });
+      } else {
+        children.forEach((child) => { nextActiveLayers[child] = true; });
+      }
+    } else {
+      descendants.forEach((d) => { nextActiveLayers[d] = false; });
+    }
+
     return { activeLayers: nextActiveLayers };
   }),
   setLayers: (layers) => set((s) => ({ activeLayers: { ...s.activeLayers, ...layers } as LayerState })),

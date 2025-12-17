@@ -564,8 +564,8 @@ function LocationsLayer({
   }, [reportMode, changedDaily, changedWeekly, map]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
-  // Hide Structures layer when zoomed out to -1 or lower, in report mode, or when layer is off
-  if ((!activeLayers.structures || zoom < -1 || reportMode)) return null;
+  // Hide when zoomed out to -1 or lower, or in report mode
+  if ((zoom < -1 || reportMode)) return null;
 
   return (
     <LayerGroup>
