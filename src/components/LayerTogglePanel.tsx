@@ -34,26 +34,26 @@ function TreeToggle({ node, depth }: { node: LayerNode; depth: number }) {
   const icon = node.leaf && node.tags.length > 0 ? getTagIcon(node.tags[0]) : null;
 
   return (
-    <li className={`space-y-1 depth-${depth} ${node.leaf ? 'isLeaf' : ''}`}>
+    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-4' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
       <button
         onClick={() => {
           if (disabled) return;
           toggle(node.id);
         }}
         disabled={disabled}
-        className={`w-full flex items-center justify-start px-3 py-2 rounded text-sm border transition ${activeLayers[node.id] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full flex items-center justify-start px-3 py-2 rounded text-sm border transition ${activeLayers[node.id] ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-gray-900 border-gray-800 hover:bg-gray-800 hover:border-gray-700'}`}
       >
         { node.leaf ? (
           icon
         ) : (
-          <div>
-            <span className={`h-3 w-3 rounded-full mr-2 ${indicatorClass(state)}`}></span>
+          <div className={`flex justify-between items-center w-full`}>
             <span>{node.label}</span>
+            <span className={`h-3 w-3 rounded-full inline-block ${indicatorClass(state)}`}></span>
           </div>
         )}
       </button>
       {node.children && node.children.length > 0 && (
-        <ul className={`inner-ul ml-3 depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex flex-wrap gap-1' : ''}`}>
+        <ul className={`inner-ul ml-3 depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex flex-wrap gap-1 bg-gray-950 ml-0 !mt-0 p-2 rounded-b' : ''}`}>
           {node.children.map((child: any) => (
             <TreeToggle key={child.id} node={child} depth={depth + 1} />
           ))}
@@ -105,7 +105,7 @@ export default function LayerTogglePanel() {
                 onClick={() => {
                   toggle(k as LayerKey);
                 }}
-                className={`w-full flex items-start justify-between px-3 py-2 rounded text-sm border transition ${active[k as LayerKey] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k as LayerKey] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
               >
                 <span>{otherLabels[k]}</span>
                 <span className={`h-3 w-3 rounded-full ${active[k as LayerKey] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
