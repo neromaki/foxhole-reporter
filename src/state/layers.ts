@@ -1,4 +1,4 @@
-import { MapIconTag, MapTagHierarchy } from '../data/map-icons';
+import { MapIconTag, MapTagHierarchy, getMapTag } from '../data/map-icons';
 
 export type LayerKey = string; // dynamic hierarchical keys (structures/resources and leaves)
 export type LayerState = Record<LayerKey, boolean>;
@@ -10,6 +10,8 @@ export interface LayerNode {
   tags: MapIconTag[];
   children?: LayerNode[];
   kind: 'structures' | 'resources';
+  leaf?: boolean;
+  icon?: string;
 }
 
 function uniq<T>(arr: T[]): T[] {
@@ -17,7 +19,9 @@ function uniq<T>(arr: T[]): T[] {
 }
 
 function titleFromTag(tag: MapIconTag): string {
-  return tag.replace(/_/g, ' ');
+    const tagInfo = getMapTag(tag);
+    if (tagInfo && tagInfo.displayName) return tagInfo.displayName;
+    return tag.replace(/_/g, ' ');
 }
 
 function buildLeaf(path: string[], tag: MapIconTag, kind: 'structures' | 'resources'): LayerNode {
@@ -26,16 +30,7 @@ function buildLeaf(path: string[], tag: MapIconTag, kind: 'structures' | 'resour
     label: titleFromTag(tag),
     tags: [tag],
     kind,
-  };
-}
-
-function buildFlatCategory(path: string[], label: string, tags: MapIconTag[], kind: 'structures' | 'resources'): LayerNode {
-  return {
-    id: path.join('.'),
-    label,
-    tags,
-    kind,
-    children: tags.map(t => buildLeaf([...path, labelToKey(label)], t, kind)),
+    leaf: true,
   };
 }
 
@@ -45,72 +40,30 @@ function labelToKey(label: string): string {
 
 // Build Structures tree with per-tag leaves
 function buildStructuresTree(): LayerNode {
-  const basesTags = MapTagHierarchy.Bases;
-  const logisticsGroups = MapTagHierarchy.Logistics as unknown as Array<Record<string, MapIconTag[]>>;
-  const emplacementsGroups = MapTagHierarchy.Emplacements as unknown as Array<Record<string, MapIconTag[]>>;
-  const utilityTags = MapTagHierarchy.Utility;
+  const groups: Array<{ key: string; label: string; tags: MapIconTag[] }> = [
+    { key: 'bases', label: 'Bases', tags: MapTagHierarchy.Bases },
+    { key: 'storage', label: 'Storage', tags: MapTagHierarchy.Storage },
+    { key: 'production', label: 'Production', tags: MapTagHierarchy.Production },
+    { key: 'construction', label: 'Construction', tags: MapTagHierarchy.Construction },
+    { key: 'defensive', label: 'Defensive', tags: MapTagHierarchy.Defensive },
+    { key: 'utility', label: 'Utility', tags: MapTagHierarchy.Utility },
+    { key: 'rocket', label: 'Rocket', tags: MapTagHierarchy.Rocket },
+  ];
 
-  const logisticsNode: LayerNode = {
-    id: 'structures.logistics',
-    label: 'Logistics',
-    kind: 'structures',
-    tags: uniq(logisticsGroups.flatMap(g => Object.values(g).flat())),
-    children: logisticsGroups.map(group => {
-      const [name, tags] = Object.entries(group)[0];
-      return {
-        id: `structures.logistics.${labelToKey(name)}`,
-        label: name,
-        kind: 'structures',
-        tags,
-        children: tags.map(t => buildLeaf(['structures', 'logistics', labelToKey(name)], t, 'structures')),
-      };
-    }),
-  };
-
-  const emplacementsNode: LayerNode = {
-    id: 'structures.emplacements',
-    label: 'Emplacements',
-    kind: 'structures',
-    tags: uniq(emplacementsGroups.flatMap(g => Object.values(g).flat())),
-    children: emplacementsGroups.map(group => {
-      const [name, tags] = Object.entries(group)[0];
-      return {
-        id: `structures.emplacements.${labelToKey(name)}`,
-        label: name,
-        kind: 'structures',
-        tags,
-        children: tags.map(t => buildLeaf(['structures', 'emplacements', labelToKey(name)], t, 'structures')),
-      };
-    }),
-  };
-
-  const basesNode: LayerNode = {
-    id: 'structures.bases',
-    label: 'Bases',
-    kind: 'structures',
-    tags: basesTags,
-    children: basesTags.map(t => buildLeaf(['structures', 'bases'], t, 'structures')),
-  };
-
-  const utilityNode: LayerNode = {
-    id: 'structures.utility',
-    label: 'Utility',
-    kind: 'structures',
-    tags: utilityTags,
-    children: utilityTags.map(t => buildLeaf(['structures', 'utility'], t, 'structures')),
-  };
+  const children = groups.map(({ key, label, tags }) => ({
+    id: `structures.${key}`,
+    label,
+    tags,
+    kind: 'structures' as const,
+    children: tags.map((t) => buildLeaf(['structures', key], t, 'structures')),
+  }));
 
   return {
     id: 'structures',
     label: 'Structures',
     kind: 'structures',
-    tags: uniq([
-      ...basesTags,
-      ...logisticsNode.tags,
-      ...emplacementsNode.tags,
-      ...utilityTags,
-    ]),
-    children: [basesNode, logisticsNode, emplacementsNode, utilityNode],
+    tags: uniq(children.flatMap((c) => c.tags)),
+    children,
   };
 }
 
@@ -180,16 +133,11 @@ export function computeVisualState(activeLayers: LayerState, key: LayerKey): Lay
 
   const compute = (k: LayerKey): LayerVisualState => {
     if (memo.has(k)) return memo.get(k)!;
-    const selfOn = !!activeLayers[k];
     const children = getChildren(k);
     if (children.length === 0) {
-      const leafState: LayerVisualState = selfOn ? 'on' : 'off';
+      const leafState: LayerVisualState = activeLayers[k] ? 'on' : 'off';
       memo.set(k, leafState);
       return leafState;
-    }
-    if (!selfOn) {
-      memo.set(k, 'off');
-      return 'off';
     }
     const childStates = children.map(compute);
     const allOn = childStates.every((s) => s === 'on');
@@ -229,10 +177,10 @@ export function getDefaultLayerState(): LayerState {
     state[k] = true;
   });
 
-  // Resources default off at parent, children on (so re-enabling restores on)
+  // Resources default off (parent and children)
   state['resources'] = false;
   getDescendants('resources').forEach(k => {
-    state[k] = true;
+    state[k] = false;
   });
 
   return state;

@@ -143,20 +143,197 @@ interface MapIconStruct {
     wikiPage?: string;
 }
 
+interface MapTagStruct {
+    tag: MapIconTag;
+    mapIcon: MapIcon;
+    displayName: string;
+}
+
+const mapTags: Array<MapTagStruct> = [
+    {
+        tag: MapIconTag.Base_Town,
+        displayName: "Town",
+        mapIcon: MapIcon.Town_Base_1
+    },
+    {
+        tag: MapIconTag.Base_Relic,
+        displayName: "Relic",
+        mapIcon: MapIcon.Relic_Base_1
+    },
+    {
+        tag: MapIconTag.Base_Keep,
+        displayName: "Keep",
+        mapIcon: MapIcon.Keep
+    },
+    {
+        tag: MapIconTag.Base_Fort,
+        displayName: "Fort",
+        mapIcon: MapIcon.Fort
+    },    
+    {
+        tag: MapIconTag.Base_Garrison,
+        displayName: "Safe House",
+        mapIcon: MapIcon.Garrison_Station
+    },
+    {
+        tag: MapIconTag.Base_Hospital,
+        displayName: "Hospital",
+        mapIcon: MapIcon.Hospital
+    },
+    {
+        tag: MapIconTag.Base_Forward,
+        displayName: "Forward",
+        mapIcon: MapIcon.Forward_Base_1
+    },
+    {
+        tag: MapIconTag.Base_Ship,
+        displayName: "Ship",
+        mapIcon: MapIcon.Troop_Ship
+    },
+    {
+        tag: MapIconTag.Storage_Facility,
+        displayName: "Storage Facility",
+        mapIcon: MapIcon.Storage_Facility
+    },
+    {
+        tag: MapIconTag.Seaport,
+        displayName: "Seaport",
+        mapIcon: MapIcon.Seaport
+    },
+    {
+        tag: MapIconTag.Factory,
+        displayName: "Factory",
+        mapIcon: MapIcon.Factory
+    },
+    {
+        tag: MapIconTag.Mass_Production_Factory,
+        displayName: "Mass Production Factory",
+        mapIcon: MapIcon.Mass_Production_Factory
+    },
+    {
+        tag: MapIconTag.Refinery,
+        displayName: "Refinery",
+        mapIcon: MapIcon.Refinery
+    },
+    {
+        tag: MapIconTag.Vehicle_Factory,
+        displayName: "Vehicle Factory",
+        mapIcon: MapIcon.Vehicle_Factory
+    },
+    {
+        tag: MapIconTag.Shipyard,
+        displayName: "Shipyard",
+        mapIcon: MapIcon.Shipyard
+    },
+    {
+        tag: MapIconTag.Construction_Yard,
+        displayName: "Construction Yard",
+        mapIcon: MapIcon.Construction_Yard
+    },
+    {
+        tag: MapIconTag.Resource_Salvage,
+        displayName: "Salvage",
+        mapIcon: MapIcon.Salvage_Field
+    },
+    {
+        tag: MapIconTag.Resource_Component,
+        displayName: "Component",
+        mapIcon: MapIcon.Component_Field
+    },
+    {
+        tag: MapIconTag.Resource_Fuel,
+        displayName: "Fuel",
+        mapIcon: MapIcon.Fuel_Field
+    },
+    {
+        tag: MapIconTag.Resource_Sulfur,
+        displayName: "Sulfur",
+        mapIcon: MapIcon.Sulfur_Field
+    },
+    {
+        tag: MapIconTag.Resource_Coal,
+        displayName: "Coal",
+        mapIcon: MapIcon.Coal_Field
+    },
+    {
+        tag: MapIconTag.Resource_Oil,
+        displayName: "Oil",
+        mapIcon: MapIcon.Oil_Field
+    },
+    {
+        tag: MapIconTag.Storm_Cannon, 
+        displayName: "Storm Cannon",
+        mapIcon: MapIcon.Storm_Cannon
+    },
+    {
+        tag: MapIconTag.Coastal_Gun,
+        displayName: "Coastal Gun",
+        mapIcon: MapIcon.Coastal_Gun
+    },
+    {
+        tag: MapIconTag.Mortar_House,
+        displayName: "Mortar House",
+        mapIcon: MapIcon.Mortar_House
+    },
+    {
+        tag: MapIconTag.Rocket_Site,
+        displayName: "Rocket Site",
+        mapIcon: MapIcon.Rocket_Site
+    },
+    {
+        tag: MapIconTag.Rocket_Site_With_Rocket,
+        displayName: "Rocket Site Armed",
+        mapIcon: MapIcon.Rocket_Site_With_Rocket
+    },
+    {
+        tag: MapIconTag.Rocket_Target,
+        displayName: "Rocket Target",
+        mapIcon: MapIcon.Rocket_Target
+    },
+    {
+        tag: MapIconTag.Rocket_Ground_Zero,
+        displayName: "Rocket Ground Zero",
+        mapIcon: MapIcon.Rocket_Ground_Zero
+    },
+    {
+        tag: MapIconTag.Intel_Center, 
+        displayName: "Intel Center",
+        mapIcon: MapIcon.Intel_Center
+    },
+    {        
+        tag: MapIconTag.Weather_Station,
+        displayName: "Weather Station",
+        mapIcon: MapIcon.Weather_Station
+    },
+    {
+        tag: MapIconTag.Tech_Center,
+        displayName: "Tech Center",
+        mapIcon: MapIcon.Tech_Center
+    },
+    {
+        tag: MapIconTag.Observation_Tower,
+        displayName: "Observation Tower",
+        mapIcon: MapIcon.Observation_Tower
+    }
+];
+
+export function getMapTag(tag: MapIconTag): MapTagStruct | undefined {
+    return mapTags.find(t => t.tag === tag);
+}
+
+export function getMapTags(): Array<MapTagStruct> {
+    return mapTags;
+}
+
 const MapTagHierarchy = {
     Bases: [MapIconTag.Base_Town, MapIconTag.Base_Relic, MapIconTag.Base_Keep, MapIconTag.Base_Fort, MapIconTag.Base_Garrison, MapIconTag.Base_Hospital, MapIconTag.Base_Forward, MapIconTag.Base_Ship],
-    Logistics: [
-        { Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport] },
-        { Production: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory, MapIconTag.Refinery] },
-        { Construction: [MapIconTag.Vehicle_Factory, MapIconTag.Shipyard, MapIconTag.Construction_Yard] },
-    ],    
+    Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport],
+    Production: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory, MapIconTag.Refinery],
+    Construction: [MapIconTag.Vehicle_Factory, MapIconTag.Shipyard, MapIconTag.Construction_Yard],
     Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Fuel, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
-    Emplacements: [
-        { Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House] },
-        { Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero] },
-    ],
+    Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House],
     Utility: [MapIconTag.Intel_Center, MapIconTag.Weather_Station, MapIconTag.Tech_Center, MapIconTag.Observation_Tower],
-
+    Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero],
 }
 
 const mapIcons: Array<MapIconStruct> = [

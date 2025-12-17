@@ -31,7 +31,7 @@ export default function App() {
         warNumber={warState?.warNumber}
         className="visible absolute top-0 inset-x-3 z-[1000] hidden"
       />
-      <aside className="w-full md:w-[28rem] bg-gray-800 border-r border-gray-700 flex flex-col absolute -left-full md:relative md:left-0 z-[500]">
+      <aside className="w-full md:w-[40rem] bg-gray-800 border-r border-gray-700 flex flex-col absolute -left-full md:relative md:left-0 z-[500]">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold">Foxhole Reporter</h1>
           <p className="text-xs text-gray-400">Live territory & logistics overlays</p>
@@ -46,10 +46,10 @@ export default function App() {
           <ReportModes />
         </div>
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-1/2 overflow-y-auto">
+          <div className="w-2/3 overflow-y-auto">
             <LayerTogglePanel />
           </div>
-          <div className="w-1/2 overflow-y-auto">
+          <div className="w-1/3 overflow-y-auto">
             <JobViewPanel />
           </div>
         </div>

@@ -2,9 +2,8 @@ import { create } from 'zustand';
 import {
   LayerKey,
   LayerState,
-  allLayerKeys,
   getChildren,
-  getDescendants,
+  getAncestors,
   getDefaultLayerState,
 } from './layers';
 
@@ -16,9 +15,7 @@ interface MapState {
   activeLayers: LayerState;
   toggleLayer: (key: LayerKey) => void;
   setLayers: (layers: Partial<LayerState>) => void;
-  setStructureLayers: (on: boolean) => void;
-  setResourceLayers: (on: boolean) => void;
-  layerSnapshots: Record<string, Record<string, boolean> | undefined>;
+  setAllLayers: (on: boolean) => void;
   activeJobViewId: string | null;
   previousLayersSnapshot: LayerState | null;
   setActiveJobView: (viewId: string | null) => void;
@@ -34,49 +31,36 @@ const defaultLayers: LayerState = getDefaultLayerState();
 
 export const useMapStore = create<MapState>((set, get) => ({
   activeLayers: defaultLayers,
-  layerSnapshots: {},
   toggleLayer: (key) => set((s) => {
     const hasChildren = getChildren(key).length > 0;
     const currentlyOn = !!s.activeLayers[key];
     if (!hasChildren) {
-      return { activeLayers: { ...s.activeLayers, [key]: !currentlyOn } };
-    }
-
-    // Parent toggle logic with child-state snapshot
-    const descendants = getDescendants(key);
-    const nextActiveLayers: LayerState = { ...s.activeLayers };
-    const nextSnapshots = { ...s.layerSnapshots } as Record<string, Record<string, boolean> | undefined>;
-
-    if (currentlyOn) {
-      // turning off: snapshot descendant states
-      const snap: Record<string, boolean> = {};
-      descendants.forEach((d) => { snap[d] = s.activeLayers[d]; });
-      nextSnapshots[key] = snap;
-      nextActiveLayers[key] = false;
-      return { activeLayers: nextActiveLayers, layerSnapshots: nextSnapshots };
-    } else {
-      // turning on: restore snapshot if any descendant was on, else turn all descendants on
-      const snap = nextSnapshots[key];
-      const anyOn = snap ? Object.values(snap).some(Boolean) : false;
-      nextActiveLayers[key] = true;
-      if (anyOn && snap) {
-        descendants.forEach((d) => { nextActiveLayers[d] = snap[d] ?? true; });
-      } else {
-        descendants.forEach((d) => { nextActiveLayers[d] = true; });
+      const turningOn = !currentlyOn;
+      const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: !currentlyOn };
+      if (turningOn) {
+        getAncestors(key).forEach((ancestor) => {
+          nextActiveLayers[ancestor] = true;
+        });
       }
-      nextSnapshots[key] = undefined;
-      return { activeLayers: nextActiveLayers, layerSnapshots: nextSnapshots };
+      return { activeLayers: nextActiveLayers };
     }
+
+    const children = getChildren(key);
+    const turnOn = !currentlyOn;
+    const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: turnOn };
+    children.forEach((child) => { nextActiveLayers[child] = turnOn; });
+    return { activeLayers: nextActiveLayers };
   }),
   setLayers: (layers) => set((s) => ({ activeLayers: { ...s.activeLayers, ...layers } as LayerState })),
-  setStructureLayers: (on) => set((s) => {
+  setAllLayers: (on) => set((s) => {
     const updates: Partial<LayerState> = {};
-    getDescendants('structures').concat(['structures']).forEach((k) => { updates[k] = on; });
-    return { activeLayers: { ...s.activeLayers, ...updates } as LayerState };
-  }),
-  setResourceLayers: (on) => set((s) => {
-    const updates: Partial<LayerState> = {};
-    getDescendants('resources').concat(['resources']).forEach((k) => { updates[k] = on; });
+    const allKeys: LayerKey[] = [
+      'territories',
+      'majorLocations',
+      'minorLocations',
+      ...Object.keys(s.activeLayers),
+    ];
+    allKeys.forEach((k) => { updates[k] = on; });
     return { activeLayers: { ...s.activeLayers, ...updates } as LayerState };
   }),
   activeJobViewId: null,

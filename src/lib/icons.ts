@@ -21,6 +21,20 @@ export function getIconSprite(iconType: number, owner?: string): { spritePath: s
   };
 }
 
+export function getIconSpriteFromFilename(filename: string): { spritePath: string; position: string; size: number } | null {
+  const iconName = filename.replace('.png', '');
+
+  if (!hasIconInSprite(iconName)) {
+    return null;
+  }
+  
+  return {
+    spritePath: ICON_SPRITE_PATH,
+    position: getIconSpritePosition(iconName),
+    size: ICON_SIZE
+  };
+}
+
 // Legacy function for backward compatibility - returns individual icon URL
 // This will be used as fallback if sprite lookup fails
 export function getIconUrl(iconType: number, owner?: string): string {
@@ -85,7 +99,7 @@ function heuristicWikiSlug(name: string): string {
   return cleaned;
 }
 
-export function getIconSize(iconType: number): [number, number] {
+export function getIconSize(iconType?: number): [number, number] {
   // All icons are standardized to ICON_SIZE in the sprite atlas
   // Adjust specific icons if needed for special cases
   return [ICON_SIZE, ICON_SIZE];
