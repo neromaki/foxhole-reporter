@@ -350,476 +350,482 @@ export const ICON_SPRITE_METADATA: Record<string, IconSpriteCoords> = {
     "width": 32,
     "height": 32
   },
-  "MapIconRelicBase": {
+  "MapIconOilWell": {
     "x": 238,
+    "y": 102,
+    "width": 32,
+    "height": 32
+  },
+  "MapIconRelicBase": {
+    "x": 272,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRelicBaseColonial": {
-    "x": 272,
+    "x": 306,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRelicBaseWarden": {
-    "x": 306,
+    "x": 340,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketGroundZero": {
-    "x": 340,
+    "x": 374,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketGroundZeroColonial": {
-    "x": 374,
+    "x": 408,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketGroundZeroWarden": {
-    "x": 408,
+    "x": 442,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSite": {
-    "x": 442,
+    "x": 476,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSiteColonial": {
-    "x": 476,
+    "x": 510,
     "y": 102,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSiteWarden": {
-    "x": 510,
-    "y": 102,
+    "x": 0,
+    "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSiteWithRocket": {
-    "x": 0,
+    "x": 34,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSiteWithRocketColonial": {
-    "x": 34,
+    "x": 68,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketSiteWithRocketWarden": {
-    "x": 68,
+    "x": 102,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketTarget": {
-    "x": 102,
+    "x": 136,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketTargetColonial": {
-    "x": 136,
+    "x": 170,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconRocketTargetWarden": {
-    "x": 170,
+    "x": 204,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSafehouse": {
-    "x": 204,
+    "x": 238,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSafehouseColonial": {
-    "x": 238,
+    "x": 272,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSafehouseWarden": {
-    "x": 272,
+    "x": 306,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSalvage": {
-    "x": 306,
+    "x": 340,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSalvageMine": {
-    "x": 340,
+    "x": 374,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconScorchedTown": {
-    "x": 374,
+    "x": 408,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconScorchedTownColonial": {
-    "x": 408,
+    "x": 442,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconScorchedTownWarden": {
-    "x": 442,
+    "x": 476,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSeaport": {
-    "x": 476,
+    "x": 510,
     "y": 136,
     "width": 32,
     "height": 32
   },
   "MapIconSeaportColonial": {
-    "x": 510,
-    "y": 136,
+    "x": 0,
+    "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconSeaportWarden": {
-    "x": 0,
+    "x": 34,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconShipyard": {
-    "x": 34,
+    "x": 68,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconShipyardColonial": {
-    "x": 68,
+    "x": 102,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconShipyardWarden": {
-    "x": 102,
+    "x": 136,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase1": {
-    "x": 136,
+    "x": 170,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase1Colonial": {
-    "x": 170,
+    "x": 204,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase1Warden": {
-    "x": 204,
+    "x": 238,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase2": {
-    "x": 238,
+    "x": 272,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase2Colonial": {
-    "x": 272,
+    "x": 306,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase2Warden": {
-    "x": 306,
+    "x": 340,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase3": {
-    "x": 340,
+    "x": 374,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase3Colonial": {
-    "x": 374,
+    "x": 408,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStaticBase3Warden": {
-    "x": 408,
+    "x": 442,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStorageFacility": {
-    "x": 442,
+    "x": 476,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStorageFacilityColonial": {
-    "x": 476,
+    "x": 510,
     "y": 170,
     "width": 32,
     "height": 32
   },
   "MapIconStorageFacilityWarden": {
-    "x": 510,
-    "y": 170,
+    "x": 0,
+    "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconStormCannon": {
-    "x": 0,
+    "x": 34,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconStormCannonColonial": {
-    "x": 34,
+    "x": 68,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconStormCannonWarden": {
-    "x": 68,
+    "x": 102,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconSulfur": {
-    "x": 102,
+    "x": 136,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconSulfurMine": {
-    "x": 136,
+    "x": 170,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconSupplies": {
-    "x": 170,
+    "x": 204,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconSuppliesColonial": {
-    "x": 204,
+    "x": 238,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconSuppliesWarden": {
-    "x": 238,
+    "x": 272,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTechCenter": {
-    "x": 272,
+    "x": 306,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTechCenterColonial": {
-    "x": 306,
+    "x": 340,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTechCenterWarden": {
-    "x": 340,
+    "x": 374,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier1": {
-    "x": 374,
+    "x": 408,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier1Colonial": {
-    "x": 408,
+    "x": 442,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier1Warden": {
-    "x": 442,
+    "x": 476,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier2": {
-    "x": 476,
+    "x": 510,
     "y": 204,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier2Colonial": {
-    "x": 510,
-    "y": 204,
+    "x": 0,
+    "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier2Warden": {
-    "x": 0,
+    "x": 34,
     "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier3": {
-    "x": 34,
+    "x": 68,
     "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier3Colonial": {
-    "x": 68,
+    "x": 102,
     "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownBaseTier3Warden": {
-    "x": 102,
+    "x": 136,
     "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownHall": {
-    "x": 136,
+    "x": 170,
     "y": 238,
     "width": 32,
     "height": 32
   },
   "MapIconTownHallColonial": {
-    "x": 170,
-    "y": 238,
-    "width": 32,
-    "height": 32
-  },
-  "MapIconTownHallWarden": {
     "x": 204,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconTroopShip": {
+  "MapIconTownHallWarden": {
     "x": 238,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconTroopShipColonial": {
+  "MapIconTroopShip": {
     "x": 272,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconTroopShipWarden": {
+  "MapIconTroopShipColonial": {
     "x": 306,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVehicle": {
+  "MapIconTroopShipWarden": {
     "x": 340,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVehicleColonial": {
+  "MapIconVehicle": {
     "x": 374,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVehicleWarden": {
+  "MapIconVehicleColonial": {
     "x": 408,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVictory": {
+  "MapIconVehicleWarden": {
     "x": 442,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVictoryColonial": {
+  "MapIconVictory": {
     "x": 476,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconVictoryWarden": {
+  "MapIconVictoryColonial": {
     "x": 510,
     "y": 238,
     "width": 32,
     "height": 32
   },
-  "MapIconWeatherStation": {
+  "MapIconVictoryWarden": {
     "x": 0,
     "y": 272,
     "width": 32,
     "height": 32
   },
-  "MapIconWeatherStationColonial": {
+  "MapIconWeatherStation": {
     "x": 34,
     "y": 272,
     "width": 32,
     "height": 32
   },
-  "MapIconWeatherStationWarden": {
+  "MapIconWeatherStationColonial": {
     "x": 68,
     "y": 272,
     "width": 32,
     "height": 32
   },
-  "MapIconWorkshop": {
+  "MapIconWeatherStationWarden": {
     "x": 102,
     "y": 272,
     "width": 32,
     "height": 32
   },
-  "MapIconWorkshopColonial": {
+  "MapIconWorkshop": {
     "x": 136,
     "y": 272,
     "width": 32,
     "height": 32
   },
-  "MapIconWorkshopWarden": {
+  "MapIconWorkshopColonial": {
     "x": 170,
+    "y": 272,
+    "width": 32,
+    "height": 32
+  },
+  "MapIconWorkshopWarden": {
+    "x": 204,
     "y": 272,
     "width": 32,
     "height": 32

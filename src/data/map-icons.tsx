@@ -330,7 +330,7 @@ const MapTagHierarchy = {
     Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport],
     Production: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory, MapIconTag.Refinery],
     Construction: [MapIconTag.Vehicle_Factory, MapIconTag.Shipyard, MapIconTag.Construction_Yard],
-    Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Fuel, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
+    Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
     Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House],
     Utility: [MapIconTag.Intel_Center, MapIconTag.Weather_Station, MapIconTag.Tech_Center, MapIconTag.Observation_Tower],
     Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero],
@@ -445,7 +445,8 @@ const mapIcons: Array<MapIconStruct> = [
             MapIconTag.Base,
             MapIconTag.Spawn,
             MapIconTag.Storage,
-            MapIconTag.Garrison_Station
+            MapIconTag.Base_Garrison,
+            MapIconTag.Garrison_Station,
         ]
     },
     {
@@ -457,6 +458,7 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
+            MapIconTag.Base_Hospital,
             MapIconTag.Hospital
         ]
     },
@@ -831,7 +833,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Rocket_Site_With_Rocket,
         "apiName": "Rocket Site With Rocket",
-        "iconFileName": "RocketSiteArmed",
+        "iconFileName": "RocketSiteWithRocket",
         "displayName": "Rocket Site With Rocket",
         "wikiPage": "Rocket_Site",
         "tags": [
