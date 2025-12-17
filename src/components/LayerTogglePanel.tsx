@@ -12,12 +12,11 @@ import { getIconSprite, iconTypeToFilename, getMapIcon, getIconSize, getIconUrl 
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import { MapIconTag, getMapTag } from '../data/map-icons';
 
-type NonTreeLayerKey = 'territories' | 'majorLocations' | 'minorLocations';
+type NonTreeLayerKey = 'territories' | 'majorLocations';
 
 const otherLabels: Record<NonTreeLayerKey, string> = {
   territories: 'Territories',
   majorLocations: 'Major locations',
-  minorLocations: 'Minor locations',
 };
 
 function indicatorClass(state: LayerVisualState) {
@@ -91,15 +90,12 @@ export default function LayerTogglePanel() {
         </ul>
       </div>
 
-      <div className="h-px bg-gray-800"></div>
 
       <div className="space-y-2">
         <ul className="space-y-1">
           <TreeToggle node={resourcesRoot} depth={0} />
         </ul>
       </div>
-
-      <div className="h-px bg-gray-800"></div>
 
       <ul className="space-y-2">
         {(Object.keys(otherLabels) as Array<keyof typeof otherLabels>).map((k) => {
