@@ -165,6 +165,15 @@ export interface StaticMapData {
   version: number;
 }
 
+export interface WarReport {
+  region: string;
+  totalEnlistments: number;
+  colonialCasualties: number;
+  wardenCasualties: number;
+  dayOfWar: number;
+  version: number;
+}
+
 export async function fetchWarState(): Promise<WarState> {
   const url = `${WAR_API_BASE}/worldconquest/war`;
   return fetchJsonWithCache<WarState>(url);
@@ -183,4 +192,10 @@ export async function fetchDynamicMap(mapName: string): Promise<DynamicMapData> 
 export async function fetchStaticMap(mapName: string): Promise<StaticMapData> {
   const url = `${WAR_API_BASE}/worldconquest/maps/${mapName}/static`;
   return fetchJsonWithCache<StaticMapData>(url);
+}
+
+export async function fetchWarReport(mapName: string): Promise<WarReport> {
+  const res = await fetch(`${WAR_API_BASE}/worldconquest/warReport/${mapName}`);
+  if (!res.ok) throw new Error(`War report fetch failed for ${mapName}`);
+  return res.json();
 }

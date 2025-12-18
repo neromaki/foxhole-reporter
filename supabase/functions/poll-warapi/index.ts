@@ -5,7 +5,7 @@ import { getServiceClient } from '../../../src/lib/supabaseClient.ts';
 declare const Deno: any;
 
 // Import shared WarAPI helpers to avoid duplication.
-import { fetchWarState, fetchMapList, fetchDynamicMap, DynamicMapItem } from '../../../src/lib/warApi.ts';
+import { fetchWarState, fetchMapList, fetchDynamicMap, fetchWarReport, DynamicMapItem, WarReport } from '../../../src/lib/warApi.ts';
 
 // Owner mapping from WarAPI teamId to string.
 function ownerMap(teamId: string): 'Colonial' | 'Warden' | 'Neutral' {
@@ -38,6 +38,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const territories: TerritoryItem[] = [];
+    const reports: WarReport[] = [];
+    let dayOfWar = 0;
     
     for (const mapName of validMaps) {
       try {
@@ -58,10 +60,28 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    for(const mapName of validMaps) {
+      try {
+        const report = await fetchWarReport(mapName);
+          reports.push({
+            region: mapName,
+            totalEnlistments: report.totalEnlistments,
+            colonialCasualties: report.colonialCasualties,
+            wardenCasualties: report.wardenCasualties,
+            dayOfWar: report.dayOfWar,
+            version: report.version
+          });
+          if(dayOfWar == 0) dayOfWar = report.dayOfWar;
+      } catch (e) {
+        console.error('War report failed', mapName, e);
+      }
+    }
+
     const { error } = await supabase.from('snapshots').insert({
       war_number: war.warNumber,
-      day_number: 0, // Not available from /war endpoint; could fetch per-map if needed
-      territories
+      day_number: dayOfWar, // Not available from /war endpoint; could fetch per-map if needed
+      territories,
+      reports
     });
     if (error) throw error;
 

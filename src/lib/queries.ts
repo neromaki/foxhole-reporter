@@ -46,9 +46,13 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
 
       DEBUG_MODE ?? console.log('[Queries] Fetching latest snapshot from supabase (cache miss or stale)');
       try {
+        const war = await fetchWarState();
+        const currentWarNumber = war?.warNumber ?? null;
+        
         const { data, error } = await supabase
           .from('snapshots')
           .select('*')
+          .eq('war_number', currentWarNumber != null ? currentWarNumber : 0)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
