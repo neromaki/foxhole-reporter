@@ -63,16 +63,20 @@ export default function MapView() {
       DEBUG_MODE ?? console.log('[MapView] Sample locations:', snapshot.territories[0]);
     }
   }, [snapshot, activeLayers.structures]);
+  
 
 
   return (
     <MapContainer
       center={[0, 0] as [number, number]} 
-      zoom={MAP_MIN_ZOOM}
+      zoom={-1}
       minZoom={MAP_MIN_ZOOM}
       maxZoom={MAP_MAX_ZOOM}
       crs={CRS.Simple}
       zoomControl={false}
+      zoomSnap={0.1}
+      zoomDelta={0.5}
+      wheelPxPerZoomLevel={250}
       className="h-full w-full bg-gray-900"
     >
       <ZoomControls />
@@ -177,6 +181,7 @@ function LocationsLayer({
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
+  
 
   // Verbose zoom event logging to trace hitch points
   React.useEffect(() => {

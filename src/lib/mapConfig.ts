@@ -14,7 +14,7 @@ export const SHOW_WEEKLY_REPORT = false; // Whether to show weekly territory cha
 export const ZOOM_THROTTLE_MS = 100; // Only used when mode is 'throttle'
 
 // Debug performance overlay flag
-export const DEBUG_PERF_OVERLAY = true; // set false to disable runtime perf panel
+export const DEBUG_PERF_OVERLAY = false; // set false to disable runtime perf panel
 
 // Reports
 export const TERRITORY_NORMAL_OPACITY = 0.5;

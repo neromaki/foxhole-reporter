@@ -167,15 +167,20 @@ export function isResourceLayerKey(key: LayerKey): boolean {
 
 export function getDefaultLayerState(): LayerState {
   const state: LayerState = {
+    structures: true,
     territories: true,
     majorLocations: true,
-    minorLocations: true,
   } as LayerState;
 
   // Structures default on
   getDescendants('structures').concat(['structures']).forEach(k => {
-    state[k] = true;
+    state[k] = false;
   });
+
+  state['structures'] = true;
+  state['structures.bases'] = true;
+  state['structures.bases.Base_Town'] = true;
+  state['structures.bases.Base_Relic'] = true;
 
   // Resources default off (parent and children)
   state['resources'] = false;
