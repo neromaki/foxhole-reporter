@@ -170,6 +170,7 @@ export function getDefaultLayerState(): LayerState {
     structures: true,
     territories: true,
     majorLocations: true,
+    casualties: true,
   } as LayerState;
 
   // Structures default on

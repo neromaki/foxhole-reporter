@@ -195,7 +195,6 @@ export async function fetchStaticMap(mapName: string): Promise<StaticMapData> {
 }
 
 export async function fetchWarReport(mapName: string): Promise<WarReport> {
-  const res = await fetch(`${WAR_API_BASE}/worldconquest/warReport/${mapName}`);
-  if (!res.ok) throw new Error(`War report fetch failed for ${mapName}`);
-  return res.json();
+  const url = `${WAR_API_BASE}/worldconquest/warReport/${mapName}`;
+  return fetchJsonWithCache<WarReport>(url);
 }

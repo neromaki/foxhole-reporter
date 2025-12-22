@@ -1,8 +1,11 @@
 // Map display configuration constants
+export const MAP_MIN_ZOOM = -1.5;           // Minimum zoom level for the map (allow farther zoom-out)
+export const MAP_MAX_ZOOM = 3;              // Maximum zoom level for the map
+
+// Auto-show/hide overlays at zoom levels
 export const MINOR_LABEL_MIN_ZOOM = 3; // Minor labels appear at or above this zoom level
-export const MAJOR_LABEL_MIN_ZOOM = 1; // Major labels appear at or above this zoom level
-export const MAP_MIN_ZOOM = -2;         // Minimum zoom level for the map (allow farther zoom-out)
-export const MAP_MAX_ZOOM = 3;        // Maximum zoom level for the map
+export const MAJOR_LABEL_MIN_ZOOM = 0.5; // Major labels appear at or above this zoom level
+export const CASUALTIES_MAX_ZOOM = 0.5; // Casualty overlays appear at or below this zoom level
 
 // Data source configuration - change this to switch between WarAPI (live) and Supabase (snapshots)
 export type DataSourceType = 'warapi' | 'supabase';
@@ -17,6 +20,7 @@ export const ZOOM_THROTTLE_MS = 100; // Only used when mode is 'throttle'
 export const DEBUG_PERF_OVERLAY = false; // set false to disable runtime perf panel
 
 // Reports
+export const TERRITORY_OVERVIEW_OPACITY = 0.7;
 export const TERRITORY_NORMAL_OPACITY = 0.5;
 export const TERRITORY_REPORT_UNAFFECTED_OPACITY = 0.25;
 export const TERRITORY_REPORT_AFFECTED_OPACITY = 0.7;

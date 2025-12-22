@@ -192,3 +192,25 @@ export function useSnapshotsSince(hours: number, options?: { enabled?: boolean }
     staleTime: 60_000,
   });
 }
+
+// Fetch the latest N snapshots (ordered newest-first) for cases where a previous snapshot is needed
+export function useLatestSnapshots(count: number, options?: { enabled?: boolean }) {
+  return useQuery<Snapshot[]>({
+    queryKey: ['latestSnapshots', count],
+    enabled: (options?.enabled ?? true) && !!supabase,
+    queryFn: async () => {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('snapshots')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(count);
+      if (error) {
+        console.error('[Queries] latestSnapshots error:', error);
+        throw error;
+      }
+      return ((data ?? []) as unknown as Snapshot[]).map(snapshot => quantizeSnapshot(snapshot));
+    },
+    staleTime: 60_000,
+  });
+}

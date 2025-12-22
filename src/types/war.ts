@@ -14,6 +14,7 @@ export interface Snapshot {
   war_number: number;
   day_number: number;
   territories: LocationTile[];
+  reports?: WarReport[];
 }
 
 export interface TerritoryDiffEntry {
@@ -36,4 +37,13 @@ export interface War {
   war_start_time: Date;
   war_end_time: Date;
   required_victory_towns: number;
+}
+
+export interface WarReport {
+  region: string;
+  version: number;
+  dayOfWar: number;
+  totalEnlistments: number;
+  wardenCasualties: number;
+  colonialCasualties: number;
 }

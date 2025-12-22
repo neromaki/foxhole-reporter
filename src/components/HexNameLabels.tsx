@@ -18,7 +18,6 @@ export default function HexNameLabels() {
 
   return (
     <LayerGroup>
-      <Pane name="hex-name-pane" style={{ zIndex: 600 }} />
       {HEX_LAYOUT.map((hex) => {
         const [[south, west], [north, east]] = hexToLeafletBounds(hex);
         const centerLat = (south + north) / 2;
@@ -36,7 +35,7 @@ export default function HexNameLabels() {
             position={[centerLat, centerLng]}
             icon={icon}
             interactive={false}
-            pane="hex-name-pane"
+            pane="hex-info-pane"
           />
         );
       })}

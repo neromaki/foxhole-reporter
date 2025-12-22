@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { MapContainer, LayerGroup, Marker, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
+import { MapContainer, LayerGroup, Marker, useMap, useMapEvents, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSnapshot, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
+import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
@@ -10,11 +10,11 @@ import HexTileLayer from './HexTileLayer';
 import HexNameLabels from './HexNameLabels';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import TerritorySubregionLayer from './TerritorySubregionLayer';
-import { getHexByApiName } from '../lib/hexLayout';
+import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
 import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
-import type { LocationTile, Snapshot } from '../types/war';
+import type { LocationTile, Snapshot, WarReport } from '../types/war';
 import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
@@ -24,12 +24,14 @@ import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
+import HexInfoLayer from './HexInfo';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
   const { data: supabaseSnapshot } = useLatestSnapshot({ enabled: DATA_SOURCE === 'supabase' });
   const { data: warApiSnapshot } = useWarApiDirect({ enabled: DATA_SOURCE === 'warapi' });
   const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
+  const { data: latestTwoSnapshots } = useLatestSnapshots(2, { enabled: DATA_SOURCE === 'supabase' });
   
   const { data: dailyDiff } = useTerritoryDiff('daily');
   const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
@@ -54,6 +56,17 @@ export default function MapView() {
     return { ...activeLayers, structures: false, territories: true } as typeof activeLayers;
   }, [activeLayers, reportMode]);
 
+  // Track previous WarAPI reports for rate computation in live mode
+  const lastWarApiRef = useRef<{ reports: WarReport[]; fetchedAt: number } | null>(null);
+  const prevWarApiRef = useRef<{ reports: WarReport[]; fetchedAt: number } | null>(null);
+  useEffect(() => {
+    if (!warApiSnapshot?.reports) return;
+    if (lastWarApiRef.current) {
+      prevWarApiRef.current = lastWarApiRef.current;
+    }
+    lastWarApiRef.current = { reports: warApiSnapshot.reports, fetchedAt: warApiSnapshot.fetchedAt ?? Date.now() };
+  }, [warApiSnapshot?.reports, warApiSnapshot?.fetchedAt]);
+
   useEffect(() => {
     DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
     DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
@@ -63,6 +76,35 @@ export default function MapView() {
       DEBUG_MODE ?? console.log('[MapView] Sample locations:', snapshot.territories[0]);
     }
   }, [snapshot, activeLayers.structures]);
+
+  const previousSupabaseSnapshot = useMemo(() => {
+    if (!latestTwoSnapshots || latestTwoSnapshots.length < 2) return null;
+    return latestTwoSnapshots[1];
+  }, [latestTwoSnapshots]);
+
+  const currentReports = (snapshot as any)?.reports as WarReport[] | undefined;
+  const currentTimestamp = useMemo(() => {
+    if (DATA_SOURCE === 'supabase') {
+      const createdAt = (snapshot as any)?.created_at;
+      return createdAt ? new Date(createdAt).getTime() : null;
+    }
+    return (snapshot as any)?.fetchedAt ?? null;
+  }, [snapshot]);
+
+  const previousReports = useMemo(() => {
+    if (DATA_SOURCE === 'supabase') {
+      return (previousSupabaseSnapshot as any)?.reports as WarReport[] | undefined;
+    }
+    return prevWarApiRef.current?.reports;
+  }, [previousSupabaseSnapshot]);
+
+  const previousTimestamp = useMemo(() => {
+    if (DATA_SOURCE === 'supabase') {
+      const createdAt = (previousSupabaseSnapshot as any)?.created_at;
+      return createdAt ? new Date(createdAt).getTime() : null;
+    }
+    return prevWarApiRef.current?.fetchedAt ?? null;
+  }, [previousSupabaseSnapshot]);
   
 
 
@@ -76,7 +118,7 @@ export default function MapView() {
       zoomControl={false}
       zoomSnap={0.1}
       zoomDelta={0.5}
-      wheelPxPerZoomLevel={250}
+      
       className="h-full w-full bg-gray-900"
     >
       <ZoomControls />
@@ -97,11 +139,17 @@ export default function MapView() {
           historyById={historyByTerritoryId}
         />
         <HexTileLayer />
+        <HexInfoLayer 
+          reports={currentReports}
+          previousReports={previousReports}
+          currentTimestamp={currentTimestamp}
+          previousTimestamp={previousTimestamp}
+          casualtiesVisible={!!effectiveLayers.casualties}
+        />
         <StaticLabelLayer 
           majorVisible={activeLayers.majorLocations}
           minorVisible={activeLayers.minorLocations && !activeJobViewId}
         />
-        <HexNameLabels />
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
     </MapContainer>
@@ -574,6 +622,7 @@ function LocationsLayer({
 
   return (
     <LayerGroup>
+      <Pane name="location-markers" style={{ zIndex: 450 }} />
       {visibleTerritories.map(({ t, lat, lng }, idx: number) => {
 
         const isVictoryBase = (t.flags & 0x01) !== 0;
@@ -608,12 +657,14 @@ function LocationsLayer({
                 }
               }
             }}
+            pane="location-markers"
           />
         );
       })}
     </LayerGroup>
   );
 }
+
 
 // Simple performance overlay to inspect marker counts and memory usage
 function PerfOverlay() {

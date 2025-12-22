@@ -15,11 +15,12 @@ import { useLatestSnapshot } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { DATA_SOURCE } from '../lib/mapConfig';
 
-type NonTreeLayerKey = 'territories' | 'majorLocations';
+type NonTreeLayerKey = 'territories' | 'majorLocations' | 'casualties';
 
 const otherLabels: Record<NonTreeLayerKey, string> = {
   territories: 'Territories',
   majorLocations: 'Major locations',
+  casualties: 'Casualties',
 };
 
 function indicatorClass(state: LayerVisualState) {

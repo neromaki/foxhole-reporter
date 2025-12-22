@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchMapList, fetchDynamicMap, DynamicMapItem } from '../warApi';
+import { fetchMapList, fetchDynamicMap, fetchWarReport, DynamicMapItem, WarReport } from '../warApi';
 import { DEBUG_MODE } from '../appConfig';
 
 interface TerritoryItem {
@@ -14,6 +14,8 @@ interface TerritoryItem {
 
 interface WarApiSnapshot {
   territories: TerritoryItem[];
+  reports: WarReport[];
+  fetchedAt: number;
 }
 
 function ownerMap(teamId: string): 'Colonial' | 'Warden' | 'Neutral' {
@@ -35,11 +37,15 @@ export function useWarApiDirect(options?: { enabled?: boolean }) {
       DEBUG_MODE ?? console.log('[useWarApiDirect] Valid maps:', validMaps);
 
       const territories: TerritoryItem[] = [];
+  const reports: WarReport[] = [];
+  const fetchedAt = Date.now();
 
       for (const mapName of validMaps) {
         try {
           DEBUG_MODE ?? console.log(`[useWarApiDirect] Fetching ${mapName}...`);
           const mapData = await fetchDynamicMap(mapName);
+          const report = await fetchWarReport(mapName);
+          reports.push({ ...report, region: mapName });
           
           for (const item of mapData.mapItems as DynamicMapItem[]) {
             territories.push({
@@ -59,7 +65,8 @@ export function useWarApiDirect(options?: { enabled?: boolean }) {
       }
 
       DEBUG_MODE ?? console.log('[useWarApiDirect] Total territories:', territories.length);
-      return { territories };
+      DEBUG_MODE ?? console.log('[useWarApiDirect] Total reports:', reports.length);
+      return { territories, reports, fetchedAt };
     },
     staleTime: 60000, // 1 minute
     refetchInterval: 300000 // 5 minutes
