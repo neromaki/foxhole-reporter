@@ -3,7 +3,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 interface SharedTooltipContextValue {
-  show(html: string, lat: number, lng: number, openDelay?: number, sticky?: boolean): void;
+  show(html: string, lat: number, lng: number, openDelay?: number, sticky?: boolean, interactive?: boolean): void;
   hide(closeDelay?: number): void;
 }
 
@@ -29,7 +29,7 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       direction: 'top',
       offset: [0, -10],
       className: 'shared-tooltip',
-      interactive: true,
+      interactive: false,
       sticky: true
     });
     tooltipRef.current = tooltip;

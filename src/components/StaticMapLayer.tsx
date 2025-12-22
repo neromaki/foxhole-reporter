@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayerGroup, Marker, useMap } from 'react-leaflet';
+import { LayerGroup, Marker, Pane, useMap } from 'react-leaflet';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import L from 'leaflet';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
@@ -93,6 +93,7 @@ export function StaticIconLayer({ visible }: { visible: boolean }) {
 
   return (
     <LayerGroup>
+      <Pane name="location-labels" style={{ zIndex: 450 }} />
       {visibleIcons.map(icon => {
         const [w, h] = getIconSize(icon.iconType);
         const sprite = getIconSprite(icon.iconType);
@@ -121,6 +122,7 @@ export function StaticIconLayer({ visible }: { visible: boolean }) {
               mouseover: () => handleMouseOver(icon),
               mouseout: handleMouseOut
             }}
+            pane="location-labels"
           />
         );
       })}
@@ -211,7 +213,7 @@ export function StaticLabelLayer({ majorVisible, minorVisible }: { majorVisible:
           const sizeClass = label.isMajor ? 'text-[13px] font-medium' : 'text-[9px] font-semibold';
           return (
             <Marker position={[label.lat, label.lng]} key={label.key} icon={L.divIcon({
-              className: `map-label map-label-major ${sizeClass}`,
+            className: `map-label map-label-major ${sizeClass} text-shadow-md`,
               html: `<span>${label.text}</span>`
             })} interactive={false} />
           );

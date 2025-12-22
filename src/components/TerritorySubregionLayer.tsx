@@ -3,7 +3,7 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM } from '../lib/mapConfig';
+import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY } from '../lib/mapConfig';
 import { useMapStore } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
@@ -134,7 +134,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
           highlighted,
           baseColor,
           baseOpacity,
-          stroke: '#0f172a',
+          stroke: 'hsla(0,0%,0%,0.4)',
           strokeWidth: 0.5,
           lat: projected ? projected[0] : undefined,
           lng: projected ? projected[1] : undefined,
@@ -214,7 +214,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         }
       }
     } 
-    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true);
+    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true, false);
   };
 
   if (!visible || !snapshot?.territories?.length) {
@@ -226,7 +226,10 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       {overlays.map((o) => (
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
           <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
-            <g id="Territories">
+            <path id="HexBorder" d="M384.425 1L512.845 222.001L385.423 443H128.577L1.15332 222L128.577 1H384.425Z" fill="none" stroke="hsla(0,0%,0%,0.8)" strokeWidth="2" />
+
+
+            <g id="Territories" className="transition-opacity duration-150">
               {o.paths.map((p) => {   
                 const affected = p.highlighted; 
                 const active = (hoveredId === p.territoryId || stickyId === p.territoryId);            
@@ -249,10 +252,15 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                   if (active) {
                     fill = tinycolor(p.baseColor).brighten(20).toString();
                   }
-                  fillOpacity = TERRITORY_NORMAL_OPACITY;
+                  if (zoom == MAP_MIN_ZOOM) {
+                    fillOpacity = TERRITORY_OVERVIEW_OPACITY;
+                  } else {
+                    fillOpacity = TERRITORY_NORMAL_OPACITY;
+                  }
                 }
                 
-                const interactive = reportModeActive ? p.highlighted ? true : false : true;
+                const interactive = reportModeActive ? p.highlighted ? true : false : true; 
+                
                 return (
                   <path
                     key={p.key}
@@ -266,7 +274,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     onMouseLeave={() => handleLeave(p)}
                     onClick={() => handleClick(p)}
                     onTouchStart={() => handleClick(p)}
-                    className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
                 );
               })}

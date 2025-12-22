@@ -10,7 +10,7 @@ export enum Teams {
 export enum Colors {
     Colonial = "#65875E",
     Warden = "#4A81B0",
-    Neutral = "#ffffff",
+    Neutral = "#ffffff33",
     Debug = "#ff00ff"
 }
 

@@ -63,8 +63,21 @@ export default function HexInfo({
               const prefix = rate.source === 'delta' ? '' : 'Avg ';
               casualtyLabelHtml = `
                 <div style="display:flex;flex-direction:column;align-items:center;text-align:left;font-weight:semi-bold;font-size:1rem;">
-                  <div style="display:flex;align-items:center"><img src="${Colonials?.icon}" alt="Colonial" style="height:1rem;width:1rem;margin-right:0.25rem" /><div><span style="margin-right:0.1rem;">${c}</span><span style="font-weight:normal;font-size:0.75rem">/hr</span></div></div>
-                  <div style="display:flex;align-items:center"><img src="${Wardens?.icon}" alt="Warden" style="height:1rem;width:1rem;margin-right:0.25rem" /><div><span style="margin-right:0.1rem;">${w}</span><span style="font-weight:normal;font-size:0.75rem">/hr</span></div></div>
+                  <div style="display:flex;align-items:center">
+                    <img src="${Colonials?.icon}" alt="Colonial" style="height:1rem;width:1rem;margin-right:0.25rem" />
+                    <div>
+                      <span style="margin-right:0.1rem;font-weight:normal;">${c}</span>
+                      <span style="font-weight:normal;font-size:0.75rem">/hr</span>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center">
+                    <img src="${Wardens?.icon}" alt="Warden" style="height:1rem;width:1rem;margin-right:0.25rem" />
+                    <div>
+                      <span style="margin-right:0.1rem;font-weight:normal;">${w}</span>
+                      <span style="font-weight:normal;font-size:0.75rem">/hr</span>
+                    </div>
+                  </div>
                 </div>`;
             }
           }
