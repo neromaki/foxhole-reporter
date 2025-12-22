@@ -12,6 +12,7 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { Colors, getTeamColors, getTeamIcon } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
+import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
@@ -28,6 +29,7 @@ interface Props {
   changedWeekly: Set<string>;
   visible: boolean;
   historyById: Map<string, TerritoryHistory>;
+  casualtyRates: ReturnType<typeof useCasualtyRates>;
 }
 
 interface PathInfo {
@@ -53,7 +55,7 @@ interface RegionOverlay {
   hasAnyTerritory?: boolean;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById }: Props) {
+export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
 
@@ -278,6 +280,30 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 );
               })}
             </g>
+            <g id="casualtyRate" opacity={(() => {
+              const rate = casualtyRates.getRate(o.region);
+              if (!rate) return 0;
+              const combined = rate.warden + rate.colonial;
+              if (combined <= 400) return 0;
+              if (combined <= 700) return 0.5;
+              if (combined <= 1000) return 0.7;
+              return 0.9;
+            })()} filter="url(#filter0_i_716_627)">
+              <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+            </g>
+            <defs>
+              <filter id="filter0_i_716_627" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                <feOffset />
+                <feGaussianBlur stdDeviation="32.5" />
+                <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
+                <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
+              </filter>
+            </defs>
+            
             {!o.hasAnyTerritory && (
               <image 
                 href={disabledHexOverlay} 

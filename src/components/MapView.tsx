@@ -4,6 +4,7 @@ import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
+import { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { useMapStore } from '../state/useMapStore';
 import { projectRegionPoint, WORLD_EXTENT } from '../lib/projection';
 import HexTileLayer from './HexTileLayer';
@@ -105,8 +106,14 @@ export default function MapView() {
     }
     return prevWarApiRef.current?.fetchedAt ?? null;
   }, [previousSupabaseSnapshot]);
-  
 
+  // Use the casualty rates hook to compute rates once and pass to components
+  const casualtyRates = useCasualtyRates(
+    currentReports,
+    previousReports,
+    currentTimestamp,
+    previousTimestamp
+  );
 
   return (
     <MapContainer
@@ -137,13 +144,11 @@ export default function MapView() {
           changedWeekly={changedWeekly}
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
+          casualtyRates={casualtyRates}
         />
         <HexTileLayer />
         <HexInfoLayer 
-          reports={currentReports}
-          previousReports={previousReports}
-          currentTimestamp={currentTimestamp}
-          previousTimestamp={previousTimestamp}
+          casualtyRates={casualtyRates}
           casualtiesVisible={!!effectiveLayers.casualties}
         />
         <StaticLabelLayer 
