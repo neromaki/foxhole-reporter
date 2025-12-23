@@ -63,7 +63,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
         <div className="flex h-full w-full justify-between">
           {counts.colonial > 0 && (
             <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.saturated }}>
-                <span className="text-lg font-semibold text-gray-200 text-left ml-2">{counts.colonial}</span>
+                <span className="text-lg font-semibold text-gray-200 text-left ml-2 victory-count">{counts.colonial}</span>
             </div>
           )}
           {scorchedVal > 0 && (
@@ -74,7 +74,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
           )}
           {counts.warden > 0 && (
             <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.saturated }}>
-                <span className="text-gray-200 text-right text-lg font-semibold mr-2">{counts.warden}</span>
+                <span className="text-gray-200 text-right text-lg font-semibold mr-2 victory-count">{counts.warden}</span>
             </div>
           )}
         </div>

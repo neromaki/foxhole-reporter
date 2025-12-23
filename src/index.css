@@ -9,6 +9,9 @@ html, body, #root { height: 100%; }
 .shared-tooltip { width: max-content; max-width: none; }
 svg { outline: none;}
 
+.victory-count {
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.4), 0 0 4px rgba(0, 0, 0, 0.4), 1px 1px 2px rgba(0, 0, 0, 0.4);
+}
 /* Icon sprite optimization */
 .icon-sprite-marker {
   image-rendering: -webkit-optimize-contrast;
