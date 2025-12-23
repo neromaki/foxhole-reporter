@@ -17,3 +17,17 @@ svg { outline: none;}
 .icon-sprite-marker > div {
   will-change: transform;
 }
+
+svg .hexCasualtyVisual {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+}

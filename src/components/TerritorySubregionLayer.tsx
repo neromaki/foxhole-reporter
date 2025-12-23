@@ -9,10 +9,11 @@ import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
 import { DEBUG_MODE } from '../lib/appConfig';
-import { Colors, getTeamColors, getTeamIcon } from '../data/teams';
+import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
+import { time } from 'console';
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
@@ -194,6 +195,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     const lines: string[] = [];
     lines.push(`<div class="font-semibold">${name}</div>`);
     lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}${reportModeActive ? ' gain' : ''}</div>`);
+    const events = hist?.events ?? [];
     if(reportModeActive) {
       if (reportMode == 'daily') {
         lines.push('<div class="mt-1 font-semibold">History:</div>');
@@ -215,7 +217,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
           });
         }
       }
-    } 
+    } else {
+      const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
+      if (timeLastCaptured >= 0) {
+        lines.push(`<div>Captured <span style="font-weight:bold;">${timeLastCaptured} hrs</span> ago</div>`)
+      }
+    }
     show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true, false);
   };
 
@@ -238,9 +245,13 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
                 let fill = p.baseColor;
                 let fillOpacity = p.baseOpacity;
+                let strokeWidth = p.strokeWidth;
 
                 if (reportModeActive) {
                   if (affected) {
+                    strokeWidth = 2;
+                    fill = tinycolor(p.baseColor).saturate(10).brighten(10).toString();
+
                     if (active) {
                       fill = tinycolor(p.baseColor).brighten(20).toString();
                       fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
@@ -270,39 +281,43 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     fill={fill}
                     fillOpacity={fillOpacity}
                     stroke={p.stroke}
-                    strokeWidth={p.strokeWidth}
+                    strokeWidth={strokeWidth}
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
                     onMouseEnter={() => handleHover(p)}
                     onMouseLeave={() => handleLeave(p)}
                     onClick={() => handleClick(p)}
                     onTouchStart={() => handleClick(p)}
+                    className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
                 );
               })}
             </g>
-            <g id="casualtyRate" opacity={(() => {
-              const rate = casualtyRates.getRate(o.region);
-              if (!rate) return 0;
-              const combined = rate.warden + rate.colonial;
-              if (combined <= 400) return 0;
-              if (combined <= 700) return 0.5;
-              if (combined <= 1000) return 0.7;
-              return 0.9;
-            })()} filter="url(#filter0_i_716_627)">
-              <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+            <g className="hexCasualtyVisual">
+              <g id="casualtyRate" opacity={(() => {
+                if (reportModeActive) return 0;
+                const rate = casualtyRates.getRate(o.region);
+                if (!rate) return 0;
+                const combined = rate.warden + rate.colonial;
+                if (combined <= 400) return 0;
+                if (combined <= 700) return 0.5;
+                if (combined <= 1000) return 0.7;
+                return 0.9;
+              })()} filter="url(#filter0_i_716_627)">
+                <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+              </g>
+              <defs>
+                <filter id="filter0_i_716_627" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                  <feOffset />
+                  <feGaussianBlur stdDeviation="32.5" />
+                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
+                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
+                </filter>
+              </defs>
             </g>
-            <defs>
-              <filter id="filter0_i_716_627" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
-                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                <feOffset />
-                <feGaussianBlur stdDeviation="32.5" />
-                <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
-                <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
-                <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
-              </filter>
-            </defs>
             
             {!o.hasAnyTerritory && (
               <image 
@@ -320,7 +335,22 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   );
 }
 
+function getTimeSinceLastCapture(events: TerritoryHistoryEntry[]): number | null {
+  if (events.length === 0) return null;
+  const latestEvent = getLatestCaptureEvent(events);
+  if (!latestEvent) return null;
+  return getHoursAgo(latestEvent.at) ?? -1;
+}
 
+function getLatestCaptureEvent(events: TerritoryHistoryEntry[]): TerritoryHistoryEntry | null {
+  return events.find((event) => event.owner != Teams.Neutral) || null;
+}
+
+
+function getHoursAgo(iso: string): number {
+  const diff = Date.now() - Date.parse(iso);
+  return Math.max(0, Math.round(diff / 3600000));
+}
 
 function formatTimeAgo(iso: string): string {
   const diff = Date.now() - Date.parse(iso);

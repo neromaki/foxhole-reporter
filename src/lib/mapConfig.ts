@@ -5,7 +5,7 @@ export const MAP_MAX_ZOOM = 3;              // Maximum zoom level for the map
 // Auto-show/hide overlays at zoom levels
 export const MINOR_LABEL_MIN_ZOOM = 3; // Minor labels appear at or above this zoom level
 export const MAJOR_LABEL_MIN_ZOOM = 0.5; // Major labels appear at or above this zoom level
-export const CASUALTIES_MAX_ZOOM = 0.5; // Casualty overlays appear at or below this zoom level
+export const CASUALTIES_MAX_ZOOM = MAP_MAX_ZOOM;//0.5; // Casualty overlays appear at or below this zoom level
 
 // Data source configuration - change this to switch between WarAPI (live) and Supabase (snapshots)
 export type DataSourceType = 'warapi' | 'supabase';
