@@ -199,12 +199,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     if(reportModeActive) {
       if (reportMode == 'daily') {
         lines.push('<div class="mt-1 font-semibold">History:</div>');
-        const events = hist?.events ?? [];
         if (events.length === 0) {
           lines.push(`<div class="flex">
                 <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
                 <span class="mr-2">${owner}</span>
-                <span>(24 hrs ago)</span>
+                <span>(>24 hrs ago)</span>
             </div>`);
         } else {
           events.forEach((ev) => {
@@ -241,34 +240,55 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
             <g id="Territories" className="transition-opacity duration-150">
               {o.paths.map((p) => {   
                 const affected = p.highlighted; 
-                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);            
+                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);  
+                const hist = historyById.get(p.territoryId || '');  
+                const events = hist?.events ?? [];
+                
+                const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
                 let fill = p.baseColor;
                 let fillOpacity = p.baseOpacity;
                 let strokeWidth = p.strokeWidth;
 
+                // Figure out opacities and colors based on report mode and state
                 if (reportModeActive) {
                   if (affected) {
                     strokeWidth = 2;
                     fill = tinycolor(p.baseColor).saturate(10).brighten(10).toString();
 
                     if (active) {
-                      fill = tinycolor(p.baseColor).brighten(20).toString();
+                      fill = tinycolor(fill).brighten(15).toString();
                       fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
                     } else {
+                      fill = tinycolor(fill).toString();
                       fillOpacity = TERRITORY_REPORT_AFFECTED_OPACITY;
                     }
                   } else {
                     fillOpacity = TERRITORY_REPORT_UNAFFECTED_OPACITY;
                   }
                 } else {
-                  if (active) {
-                    fill = tinycolor(p.baseColor).brighten(20).toString();
-                  }
                   if (zoom == MAP_MIN_ZOOM) {
                     fillOpacity = TERRITORY_OVERVIEW_OPACITY;
                   } else {
                     fillOpacity = TERRITORY_NORMAL_OPACITY;
+                  }
+                  
+                  fill = tinycolor(p.baseColor).toString();
+                  if (active) {
+                    if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
+                      fill = tinycolor(fill).saturate(50).toString();
+                    } 
+                    fill = tinycolor(fill).brighten(30).toString();
+                  } else {
+                    if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
+                      fill = tinycolor(fill).saturate(50).darken(20).toString();
+                      fillOpacity = fillOpacity + 0.15;
+                    }
+                    else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
+                      fill = tinycolor(fill).saturate(10).darken(5).toString();
+                      fillOpacity = fillOpacity + 0.15;
+                    }
+                    //else if(timeLastCaptured > 0 && timeLastCaptured <= 18) fill = tinycolor(fill).saturate(50).darken(10).toString();
                   }
                 }
                 
