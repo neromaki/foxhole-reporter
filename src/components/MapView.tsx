@@ -26,6 +26,7 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
+import ContextPopover from './ContextPopover';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -128,6 +129,7 @@ export default function MapView() {
       
       className="h-full w-full bg-gray-900"
     >
+      <ContextPopover />
       <ZoomControls />
       {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       <SharedTooltipProvider>

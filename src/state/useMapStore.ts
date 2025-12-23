@@ -26,6 +26,8 @@ interface MapState {
   setDisabledHexes: (hexes: Set<string>) => void;
   realtimeStatus: RealtimeConnectionStatus;
   setRealtimeStatus: (status: RealtimeConnectionStatus) => void;
+  contextPopoverContent: string | null;
+  setContextPopoverContent: (html: string | null) => void;
 }
 
 const defaultLayers: LayerState = getDefaultLayerState();
@@ -113,5 +115,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     const state = get();
     const next = mode === state.activeReportMode ? null : mode;
     set({ activeReportMode: next });
-  }
+  },
+  contextPopoverContent: null,
+  setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
 }));
