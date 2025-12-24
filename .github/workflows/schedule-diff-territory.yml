@@ -2,7 +2,7 @@ name: Diff Territory Scheduler
 
 on:
   schedule:
-    - cron: '5 0 * * *'      # daily at 00:05 UTC
+    - cron: '*/15 * * * *'    # every 15 minutes
   workflow_dispatch: {}
 
 jobs:
