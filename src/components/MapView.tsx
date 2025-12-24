@@ -45,10 +45,15 @@ export default function MapView() {
   const reportMode = useMapStore((s) => s.activeReportMode);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
 
-  const { data: recentSnapshots } = useSnapshotsSince(24, { enabled: DATA_SOURCE === 'supabase' && reportMode === 'daily' });
+  const { data: recentSnapshots } = useSnapshotsSince(24, { enabled: DATA_SOURCE === 'supabase' });
 
   const historyByTerritoryId = useMemo(() => {
-    if (!recentSnapshots || recentSnapshots.length === 0) return new Map<string, TerritoryHistory>();
+    // Wait until we have actual snapshot data before building history
+    if (!recentSnapshots || recentSnapshots.length === 0) {
+      DEBUG_MODE && console.log('[MapView] Waiting for snapshot data to build territory history...');
+      return new Map<string, TerritoryHistory>();
+    }
+    DEBUG_MODE && console.log('[MapView] Building territory history from', recentSnapshots.length, 'snapshots');
     return buildTerritoryHistory(recentSnapshots as any);
   }, [recentSnapshots]);
 
@@ -71,7 +76,7 @@ export default function MapView() {
 
   useEffect(() => {
     DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
-    DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
+    console.log('[MapView] Snapshot data:', snapshot);
     DEBUG_MODE ?? console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
     DEBUG_MODE ?? console.log('[MapView] Structures layer active:', activeLayers.structures);
     if (snapshot?.territories && snapshot.territories.length > 0) {

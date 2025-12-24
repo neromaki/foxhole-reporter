@@ -285,10 +285,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                       fillOpacity = fillOpacity + 0.15;
                     }
                     else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
-                      fill = tinycolor(fill).saturate(10).darken(5).toString();
+                      fill = tinycolor(fill).saturate(10).darken(10).toString();
                       fillOpacity = fillOpacity + 0.15;
                     }
-                    //else if(timeLastCaptured > 0 && timeLastCaptured <= 18) fill = tinycolor(fill).saturate(50).darken(10).toString();
                   }
                 }
                 
