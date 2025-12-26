@@ -50,7 +50,9 @@ function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth:
       >
         { node.leaf ? (
           <>
-            {icon}
+            <div className={`${!activeLayers[node.id] ? 'opacity-50' : ''}`}>
+              {icon}
+            </div>
             {typeof count === 'number' && (
               <span className="absolute top-0 right-0 rounded bg-gray-950/80 text-[10px] leading-none px-1 py-0.5">
                 {count}

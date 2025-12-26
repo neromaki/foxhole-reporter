@@ -182,6 +182,7 @@ export function getDefaultLayerState(): LayerState {
   state['structures.bases'] = true;
   state['structures.bases.Base_Town'] = true;
   state['structures.bases.Base_Relic'] = true;
+  state['structures.bases.Base_Keep'] = true;
 
   // Resources default off (parent and children)
   state['resources'] = false;
