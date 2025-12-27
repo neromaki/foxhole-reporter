@@ -82,7 +82,7 @@ export function useLatestSnapshot(options?: { enabled?: boolean }) {
   });
 }
 
-export function useTerritoryDiff(period: 'daily' | 'weekly') {
+export function useTerritoryDiff(period: 'daily' | 'threeDay' | 'weekly') {
   DEBUG_MODE ?? console.log('[Queries] useTerritoryDiff called with period:', period);
   return useQuery<TerritoryDiff | null>({
     queryKey: ['territoryDiff', period],

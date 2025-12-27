@@ -6,6 +6,7 @@ import { useMapStore } from '../state/useMapStore';
 export function ContextPopover() {
   const content = useMapStore((s) => {
     if(s.activeReportMode == 'daily') return `Showing territory changes in the last 24 hours`;
+    if(s.activeReportMode == 'threeDay') return 'Showing territory changes in the last 3 days';
     if(s.activeReportMode == 'weekly') return 'Showing territory changes in the last 7 days';
     return s.contextPopoverContent;
   });

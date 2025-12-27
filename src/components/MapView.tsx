@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, SHOW_DAILY_REPORT, SHOW_WEEKLY_REPORT, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -37,6 +37,9 @@ export default function MapView() {
   
   const { data: dailyDiff } = useTerritoryDiff('daily');
   const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
+
+  const { data: threeDayDiff } = useTerritoryDiff('threeDay');
+  const changedThreeDay = useMemo<Set<string>>(() => new Set((threeDayDiff?.changes ?? []).map((c: { id: string }) => c.id)), [threeDayDiff]);
 
   const { data: weeklyDiff } = useTerritoryDiff('weekly');
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
@@ -143,11 +146,13 @@ export default function MapView() {
           snapshot={snapshot}
           activeLayers={effectiveLayers} // hide location layer at zooms < 0
           changedDaily={changedDaily}
+          changedThreeDay={changedThreeDay}
           changedWeekly={changedWeekly}
         />
         <TerritorySubregionLayer
           snapshot={snapshot}
           changedDaily={changedDaily}
+          changedThreeDay={changedThreeDay}
           changedWeekly={changedWeekly}
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
@@ -221,11 +226,13 @@ function LocationsLayer({
   snapshot,
   activeLayers,
   changedDaily,
+  changedThreeDay,
   changedWeekly,
 }: {
   snapshot: { territories?: LocationTile[] } | undefined | null;
   activeLayers: any;
   changedDaily: Set<string>;
+  changedThreeDay: Set<string>;
   changedWeekly: Set<string>;
 }) {
   const map = useMap();
@@ -399,6 +406,8 @@ function LocationsLayer({
       setCount++;
       const highlighted = reportMode === 'daily'
         ? !!(changedDaily && (changedDaily as Set<string>).has(id))
+        : reportMode === 'threeDay'
+        ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(id))
         : reportMode === 'weekly'
         ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
         : false;
@@ -585,14 +594,19 @@ function LocationsLayer({
     if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
     if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
     if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');
-    if (SHOW_DAILY_REPORT && changedDaily.has(t.id)) {
+    /* Disabled for now to reduce tooltip noise
+    if (changedDaily.has(t.id)) {
       parts.push('<div class="text-purple-400">Changed 24h</div>');
     }
-    if (SHOW_WEEKLY_REPORT && changedWeekly.has(t.id)) {
+    if (changedThreeDay.has(t.id)) {
+      parts.push('<div class="text-purple-400">Changed 3d</div>');
+    }
+    if (changedWeekly.has(t.id)) {
       parts.push('<div class="text-amber-400">Changed 7d</div>');
     }
+    */
     return `<div class="text-xs">${parts.join('')}</div>`;
-  }, [changedDaily, changedWeekly, majorLabelsByMap]);
+  }, [changedDaily, changedThreeDay, changedWeekly, majorLabelsByMap]);
 
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
@@ -626,7 +640,7 @@ function LocationsLayer({
   React.useEffect(() => {
     if (VERBOSE_ZOOM_LOG) console.log('[Zoom][effect] reapply due to report/diff change', { reportMode, daily: changedDaily.size, weekly: changedWeekly.size, z: map.getZoom() });
     updateIcons(map.getZoom());
-  }, [reportMode, changedDaily, changedWeekly, map]);
+  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, map]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   // Hide when zoomed out to -1 or lower, or in report mode
@@ -662,6 +676,8 @@ function LocationsLayer({
                 if (img) {
                   const highlighted = reportMode === 'daily'
                     ? !!(changedDaily && (changedDaily as Set<string>).has(t.id))
+                    : reportMode === 'threeDay'
+                    ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(t.id))
                     : reportMode === 'weekly'
                     ? !!(changedWeekly && (changedWeekly as Set<string>).has(t.id))
                     : false;

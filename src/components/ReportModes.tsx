@@ -5,8 +5,10 @@ export default function ReportModes() {
   const mode = useMapStore(s => s.activeReportMode);
   const setMode = useMapStore(s => s.setActiveReportMode);
   const onDaily = () => setMode('daily');
+  const onThreeDay = () => setMode('threeDay');
   const onWeekly = () => setMode('weekly');
   const isDaily = mode === 'daily';
+  const isThreeDay = mode === 'threeDay';
   const isWeekly = mode === 'weekly';
   const buttonStyle = {
     base: `px-2 py-1 grow rounded border`,
@@ -27,14 +29,21 @@ export default function ReportModes() {
             className={`${buttonStyle.base} ${isDaily ? buttonStyle.active : buttonStyle.inactive}`}
             title="Highlight changes in last 24 hours"
           >
-            Last 24 hours
+            1 day
+          </button>
+          <button
+            onClick={onThreeDay}
+            className={`${buttonStyle.base} ${isThreeDay ? buttonStyle.active : buttonStyle.inactive}`}
+            title="Highlight changes in last 3 days"
+          >
+            3 days
           </button>
           <button
             onClick={onWeekly}
             className={`${buttonStyle.base} ${isWeekly ? buttonStyle.active : buttonStyle.inactive}`}
             title="Highlight changes in last 7 days"
           >
-            Last 7 days
+            7 days
           </button>
         </div>
       

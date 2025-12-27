@@ -27,6 +27,7 @@ type TerritoryHistory = {
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
   changedDaily: Set<string>;
+  changedThreeDay: Set<string>;
   changedWeekly: Set<string>;
   visible: boolean;
   historyById: Map<string, TerritoryHistory>;
@@ -56,7 +57,7 @@ interface RegionOverlay {
   hasAnyTerritory?: boolean;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedWeekly, visible, historyById, casualtyRates }: Props) {
+export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
 
@@ -99,9 +100,10 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   const changedSet = useMemo(() => {
     if (reportMode === 'daily') return changedDaily;
+    if (reportMode === 'threeDay') return changedThreeDay;
     if (reportMode === 'weekly') return changedWeekly;
     return null;
-  }, [reportMode, changedDaily, changedWeekly]);
+  }, [reportMode, changedDaily, changedThreeDay, changedWeekly]);
 
   const overlays = useMemo(() => {
     const processed: RegionOverlay[] = [];
@@ -317,23 +319,54 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 const rate = casualtyRates.getRate(o.region);
                 if (!rate) return 0;
                 const combined = rate.warden + rate.colonial;
-                if (combined <= 400) return 0;
-                if (combined <= 700) return 0.5;
-                if (combined <= 1000) return 0.7;
-                return 0.9;
-              })()} filter="url(#filter0_i_716_627)">
+                if (combined > 200 && combined <= 500) return 0.5;
+                if (combined > 500 && combined <= 1000) return 0.7;
+                if (combined > 1000) return 0.9;
+                return 0;
+              })()} filter={(() => {
+                if (reportModeActive) return '';
+                const rate = casualtyRates.getRate(o.region);
+                if (!rate) return '';
+                const combined = rate.warden + rate.colonial;
+                if (combined > 200 && combined <= 500) return `url(#casualtyRateLow)`;
+                if (combined > 500 && combined <= 1000) return `url(#casualtyRateMed)`;
+                if (combined > 1000) return `url(#casualtyRateHigh)`;
+                return '';
+              })()}>
                 <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
               </g>
               <defs>
-                <filter id="filter0_i_716_627" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                   <feFlood floodOpacity="0" result="BackgroundImageFix" />
                   <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                   <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
                   <feOffset />
-                  <feGaussianBlur stdDeviation="32.5" />
+                  <feGaussianBlur stdDeviation="35" />
                   <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
                   <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
                   <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
+                </filter>
+
+                <filter id="casualtyRateMed" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                  <feOffset />
+                  <feGaussianBlur stdDeviation="25" />
+                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0.841346 0 0 0 0 0.308494 0 0 0 0 0 0 0 0 1 0" />
+                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />
+                </filter>
+
+                <filter id="casualtyRateLow" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                  <feOffset />
+                  <feGaussianBlur stdDeviation="25" />
+                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0.916591 0 0 0 0 0.93109 0 0 0 0 0.0611772 0 0 0 1 0" />
+                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_593" />
                 </filter>
               </defs>
             </g>
