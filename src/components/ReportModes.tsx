@@ -7,9 +7,11 @@ export default function ReportModes() {
   const onDaily = () => setMode('daily');
   const onThreeDay = () => setMode('threeDay');
   const onWeekly = () => setMode('weekly');
+  const onAllTime = () => setMode('allTime');
   const isDaily = mode === 'daily';
   const isThreeDay = mode === 'threeDay';
   const isWeekly = mode === 'weekly';
+  const isAllTime = mode === 'allTime';
   const buttonStyle = {
     base: `px-2 py-1 grow rounded border`,
     active: `bg-gray-200 text-gray-800 border-gray-500 hover:bg-gray-100`,
@@ -44,6 +46,13 @@ export default function ReportModes() {
             title="Highlight changes in last 7 days"
           >
             7 days
+          </button>
+          <button
+            onClick={onAllTime}
+            className={`${buttonStyle.base} ${isAllTime ? buttonStyle.active : buttonStyle.inactive}`}
+            title="Highlight changes in all time since start of war"
+          >
+            All 
           </button>
         </div>
       

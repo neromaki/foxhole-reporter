@@ -8,7 +8,7 @@ import {
   getDefaultLayerState,
 } from './layers';
 
-type ReportMode = 'daily' | 'threeDay' | 'weekly' | null;
+type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
 
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 

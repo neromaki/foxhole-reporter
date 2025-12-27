@@ -44,6 +44,9 @@ export default function MapView() {
   const { data: weeklyDiff } = useTerritoryDiff('weekly');
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
+  const { data: allTimeDiff } = useTerritoryDiff('allTime');
+  const changedAllTime = useMemo<Set<string>>(() => new Set((allTimeDiff?.changes ?? []).map((c: { id: string }) => c.id)), [allTimeDiff]);
+
   const activeLayers = useMapStore((s) => s.activeLayers);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
@@ -148,12 +151,14 @@ export default function MapView() {
           changedDaily={changedDaily}
           changedThreeDay={changedThreeDay}
           changedWeekly={changedWeekly}
+          changedAllTime={changedAllTime}
         />
         <TerritorySubregionLayer
           snapshot={snapshot}
           changedDaily={changedDaily}
           changedThreeDay={changedThreeDay}
           changedWeekly={changedWeekly}
+          changedAllTime={changedAllTime}
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
           casualtyRates={casualtyRates}
@@ -228,12 +233,14 @@ function LocationsLayer({
   changedDaily,
   changedThreeDay,
   changedWeekly,
+  changedAllTime,
 }: {
   snapshot: { territories?: LocationTile[] } | undefined | null;
   activeLayers: any;
   changedDaily: Set<string>;
   changedThreeDay: Set<string>;
   changedWeekly: Set<string>;
+  changedAllTime: Set<string>;
 }) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
@@ -410,6 +417,8 @@ function LocationsLayer({
         ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(id))
         : reportMode === 'weekly'
         ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
+        : reportMode === 'allTime'
+        ? !!(changedAllTime && (changedAllTime as Set<string>).has(id))
         : false;
       const img = markerIconElement(marker);
       if (img) {
@@ -606,7 +615,7 @@ function LocationsLayer({
     }
     */
     return `<div class="text-xs">${parts.join('')}</div>`;
-  }, [changedDaily, changedThreeDay, changedWeekly, majorLabelsByMap]);
+  }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
 
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
@@ -640,7 +649,7 @@ function LocationsLayer({
   React.useEffect(() => {
     if (VERBOSE_ZOOM_LOG) console.log('[Zoom][effect] reapply due to report/diff change', { reportMode, daily: changedDaily.size, weekly: changedWeekly.size, z: map.getZoom() });
     updateIcons(map.getZoom());
-  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, map]);
+  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime, map]);
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   // Hide when zoomed out to -1 or lower, or in report mode
@@ -680,6 +689,8 @@ function LocationsLayer({
                     ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(t.id))
                     : reportMode === 'weekly'
                     ? !!(changedWeekly && (changedWeekly as Set<string>).has(t.id))
+                    : reportMode === 'allTime'
+                    ? !!(changedAllTime && (changedAllTime as Set<string>).has(t.id))
                     : false;
                   img.style.opacity = reportMode ? (highlighted ? '1' : '0.35') : '1';
                 }

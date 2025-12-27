@@ -6,14 +6,26 @@ declare const Deno: any;
 interface SnapshotRow {
   id: string;
   created_at: string;
-  territories: { id: string; owner: string; x: number; y: number; region: string }[];
+  territories: { id: string; owner: string; x: number; y: number; region: string; iconType: number }[];
 }
+
+interface WarRow {
+  warNumber: number;
+  conquestEndTime: string | null;
+}
+
+// Territory-owning Town Bases (T1,T2,T3), Relics, Keeps and Forts
+const majorMapFlags = [56, 57, 58, 45, 27, 29];
 
 function diffSnapshots(a: SnapshotRow, b: SnapshotRow) {
   const mapA = new Map(a.territories.map(t => [t.id, t]));
   const mapB = new Map(b.territories.map(t => [t.id, t]));
   const changes: any[] = [];
   for (const [id, tileB] of mapB.entries()) {
+    // Skip minor map flags
+    if (!majorMapFlags.includes(tileB.iconType)) continue;
+    // Skip currently neutral territories
+    if (tileB.owner === 'Neutral') continue;
     const prev = mapA.get(id);
     if (prev && prev.owner !== tileB.owner) {
       changes.push({ id, previousOwner: prev.owner, newOwner: tileB.owner, changed_at_snapshot: b.id });
@@ -42,6 +54,22 @@ Deno.serve(async (req: Request) => {
       console.log('[diff-territory] client hint extraction failed', String(e));
     }
 
+
+    // Get current war info
+    const { data: warData, error: warErr } = await supabase
+      .from('wars')
+      .select('warNumber, conquestEndTime')
+      .order('warNumber', { ascending: false })
+      .limit(1);
+    if (warErr) {
+      console.error('[diff-territory] latest snapshot query error', warErr);
+      throw warErr;
+    }
+    const warInfo = warData?.[0] as WarRow | undefined;
+    console.log('[diff-territory] war info', warInfo);
+    const warNumber = warInfo?.warNumber ?? 0;
+
+
     // Get latest snapshot
     const { data: latestList, error: latestErr } = await supabase
       .from('snapshots')
@@ -54,8 +82,8 @@ Deno.serve(async (req: Request) => {
     }
     const latest = latestList?.[0] as SnapshotRow | undefined;
     console.log('[diff-territory] latest snapshot count', latestList?.length ?? 0, 'id', latest?.id);
-
     if (!latest) return new Response(JSON.stringify({ message: 'No snapshots' }), { status: 200 });
+
 
     // Daily: snapshot roughly 24h ago
     const dayCut = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -72,6 +100,7 @@ Deno.serve(async (req: Request) => {
     const daySnap = dayList?.[0] as SnapshotRow | undefined;
     console.log('[diff-territory] day snapshot count', dayList?.length ?? 0, 'id', daySnap?.id, 'cut', dayCut);
 
+
     // 3 day: snapshot roughly 3 days ago
     const threeDayCut = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
     const { data: threeDayList, error: threeDayCutErr } = await supabase
@@ -87,6 +116,7 @@ Deno.serve(async (req: Request) => {
     const threeDaySnap = threeDayList?.[0] as SnapshotRow | undefined;
     console.log('[diff-territory] 3 day snapshot count', threeDayList?.length ?? 0, 'id', threeDaySnap?.id, 'cut', threeDayCut);
 
+
     // Weekly: snapshot roughly 7d ago
     const weekCut = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
     const { data: weekList, error: weekErr } = await supabase
@@ -101,6 +131,22 @@ Deno.serve(async (req: Request) => {
     }
     const weekSnap = weekList?.[0] as SnapshotRow | undefined;
     console.log('[diff-territory] week snapshot count', weekList?.length ?? 0, 'id', weekSnap?.id, 'cut', weekCut);
+
+
+    // All time: snapshot from the start of the current war
+    const { data: warStartList, error: warStartErr } = await supabase
+      .from('snapshots')
+      .select('*')
+      .eq('war_number', warNumber)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (warStartErr) {
+      console.error('[diff-territory] first snapshot query error', warStartErr);
+      throw warStartErr;
+    }
+    const startSnap = warStartList?.[0] as SnapshotRow | undefined;
+    console.log('[diff-territory] first snapshot count', warStartList?.length ?? 0, 'id', startSnap?.id);
+    if (!startSnap) return new Response(JSON.stringify({ message: 'No starting snapshots' }), { status: 200 });
 
     const inserts: any[] = [];
 
@@ -127,6 +173,15 @@ Deno.serve(async (req: Request) => {
     } else {
       console.log('[diff-territory] no weekly snapshot to diff against');
     }
+
+    if (startSnap) {
+      const changes = diffSnapshots(startSnap, latest);
+      console.log('[diff-territory] all time changes count', changes.length);
+      if (changes.length) inserts.push({ period: 'allTime', changes });
+    } else {
+      console.log('[diff-territory] no all time snapshot to diff against');
+    }
+
 
     console.log('[diff-territory] inserts candidate count', inserts.length);
     if (inserts.length) {

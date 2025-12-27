@@ -29,6 +29,7 @@ interface Props {
   changedDaily: Set<string>;
   changedThreeDay: Set<string>;
   changedWeekly: Set<string>;
+  changedAllTime: Set<string>;
   visible: boolean;
   historyById: Map<string, TerritoryHistory>;
   casualtyRates: ReturnType<typeof useCasualtyRates>;
@@ -57,7 +58,7 @@ interface RegionOverlay {
   hasAnyTerritory?: boolean;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, visible, historyById, casualtyRates }: Props) {
+export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, changedAllTime, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
 
@@ -102,8 +103,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     if (reportMode === 'daily') return changedDaily;
     if (reportMode === 'threeDay') return changedThreeDay;
     if (reportMode === 'weekly') return changedWeekly;
+    if (reportMode === 'allTime') return changedAllTime;
     return null;
-  }, [reportMode, changedDaily, changedThreeDay, changedWeekly]);
+  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime]);
 
   const overlays = useMemo(() => {
     const processed: RegionOverlay[] = [];
