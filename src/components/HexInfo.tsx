@@ -49,29 +49,50 @@ export default function HexInfo({
         if (casualtiesVisible && !reportModeActive && zoom <= CASUALTIES_MAX_ZOOM) {
           const rate = casualtyRates.getRate(hex.apiName);
           if (rate) {
-            const w = Math.round(rate.warden);
-            const c = Math.round(rate.colonial);
+            const wardenRate = Math.round(rate.warden);
+            const colonialRate = Math.round(rate.colonial);
+            const totalRate = wardenRate + colonialRate;
             const prefix = rate.source === 'delta' ? '' : 'Avg ';
 
-            const casualtyIconStyle = `margin-right:0.25rem;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'width:1.5rem;height:1.5rem;opacity:0.5;' : 'width:1rem;height:1rem;'}`;
+            const casualtyIconStyle = `margin-right:0.25rem;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'width:1.5rem;height:1.5rem;opacity:0.5;' : 'width:0.75rem;height:0.75rem;'}`;
             const casualtyCountStyle = `font-weight:normal;font-size:0.75rem;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'font-size:21px;text-shadow:none;' : ''}`;
             const casualtyRateStyle = `margin-right:0.1rem;font-weight:normal;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'font-size:26px;text-shadow:none;font-weight:bold;' : ''}`;
 
+            const casualtyBadge = `padding:0.1rem 0.4rem;border-radius:2rem;`;
+            let totalCasualtyRateStyle = casualtyBadge;
+            if (zoom < MAJOR_LABEL_MIN_ZOOM) {
+              if (totalRate > 200 && totalRate <= 500) {
+                totalCasualtyRateStyle += `background-color:oklch(0.879 0.169 91.605 / 40%);`;
+              } else if (totalRate > 500 && totalRate <= 1000) {
+                totalCasualtyRateStyle += `background-color:oklch(75% 0.183 55.934 / 40%);`;
+              } else if (totalRate > 1000) {
+                totalCasualtyRateStyle += `background-color:oklch(57.7% 0.245 27.325 / 40%);`;
+              }
+            }
+
             casualtyLabelHtml = `
-              <div style="display:flex;flex-direction:column;align-items:center;text-align:left;font-weight:semi-bold;font-size:1rem;">
+              <div style="display:flex;flex-direction:column;align-items:center;text-align:left;font-weight:semi-bold;font-size:1rem;${totalRate == 0 ? 'opacity:0;' : totalRate < 50 ? 'opacity:0.5;color:oklch(86.9% 0.022 252.894);' : ''}">
                 <div style="display:flex;align-items:center">
-                  <img src="${Colonials?.icon}" alt="Colonial" style="${casualtyIconStyle}" />
-                  <div>
-                    <span style="${casualtyRateStyle}">${c}</span>
+                  
+                  <div style="${totalCasualtyRateStyle}">
+                    <span style="${casualtyRateStyle}">${totalRate}</span>
                     <span style="${casualtyCountStyle}">/hr</span>
                   </div>
                 </div>
 
-                <div style="display:flex;align-items:center">
-                  <img src="${Wardens?.icon}" alt="Warden" style="${casualtyIconStyle}" />
-                  <div>
-                    <span style="${casualtyRateStyle}">${w}</span>
-                    <span style="${casualtyCountStyle}">/hr</span>
+                <div style="display:flex;flex-direction:row;align-items:center;text-align:left;font-weight:semi-bold;font-size:0.75rem">
+                  <div style="display:flex;align-items:center;margin-right:0.5rem">
+                    <img src="${Colonials?.icon}" alt="Colonial" style="${casualtyIconStyle}" />
+                    <div>
+                      <span style="${casualtyRateStyle}">${colonialRate}</span>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center">
+                    <img src="${Wardens?.icon}" alt="Warden" style="${casualtyIconStyle}" />
+                    <div>
+                      <span style="${casualtyRateStyle}">${wardenRate}</span>
+                    </div>
                   </div>
                 </div>
               </div>`;
