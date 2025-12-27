@@ -58,7 +58,7 @@ export default function HexInfo({
             const casualtyCountStyle = `font-weight:normal;font-size:0.75rem;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'font-size:21px;text-shadow:none;' : ''}`;
             const casualtyRateStyle = `margin-right:0.1rem;font-weight:normal;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'font-size:26px;text-shadow:none;font-weight:bold;' : ''}`;
 
-            const casualtyBadge = `padding:0.1rem 0.4rem;border-radius:2rem;`;
+            const casualtyBadge = `padding:0.1rem 0.4rem;border-radius:2rem;display:flex;align-items:center;`;
             let totalCasualtyRateStyle = casualtyBadge;
             if (zoom < MAJOR_LABEL_MIN_ZOOM) {
               if (totalRate > 200 && totalRate <= 500) {
@@ -75,6 +75,7 @@ export default function HexInfo({
                 <div style="display:flex;align-items:center">
                   
                   <div style="${totalCasualtyRateStyle}">
+                    <span><img src="${new URL(`../images/casualties.png`, import.meta.url).href}" style="width:1rem;height:1rem" /></span>
                     <span style="${casualtyRateStyle}">${totalRate}</span>
                     <span style="${casualtyCountStyle}">/hr</span>
                   </div>
