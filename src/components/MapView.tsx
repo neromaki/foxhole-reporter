@@ -255,6 +255,14 @@ function LocationsLayer({
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
+
+  // If at Overview zoom, zoom in on click
+  React.useEffect(() => {
+    map.on('click', () => {
+      const z = map.getZoom();
+      if (z == MAP_MIN_ZOOM) map.zoomIn();
+    });
+  }, [map]);
   
 
   // Verbose zoom event logging to trace hitch points
