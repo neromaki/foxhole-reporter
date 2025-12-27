@@ -75,8 +75,8 @@ export default function HexInfo({
                 <div style="display:flex;align-items:center">
                   
                   <div style="${totalCasualtyRateStyle}">
-                    <span><img src="${new URL(`../images/casualties.png`, import.meta.url).href}" style="width:1rem;height:1rem" /></span>
-                    <span style="${casualtyRateStyle}">${totalRate}</span>
+                    <span><img src="${new URL(`../images/casualties.png`, import.meta.url).href}" style="width:1rem;height:1rem;" /></span>
+                    <span style="${casualtyRateStyle} margin-left:0.2rem;margin-right:0.1rem">${totalRate}</span>
                     <span style="${casualtyCountStyle}">/hr</span>
                   </div>
                 </div>

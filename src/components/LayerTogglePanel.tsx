@@ -39,7 +39,7 @@ function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth:
   const count = node.leaf && node.tags.length > 0 ? getCountForTag(node.tags[0], countsByIconType) : null;
 
   return (
-    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-4' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
+    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-3 pr-3' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
       <button
         onClick={() => {
           if (disabled) return;
@@ -115,36 +115,38 @@ export default function LayerTogglePanel() {
         </div>
       </div>
 
+      <div>
+        <ul className="space-y-3">
+          {(Object.keys(otherLabels) as Array<keyof typeof otherLabels>).map((k) => {
+            return (
+              <li key={k}>
+                <button
+                  onClick={() => {
+                    toggle(k as LayerKey);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k as LayerKey] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                >
+                  <span>{otherLabels[k]}</span>
+                  <span className={`h-3 w-3 rounded-full ${active[k as LayerKey] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
       <div className="space-y-2">
-        <ul>
+        <ul className={`bg-gray-900`}>
           <TreeToggle node={structuresRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>
 
 
       <div className="space-y-2">
-        <ul className="space-y-1">
+        <ul>
           <TreeToggle node={resourcesRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>
-
-      <ul className="space-y-2">
-        {(Object.keys(otherLabels) as Array<keyof typeof otherLabels>).map((k) => {
-          return (
-            <li key={k}>
-              <button
-                onClick={() => {
-                  toggle(k as LayerKey);
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k as LayerKey] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
-              >
-                <span>{otherLabels[k]}</span>
-                <span className={`h-3 w-3 rounded-full ${active[k as LayerKey] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }
