@@ -73,6 +73,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const { show, hide } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stickyId, setStickyId] = useState<string | null>(null);
+  const activeLayers = useMapStore((s) => s.activeLayers);
 
 
   // Ensure pane exists with deterministic stacking under markers/labels
@@ -192,7 +193,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   const showTooltipFor = (p: PathInfo) => {
     if (!p.lat || !p.lng || !p.territoryId) return;
-    if (!reportModeActive && zoom > MAJOR_LABEL_MIN_ZOOM) return;
+    if (!reportModeActive && (activeLayers.majorLocations && zoom > MAJOR_LABEL_MIN_ZOOM)) return;
     const name = p.name ?? p.territoryId;
     const hist = historyById.get(p.territoryId);
     const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
@@ -286,11 +287,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                   } else {
                     if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
                       fill = tinycolor(fill).saturate(50).darken(20).toString();
-                      fillOpacity = fillOpacity + 0.15;
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
                     }
                     else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
                       fill = tinycolor(fill).saturate(10).darken(10).toString();
-                      fillOpacity = fillOpacity + 0.15;
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
                     }
                   }
                 }
@@ -315,63 +316,65 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 );
               })}
             </g>
-            <g className="hexCasualtyVisual">
-              <g id="casualtyRate" opacity={(() => {
-                if (reportModeActive) return 0;
-                const rate = casualtyRates.getRate(o.region);
-                if (!rate) return 0;
-                const combined = rate.warden + rate.colonial;
-                if (combined > 200 && combined <= 500) return 0.5;
-                if (combined > 500 && combined <= 1000) return 0.7;
-                if (combined > 1000) return 0.9;
-                return 0;
-              })()} filter={(() => {
-                if (reportModeActive) return '';
-                const rate = casualtyRates.getRate(o.region);
-                if (!rate) return '';
-                const combined = rate.warden + rate.colonial;
-                if (combined > 200 && combined <= 500) return `url(#casualtyRateLow)`;
-                if (combined > 500 && combined <= 1000) return `url(#casualtyRateMed)`;
-                if (combined > 1000) return `url(#casualtyRateHigh)`;
-                return '';
-              })()}>
-                <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+            { activeLayers.casualties && (
+              <g className="hexCasualtyVisual">
+                <g id="casualtyRate" opacity={(() => {
+                  if (reportModeActive) return 0;
+                  const rate = casualtyRates.getRate(o.region);
+                  if (!rate) return 0;
+                  const combined = rate.warden + rate.colonial;
+                  if (combined > 200 && combined <= 500) return 0.5;
+                  if (combined > 500 && combined <= 1000) return 0.7;
+                  if (combined > 1000) return 0.9;
+                  return 0;
+                })()} filter={(() => {
+                  if (reportModeActive) return '';
+                  const rate = casualtyRates.getRate(o.region);
+                  if (!rate) return '';
+                  const combined = rate.warden + rate.colonial;
+                  if (combined > 200 && combined <= 500) return `url(#casualtyRateLow)`;
+                  if (combined > 500 && combined <= 1000) return `url(#casualtyRateMed)`;
+                  if (combined > 1000) return `url(#casualtyRateHigh)`;
+                  return '';
+                })()}>
+                  <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+                </g>
+                <defs>
+                  <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feOffset />
+                    <feGaussianBlur stdDeviation="35" />
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
+                  </filter>
+
+                  <filter id="casualtyRateMed" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feOffset />
+                    <feGaussianBlur stdDeviation="25" />
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0.841346 0 0 0 0 0.308494 0 0 0 0 0 0 0 0 1 0" />
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />
+                  </filter>
+
+                  <filter id="casualtyRateLow" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feOffset />
+                    <feGaussianBlur stdDeviation="25" />
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0.916591 0 0 0 0 0.93109 0 0 0 0 0.0611772 0 0 0 1 0" />
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_593" />
+                  </filter>
+                </defs>
               </g>
-              <defs>
-                <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
-                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                  <feOffset />
-                  <feGaussianBlur stdDeviation="35" />
-                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
-                  <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" />
-                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
-                </filter>
-
-                <filter id="casualtyRateMed" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
-                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                  <feOffset />
-                  <feGaussianBlur stdDeviation="25" />
-                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
-                  <feColorMatrix type="matrix" values="0 0 0 0 0.841346 0 0 0 0 0.308494 0 0 0 0 0 0 0 0 1 0" />
-                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />
-                </filter>
-
-                <filter id="casualtyRateLow" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                  <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
-                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                  <feOffset />
-                  <feGaussianBlur stdDeviation="25" />
-                  <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
-                  <feColorMatrix type="matrix" values="0 0 0 0 0.916591 0 0 0 0 0.93109 0 0 0 0 0.0611772 0 0 0 1 0" />
-                  <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_593" />
-                </filter>
-              </defs>
-            </g>
+            )}
             
             {!o.hasAnyTerritory && (
               <image 

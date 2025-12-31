@@ -61,11 +61,11 @@ export default function HexInfo({
             const casualtyBadge = `padding:0.1rem 0.4rem;border-radius:2rem;display:flex;align-items:center;`;
             let totalCasualtyRateStyle = casualtyBadge;
             if (zoom < MAJOR_LABEL_MIN_ZOOM) {
-              if (totalRate > 200 && totalRate <= 500) {
+              if (totalRate > 200 && totalRate <= 500) {          // Low
                 totalCasualtyRateStyle += `background-color:oklch(0.879 0.169 91.605 / 40%);`;
-              } else if (totalRate > 500 && totalRate <= 1000) {
+              } else if (totalRate > 500 && totalRate <= 1000) {  // Medium
                 totalCasualtyRateStyle += `background-color:oklch(75% 0.183 55.934 / 40%);`;
-              } else if (totalRate > 1000) {
+              } else if (totalRate > 1000) {                      // High
                 totalCasualtyRateStyle += `background-color:oklch(57.7% 0.245 27.325 / 40%);`;
               }
             }
@@ -75,7 +75,7 @@ export default function HexInfo({
                 <div style="display:flex;align-items:center">
                   
                   <div style="${totalCasualtyRateStyle}">
-                    <span><img src="${new URL(`../images/casualties.png`, import.meta.url).href}" style="width:1rem;height:1rem;" /></span>
+                    <span><img src="${new URL(`../images/casualties.png`, import.meta.url).href}" style="margin-right:0.25rem;${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'width:1.5rem;height:1.5rem;opacity:0.5;' : 'width:1rem;height:1rem;'}" /></span>
                     <span style="${casualtyRateStyle} margin-left:0.2rem;margin-right:0.1rem">${totalRate}</span>
                     <span style="${casualtyCountStyle}">/hr</span>
                   </div>
