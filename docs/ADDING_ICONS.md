@@ -37,7 +37,7 @@ cp MyNewIcon.png src/map/icons/MapIconMyNewIcon.png
 ### 2. Run Per-Team Icon Generation
 - Use 55% fuzz for 48px icons and 70% for 24px
 ```bash
-$src="C:\Users\nerom\Projects\foxhole-reporter\src\map\icons"; $fuzz="60%"; $colonial="#65875E"; $warden="#2F5DAA"; Get-ChildItem -Path $src -Filter *.png | Where-Object { $_.BaseName -notmatch 'Colonial|Warden' } | ForEach-Object { $in=$_.FullName; $base=$_.BaseName; $ext=$_.Extension; magick "$in" -fuzz $fuzz -fill $colonial -opaque white (Join-Path $src ($base + "Colonial" + $ext)); magick "$in" -fuzz $fuzz -fill $warden -opaque white (Join-Path $src ($base + "Warden" + $ext)) }
+$src="C:\Users\nerom\Projects\foxhole-reporter\src\map\icons"; $fuzz="70%"; $colonial="#65875E"; $warden="#2F5DAA"; Get-ChildItem -Path $src -Filter *.png | Where-Object { $_.BaseName -notmatch 'Colonial|Warden' } | ForEach-Object { $in=$_.FullName; $base=$_.BaseName; $ext=$_.Extension; magick "$in" -fuzz $fuzz -fill $colonial -opaque white (Join-Path $src ($base + "Colonial" + $ext)); magick "$in" -fuzz $fuzz -fill $warden -opaque white (Join-Path $src ($base + "Warden" + $ext)) }
 ```
 
 ### 3. Rebuild Sprite

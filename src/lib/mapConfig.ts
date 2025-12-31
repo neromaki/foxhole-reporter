@@ -18,7 +18,7 @@ export const DEBUG_PERF_OVERLAY = false; // set false to disable runtime perf pa
 
 // Reports
 export const TERRITORY_OVERVIEW_OPACITY = 0.7;
-export const TERRITORY_NORMAL_OPACITY = 0.5;
+export const TERRITORY_NORMAL_OPACITY = 0.3;
 export const TERRITORY_REPORT_UNAFFECTED_OPACITY = 0.25;
 export const TERRITORY_REPORT_AFFECTED_OPACITY = 0.7;
 export const TERRITORY_REPORT_HIGHLIGHTED_OPACITY = 0.8;
