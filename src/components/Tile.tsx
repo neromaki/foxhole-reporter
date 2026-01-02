@@ -17,7 +17,7 @@ export function Tile({ k, active, icon, label, counts, callBack }: Props) {
   return (
     <button
       onClick={() => { if (callBack) callBack() }}
-      className={`flex flex-col items-center transition-opacity max-w-[76px] gap-1 ${active ? 'opacity-100' : 'opacity-50'}`}
+      className={`flex flex-col items-center transition-opacity max-w-[70px] gap-1 ${active ? 'opacity-100' : 'opacity-50'}`}
     >
       <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1`}>
         <div className={`w-14 h-14 rounded-xl bg-gray-700`}>

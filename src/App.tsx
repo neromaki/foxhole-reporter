@@ -36,17 +36,24 @@ export default function App() {
             <h1 className="text-xl font-semibold">Foxhole Report</h1>
             <p className="text-xs text-gray-400">Live territory states & capture reports from the frontlines</p>
           </div>
-          {/* <VictoryBar
+        </div>
+
+        
+        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-end z-[430] pointer-events-none`}>
+          <VictoryBar
             counts={victoryCounts}
             requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
-            className="victory visible absolute md:static top-0 left-[103%] -right-[97%] z-[1000]"
-          /> */}
+          />
+          <div className={`flex flex-col mt-2`}>
+            <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
+            <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
+          </div>
         </div>
 
-        <BottomSheet type={'layer'} allowFull={true} clickOutsideBehavior={'half'} title={'Layers'} headerContent={
+        <BottomSheet type={'layer'} allowedStates={['full']} clickOutsideBehavior={'off'} title={'Layers'} headerContent={
           <div className="flex gap-2">
             <button
               className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
@@ -61,25 +68,13 @@ export default function App() {
           <LayerTogglePanel />
         </BottomSheet>
 
-        <BottomSheet type={'report'} allowFull={false} clickOutsideBehavior={'off'} title={'Reports'}>
+        <BottomSheet type={'report'} allowedStates={['half']} clickOutsideBehavior={'off'} title={'Reports'}>
           <ReportModes />
         </BottomSheet>
-
-        <div className={`fixed top-[85px] right-1 flex flex-col justify-start z-[430]`}>
-          <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
-          <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
-        </div>
 
       </aside>
 
       <main className="flex-1">
-        <VictoryBar
-          counts={victoryCounts}
-          requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
-          showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
-          showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
-          warNumber={warState?.warNumber}
-        />
         <MapView />
       </main>
     </div>
@@ -93,13 +88,12 @@ function PanelButton({label, targetPanel, icon, onClick}: {label: string, target
   const active = panelState[targetPanel] !== 'off'
 
   return (
-  <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1`}>
+  <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>
     <button
       className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'}`}
-      onClick={() => onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : 'half')}
+      onClick={() => onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
     >
       <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-7 h-7 ${active ? 'invert' : ''}`} />
-      {/* <span>{label}</span> */}
     </button>
   </div>
   );

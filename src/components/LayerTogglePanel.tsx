@@ -40,9 +40,9 @@ function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth:
   const count = node.leaf && node.tags.length > 0 ? getCountForTag(node.tags[0], countsByIconType) : {};
 
   return (
-    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-3' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
+    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-3' : depth == 0 ? 'px-2' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
       { node.leaf ? (
-        <div className={`mt-3`}>
+        <div className={`my-0`}>
           <Tile k={node.id} active={activeLayers[node.id]} callBack={() => toggle(node.id)} icon={icon} label={node.label} counts={count} />
         </div>
       ) : (
@@ -52,7 +52,7 @@ function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth:
           toggle(node.id);
         }}
         disabled={disabled}
-        className={`relative w-full flex items-center justify-start px-3 py-2 rounded text-sm border transition ${depth > 0 ? activeLayers[node.id] ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-gray-900 border-gray-800 hover:bg-gray-800 hover:border-gray-700' : 'bg-none border-none'}`}
+        className={`relative w-full flex items-center justify-start px-3 py-2 rounded-t text-sm transition ${depth > 0 ? activeLayers[node.id] ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-900  hover:bg-gray-800' : 'bg-none border-none'}`}
       >
         <div className={`flex justify-between items-center w-full`}>
           <span>{node.label}</span>
@@ -61,7 +61,7 @@ function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth:
       </button>
       )}
       {node.children && node.children.length > 0 && (
-        <ul className={`inner-ul depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex justify-start flex-wrap gap-3 bg-gray-950 ml-0 !mt-0 px-2 pt-2 pb-4 rounded-b' : ''}`}>
+        <ul className={`inner-ul depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex justify-start flex-wrap gap-x-3 gap-y-2 ml-0 !mt-0 px-2 pt-2 pb-4 rounded-b bg-gray-900/60' : ''}`}>
           {node.children.map((child: any) => (
             <TreeToggle key={child.id} node={child} depth={depth + 1} countsByIconType={countsByIconType} />
           ))}
@@ -112,14 +112,14 @@ export default function LayerTogglePanel() {
       </div>
 
       <div className="space-y-2">
-        <ul className={`bg-gray-900`}>
+        <ul className={`bg-gray-900/40 rounded-lg pb-2`}>
           <TreeToggle node={structuresRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>
 
 
       <div className="space-y-2">
-        <ul>
+        <ul className={`bg-gray-900/40 rounded-lg pb-2`}>
           <TreeToggle node={resourcesRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>

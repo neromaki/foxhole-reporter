@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useMapStore, PanelType, ClickOutsideBehavior } from '../state/useMapStore';
+import { useMapStore, PanelType, ClickOutsideBehavior, PanelState } from '../state/useMapStore';
 
 export const SHEET_HEIGHTS = {
   off: 0,
   half: 250,
+  threequarters: 380,
   full: 600,
 };
 
 interface BottomSheetProps {
   children: React.ReactNode;
   type: PanelType;
-  allowFull?: boolean;
+  allowedStates: PanelState[];
   clickOutsideBehavior?: ClickOutsideBehavior;
   title: string;
   headerContent?: React.ReactNode;
@@ -19,13 +20,14 @@ interface BottomSheetProps {
 export function BottomSheet({
   children,
   type,
-  allowFull = false,
+  allowedStates = ['off'] as PanelState[],
   clickOutsideBehavior = null,
   title = '',
   headerContent = null,
 }: BottomSheetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -41,6 +43,8 @@ export function BottomSheet({
   const lastYRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
 
+  allowedStates = ['off', ...allowedStates];
+
   // Set the click outside behavior when component mounts
   useEffect(() => {
     if (clickOutsideBehavior !== null) {
@@ -48,47 +52,44 @@ export function BottomSheet({
     }
   }, [type, clickOutsideBehavior, setPanelClickOutsideBehavior]);
 
+  // Reset scroll position when panel closes
+  useEffect(() => {
+    if (panelState === 'off' && contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [panelState]);
+
   // Calculate the visual transform based on state and drag offset
   const getTransformY = useCallback(() => {
-    // Sheet is positioned at bottom-0, maxHeight controls visibility
-    // We only need to apply dragOffset for interactive dragging
-    // No base translation needed - the maxHeight does the work
     return dragOffset;
   }, [dragOffset]);
 
-  // Determine valid states based on allowFull prop
-  const getValidStates = useCallback((): (keyof typeof SHEET_HEIGHTS)[] => {
-    return allowFull ? ['off', 'half', 'full'] : ['off', 'half'];
-  }, [allowFull]);
-
   // Find the nearest valid state based on position and velocity
   const getNearestState = useCallback(
-    (effectiveHeight: number, velocity: number): keyof typeof SHEET_HEIGHTS => {
-      const validStates = getValidStates();
-
+    (effectiveHeight: number, velocity: number): PanelState => {
       // Velocity threshold for "throw" gestures (in pixels per millisecond)
       const velocityThreshold = 0.5;
-      const isThrowingUp = velocity < -velocityThreshold; // Negative velocity = upward motion
-      const isThrowingDown = velocity > velocityThreshold; // Positive velocity = downward motion
+      const isThrowingUp = velocity < -velocityThreshold;
+      const isThrowingDown = velocity > velocityThreshold;
 
       // If user is throwing, prefer moving to next state
       if (isThrowingUp) {
-        const currentIndex = validStates.indexOf(panelState);
-        const nextStateIndex = Math.min(currentIndex + 1, validStates.length - 1);
-        return validStates[nextStateIndex];
+        const currentIndex = allowedStates.indexOf(panelState);
+        const nextStateIndex = Math.min(currentIndex + 1, allowedStates.length - 1);
+        return allowedStates[nextStateIndex];
       }
 
       if (isThrowingDown) {
-        const currentIndex = validStates.indexOf(panelState);
+        const currentIndex = allowedStates.indexOf(panelState);
         const nextStateIndex = Math.max(currentIndex - 1, 0);
-        return validStates[nextStateIndex];
+        return allowedStates[nextStateIndex];
       }
 
       // Otherwise, snap to nearest state based on effective height
       let nearestState = panelState;
       let minDistance = Math.abs(effectiveHeight - SHEET_HEIGHTS[panelState]);
 
-      for (const state of validStates) {
+      for (const state of allowedStates) {
         const distance = Math.abs(effectiveHeight - SHEET_HEIGHTS[state]);
         if (distance < minDistance) {
           minDistance = distance;
@@ -98,7 +99,7 @@ export function BottomSheet({
 
       return nearestState;
     },
-    [panelState, getValidStates]
+    [panelState, allowedStates]
   );
 
   // Drag gesture handler
@@ -115,7 +116,6 @@ export function BottomSheet({
     const deltaY = e.clientY - lastYRef.current;
     const deltaTime = Date.now() - lastTimeRef.current;
 
-    // Calculate velocity (pixels per millisecond)
     if (deltaTime > 0) {
       velocityRef.current = deltaY / deltaTime;
     }
@@ -123,15 +123,11 @@ export function BottomSheet({
     lastYRef.current = e.clientY;
     lastTimeRef.current = Date.now();
 
-    // Update visual offset during drag
-    // Positive deltaY = dragging down (hide more), negative = dragging up (show more)
     const totalDrag = e.clientY - dragStartY;
     const currentHeight = SHEET_HEIGHTS[panelState];
     
-    // Limit how far up or down we can drag
-    // Can't drag up beyond full state, can't drag down beyond off state
-    const maxDragUp = allowFull ? SHEET_HEIGHTS.full - currentHeight : SHEET_HEIGHTS.half - currentHeight;
-    const maxDragDown = currentHeight; // Can drag down to hide it completely
+    const maxDragUp = allowedStates.includes('full') ? SHEET_HEIGHTS.full - currentHeight : SHEET_HEIGHTS.half - currentHeight;
+    const maxDragDown = currentHeight;
 
     const clampedDrag = Math.max(-maxDragUp, Math.min(maxDragDown, totalDrag));
     setDragOffset(clampedDrag);
@@ -141,7 +137,6 @@ export function BottomSheet({
     if (dragStartY === null) return;
 
     const currentHeight = SHEET_HEIGHTS[panelState];
-    // Positive dragOffset means dragged down (hiding), negative means dragged up (showing more)
     const effectiveHeight = currentHeight - dragOffset;
     const velocity = velocityRef.current;
 
@@ -165,6 +160,7 @@ export function BottomSheet({
   const transformY = getTransformY();
   const easing = 'cubic-bezier(0.2, 0.0, 0, 1.0)';
   const transitionClass = dragStartY !== null ? '' : `transition-transform duration-[250ms]`;
+  const showDragHandle = allowedStates.length > 2;
 
   return (
     <div
@@ -174,15 +170,14 @@ export function BottomSheet({
     >
       <div
         ref={sheetRef}
-        className={`w-full bg-gray-800 rounded-t-lg ${active ? 'p-4' : 'p-0'} ${transitionClass} fixed inset-x-0 bottom-0 z-[451] pointer-events-auto will-change-transform`}
+        className={`w-full bg-gray-800 rounded-t-lg ${active ? 'px-2 pt-4' : 'p-0'} ${transitionClass} fixed inset-x-0 bottom-0 z-[451] pointer-events-auto will-change-transform`}
         style={{
           transform: `translateY(${transformY}px)`,
           transitionTimingFunction: easing,
           maxHeight: `${SHEET_HEIGHTS[panelState]}px`,
         }}
       >
-        {/* Drag handle - only show if allowFull */}        
-        {allowFull && (
+        {showDragHandle && (
           <div
             className="flex justify-center py-2 cursor-grab active:cursor-grabbing select-none"
             style={{ touchAction: 'none' }}
@@ -195,10 +190,10 @@ export function BottomSheet({
           </div>
         )}
           {/* Title bar */}
-          <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center justify-between pb-4">
             <h2 className="text-lg font-semibold tracking-wide text-gray-300">{title}</h2>
             <div className={`flex items-center gap-2`}>
-              <div>
+              <div className={`mr-2`}>
                 {headerContent}
               </div>
               <button 
@@ -211,8 +206,10 @@ export function BottomSheet({
           </div>
 
         {/* Content container */}
-        <div className="w-full overflow-y-auto h-100"
-        style={{ maxHeight: `${SHEET_HEIGHTS[panelState] - (28+28+16)}px`}}>
+        <div 
+          ref={contentRef}
+          className="w-full overflow-y-auto h-100 pb-4"
+          style={{ maxHeight: `${SHEET_HEIGHTS[panelState] - (showDragHandle ? (28+28+16) : (44+16))}px`}}>
           {children}
         </div>
       </div>

@@ -11,7 +11,7 @@ import {
 export type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PanelType = 'layer' | 'report' | 'info';
-export type PanelState = 'off' | 'half' | 'full';
+export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
 export type ClickOutsideBehavior = 'off' | 'half' | null;
 
 interface MapState {

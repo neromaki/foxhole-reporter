@@ -42,7 +42,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
   const thresholdLeft = `${clamp01(requiredVictoryTowns / scale) * 100}%`;
 
   return (
-    <div className={`visible absolute top-2 inset-x-2 z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 pb-0 text-sm text-gray-200 ${className ?? ''}`}>
+    <div className={`w-full visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 pb-0 text-sm text-gray-200 ${className ?? ''}`}>
 
       <div className="flex flex-row items-start justify-between mt-2 space-x-2">
         <div className="flex items-center flex-col gap-1">
