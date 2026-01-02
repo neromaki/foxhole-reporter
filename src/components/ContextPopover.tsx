@@ -11,11 +11,18 @@ export function ContextPopover() {
     if(s.activeReportMode == 'allTime') return 'Showing territory changes since the start of the war';
     return s.contextPopoverContent;
   });
-  if (!content) return null;
 
   return (
-    <div className={`absolute top-3 left-1/2 transform -translate-x-1/2 rounded border border-gray-700 bg-gray-800 p-3 text-[16px] text-gray-200 z-[1000]`}>
-      <span>{content}</span>
+    <div className={`absolute top-3 inset-x-3 flex flex-col items-center gap-y-2 z-[1000]`}>
+      {/* <div className={`rounded border border-gray-400 bg-gray-200 p-3 text-[16px] text-gray-800`}>
+        <span>⌚ Got a minute? <a href="https://forms.gle/1mLUohERKBm8cMnWA" className={`font-bold`} target="_blank" rel="noopener noreferrer">Leave feedback</a> and help me build Foxhole Report!</span>
+      </div> */}
+        
+      {content && (
+        <div className={`flex rounded border border-gray-700 bg-gray-800 p-3 text-[16px] text-gray-200`}>
+          <span>{content}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -99,16 +99,6 @@ export default function LayerTogglePanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <button
-          className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
-          onClick={() => setAllLayers(true)}
-        >Show all</button>
-        <button
-          className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
-          onClick={() => setAllLayers(false)}
-        >Hide all</button>
-      </div>
       <div>
         <ul className="flex justify-around align-items-start flex-wrap">
           {(Object.keys(otherLabels) as Array<keyof typeof otherLabels>).map((k) => {

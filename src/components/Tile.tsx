@@ -9,9 +9,10 @@ interface Props {
   label: string;
   counts?: object;
   callBack?: () => void;
-}``
+}
 
 export function Tile({ k, active, icon, label, counts, callBack }: Props) {
+  const spriteFactor = 1.75;
 
   return (
     <button
@@ -19,13 +20,13 @@ export function Tile({ k, active, icon, label, counts, callBack }: Props) {
       className={`flex flex-col items-center transition-opacity max-w-[76px] gap-1 ${active ? 'opacity-100' : 'opacity-50'}`}
     >
       <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1`}>
-        <div className={`w-16 h-16 rounded-xl bg-gray-700`}>
+        <div className={`w-14 h-14 rounded-xl bg-gray-700`}>
           { icon ? (
             'type' in icon && icon.type === 'sprite' ? (
-              <div className={`w-16 h-16 scale-75`} style={{ 
+              <div className={`w-14 h-14 scale-75`} style={{ 
                 backgroundImage: icon && icon.url && `url(${icon.url.toString()})`, 
-                backgroundPosition: icon && icon.coords && `-${icon.coords.x * 2}px -${icon.coords.y * 2}px`, 
-                backgroundSize: icon && icon.width && icon.height && `${icon.width * 2}px ${icon.height * 2}px`, 
+                backgroundPosition: icon && icon.coords && `-${icon.coords.x * spriteFactor}px -${icon.coords.y * spriteFactor}px`, 
+                backgroundSize: icon && icon.width && icon.height && `${icon.width * spriteFactor}px ${icon.height * spriteFactor}px`, 
                 backgroundRepeat: 'no-repeat' }}></div>
             ) : (
               <img src={icon.url.toString()} className="rounded-xl" />
@@ -35,7 +36,7 @@ export function Tile({ k, active, icon, label, counts, callBack }: Props) {
           ) }
         </div>
       </div>
-      <span className={`text-sm`}>{label}</span>
+      <span className={`text-xs`}>{label}</span>
       <span className={`hidden md:visible h-3 w-3 rounded-full}`}></span>
     </button>
   );

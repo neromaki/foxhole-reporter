@@ -13,6 +13,7 @@ interface BottomSheetProps {
   allowFull?: boolean;
   clickOutsideBehavior?: ClickOutsideBehavior;
   title: string;
+  headerContent?: React.ReactNode;
 }
 
 export function BottomSheet({
@@ -21,6 +22,7 @@ export function BottomSheet({
   allowFull = false,
   clickOutsideBehavior = null,
   title = '',
+  headerContent = null,
 }: BottomSheetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -195,12 +197,17 @@ export function BottomSheet({
           {/* Title bar */}
           <div className="flex items-center justify-between pb-2">
             <h2 className="text-lg font-semibold tracking-wide text-gray-300">{title}</h2>
-            <button 
-              className="text-gray-400 hover:text-gray-200"
-              onClick={() => setPanelState(type, 'off')}
-              >
-                <img src={new URL(`../images/icn_close.png`, import.meta.url).href} className={`w-6 h-6`} />
+            <div className={`flex items-center gap-2`}>
+              <div>
+                {headerContent}
+              </div>
+              <button 
+                className="text-gray-400 hover:text-gray-200"
+                onClick={() => setPanelState(type, 'off')}
+                >
+                  <img src={new URL(`../images/icn_close.png`, import.meta.url).href} className={`w-6 h-6`} />
               </button>
+            </div>
           </div>
 
         {/* Content container */}

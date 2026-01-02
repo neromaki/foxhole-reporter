@@ -20,6 +20,7 @@ export default function App() {
 
   const panelState = useMapStore((s) => s.panelState);
   const setPanelState = useMapStore((s) => s.setPanelState);
+  const setAllLayers = useMapStore((s) => s.setAllLayers);
 
   const victoryCounts = useMemo<VictoryCounts | null>(() => {
     if (!snapshot?.territories) return null;
@@ -45,7 +46,18 @@ export default function App() {
           /> */}
         </div>
 
-        <BottomSheet type={'layer'} allowFull={true} clickOutsideBehavior={'half'} title={'Layers'}>
+        <BottomSheet type={'layer'} allowFull={true} clickOutsideBehavior={'half'} title={'Layers'} headerContent={
+          <div className="flex gap-2">
+            <button
+              className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
+              onClick={() => setAllLayers(true)}
+            >Show all</button>
+            <button
+              className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
+              onClick={() => setAllLayers(false)}
+            >Hide all</button>
+          </div>
+        }>
           <LayerTogglePanel />
         </BottomSheet>
 
@@ -53,7 +65,7 @@ export default function App() {
           <ReportModes />
         </BottomSheet>
 
-        <div className={`fixed bottom-[250px] right-3 flex flex-col justify-start z-[430] gap-3 mb-3`}>
+        <div className={`fixed top-[85px] right-1 flex flex-col justify-start z-[430]`}>
           <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
           <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
         </div>
@@ -67,7 +79,6 @@ export default function App() {
           showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
           showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
           warNumber={warState?.warNumber}
-          className="visible absolute top-0 inset-x-3 z-[1000] hidden"
         />
         <MapView />
       </main>
@@ -87,7 +98,7 @@ function PanelButton({label, targetPanel, icon, onClick}: {label: string, target
       className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'}`}
       onClick={() => onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : 'half')}
     >
-      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-8 h-8 ${active ? 'invert' : ''}`} />
+      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-7 h-7 ${active ? 'invert' : ''}`} />
       {/* <span>{label}</span> */}
     </button>
   </div>
