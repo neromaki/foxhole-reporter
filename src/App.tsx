@@ -8,6 +8,8 @@ import { useLatestSnapshot, useWarState } from './lib/queries';
 import { useWarApiDirect } from './lib/hooks/useWarApiDirect';
 import { DATA_SOURCE, WARSTATE_GRAPH_SHOW_NEUTRAL, WARSTATE_GRAPH_SHOW_SCORCHED } from './lib/mapConfig';
 import type { LocationTile } from './types/war';
+import { useMapStore, PanelType, PanelState } from './state/useMapStore';
+import { BottomSheet } from './components/BottomSheet';
 
 export default function App() {
   const { data: supabaseSnapshot } = useLatestSnapshot({ enabled: DATA_SOURCE === 'supabase' });
@@ -16,6 +18,9 @@ export default function App() {
 
   const { data: warState } = useWarState();
 
+  const panelState = useMapStore((s) => s.panelState);
+  const setPanelState = useMapStore((s) => s.setPanelState);
+
   const victoryCounts = useMemo<VictoryCounts | null>(() => {
     if (!snapshot?.territories) return null;
     return computeVictoryCounts(snapshot.territories);
@@ -23,38 +28,69 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <VictoryBar
-        counts={victoryCounts}
-        requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
-        showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
-        showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
-        warNumber={warState?.warNumber}
-        className="visible absolute top-0 inset-x-3 z-[1000] hidden"
-      />
-      <aside className="w-full md:w-[26rem] bg-gray-800 border-r border-gray-700 flex flex-col absolute -left-full md:relative md:left-0 z-[500]">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-semibold">Foxhole Reporter</h1>
-          <p className="text-xs text-gray-400">Live territory & logistics overlays</p>
-          <VictoryBar
+      <aside>
+
+        <div className="">
+          <div className="hidden md:visible">
+            <h1 className="text-xl font-semibold">Foxhole Report</h1>
+            <p className="text-xs text-gray-400">Live territory states & capture reports from the frontlines</p>
+          </div>
+          {/* <VictoryBar
             counts={victoryCounts}
             requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
             className="victory visible absolute md:static top-0 left-[103%] -right-[97%] z-[1000]"
-          />
+          /> */}
+        </div>
+
+        <BottomSheet type={'layer'} allowFull={true} clickOutsideBehavior={'half'} title={'Layers'}>
+          <LayerTogglePanel />
+        </BottomSheet>
+
+        <BottomSheet type={'report'} allowFull={false} clickOutsideBehavior={'off'} title={'Reports'}>
           <ReportModes />
+        </BottomSheet>
+
+        <div className={`fixed bottom-[250px] right-3 flex flex-col justify-start z-[430] gap-3 mb-3`}>
+          <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
+          <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
         </div>
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-full overflow-y-auto">
-            <LayerTogglePanel />
-          </div>
-        </div>
+
       </aside>
+
       <main className="flex-1">
+        <VictoryBar
+          counts={victoryCounts}
+          requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
+          showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
+          showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
+          warNumber={warState?.warNumber}
+          className="visible absolute top-0 inset-x-3 z-[1000] hidden"
+        />
         <MapView />
       </main>
     </div>
+  );
+}
+
+function PanelButton({label, targetPanel, icon, onClick}: {label: string, targetPanel: PanelType, icon: string, onClick?: () => void}): JSX.Element {
+
+  const panelState = useMapStore((s) => s.panelState);
+  const setPanelState = useMapStore((s) => s.setPanelState);
+  const active = panelState[targetPanel] !== 'off'
+
+  return (
+  <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1`}>
+    <button
+      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'}`}
+      onClick={() => onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : 'half')}
+    >
+      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-8 h-8 ${active ? 'invert' : ''}`} />
+      {/* <span>{label}</span> */}
+    </button>
+  </div>
   );
 }
 

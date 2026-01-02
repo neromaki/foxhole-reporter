@@ -8,9 +8,11 @@ import {
   getDefaultLayerState,
 } from './layers';
 
-type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
-
+export type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type PanelType = 'layer' | 'report' | 'info';
+export type PanelState = 'off' | 'half' | 'full';
+export type ClickOutsideBehavior = 'off' | 'half' | null;
 
 interface MapState {
   activeLayers: LayerState;
@@ -28,7 +30,12 @@ interface MapState {
   setRealtimeStatus: (status: RealtimeConnectionStatus) => void;
   contextPopoverContent: string | null;
   setContextPopoverContent: (html: string | null) => void;
+  panelState: Record<PanelType, PanelState>;
+  setPanelState: (panel: PanelType, state: PanelState) => void;
+  panelClickOutsideBehavior: Record<PanelType, ClickOutsideBehavior>;
+  setPanelClickOutsideBehavior: (panel: PanelType, behavior: ClickOutsideBehavior) => void;
 }
+
 
 const defaultLayers: LayerState = getDefaultLayerState();
 
@@ -118,4 +125,17 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
+  panelState: { layer: 'off', report: 'off', info: 'off' },
+  setPanelState: (panel, state) => {
+    const s = get();
+    Object.keys(s.panelState).forEach((key) => {
+      s.panelState[key as PanelType] = 'off';
+    });
+    set({ panelState: { ...s.panelState, [panel]: state } });
+  },
+  panelClickOutsideBehavior: { layer: 'half', report: 'off', info: 'off' },
+  setPanelClickOutsideBehavior: (panel, behavior) => {
+    const s = get();
+    set({ panelClickOutsideBehavior: { ...s.panelClickOutsideBehavior, [panel]: behavior } });
+  },
 }));

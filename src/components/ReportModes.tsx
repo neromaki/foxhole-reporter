@@ -1,61 +1,21 @@
 import React from 'react';
 import { useMapStore } from '../state/useMapStore';
+import { Tile } from './Tile';
 
 export default function ReportModes() {
   const mode = useMapStore(s => s.activeReportMode);
   const setMode = useMapStore(s => s.setActiveReportMode);
-  const onDaily = () => setMode('daily');
-  const onThreeDay = () => setMode('threeDay');
-  const onWeekly = () => setMode('weekly');
-  const onAllTime = () => setMode('allTime');
   const isDaily = mode === 'daily';
   const isThreeDay = mode === 'threeDay';
   const isWeekly = mode === 'weekly';
   const isAllTime = mode === 'allTime';
-  const buttonStyle = {
-    base: `px-2 py-1 grow rounded border`,
-    active: `bg-gray-200 text-gray-800 border-gray-500 hover:bg-gray-100`,
-    inactive: `bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-600`,
-  };
 
-  return (
-    <div className={`mt-3 rounded border border-gray-700 bg-gray-700 p-3 text-sm text-gray-200`}>
-      <div className="flex flex-col mb-3">
-        <span className="font-bold"><div className="text-xs text-gray-300">Territory reports</div></span>
-        <span className="text-xs text-gray-400">View territory changes across time periods</span>
-      </div>
-      
-        <div className="flex justify-stretch gap-2">
-          <button
-            onClick={onDaily}
-            className={`${buttonStyle.base} ${isDaily ? buttonStyle.active : buttonStyle.inactive}`}
-            title="Highlight changes in last 24 hours"
-          >
-            1 day
-          </button>
-          <button
-            onClick={onThreeDay}
-            className={`${buttonStyle.base} ${isThreeDay ? buttonStyle.active : buttonStyle.inactive}`}
-            title="Highlight changes in last 3 days"
-          >
-            3 days
-          </button>
-          <button
-            onClick={onWeekly}
-            className={`${buttonStyle.base} ${isWeekly ? buttonStyle.active : buttonStyle.inactive}`}
-            title="Highlight changes in last 7 days"
-          >
-            7 days
-          </button>
-          <button
-            onClick={onAllTime}
-            className={`${buttonStyle.base} ${isAllTime ? buttonStyle.active : buttonStyle.inactive}`}
-            title="Highlight changes in all time since start of war"
-          >
-            All 
-          </button>
-        </div>
-      
+  return (      
+    <div className="flex justify-between gap-2">
+      <Tile label={"1 day"} icon={{type: "image", url: new URL(`../images/Tile_Report_1.png`, import.meta.url)}} active={isDaily} callBack={() => setMode('daily')} />
+      <Tile label={"3 days"} icon={{type: "image", url: new URL(`../images/Tile_Report_3.png`, import.meta.url)}} active={isThreeDay} callBack={() => setMode('threeDay')} />
+      <Tile label={"7 days"} icon={{type: "image", url: new URL(`../images/Tile_Report_7.png`, import.meta.url)}} active={isWeekly} callBack={() => setMode('weekly')} />
+      <Tile label={"All"} icon={{type: "image", url: new URL(`../images/Tile_Report_All.png`, import.meta.url)}} active={isAllTime} callBack={() => setMode('allTime')} />
     </div>
   );
 }

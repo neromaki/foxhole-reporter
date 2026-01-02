@@ -82,7 +82,7 @@ export default function MapView() {
 
   useEffect(() => {
     DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
-    console.log('[MapView] Snapshot data:', snapshot);
+    DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
     DEBUG_MODE ?? console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
     DEBUG_MODE ?? console.log('[MapView] Structures layer active:', activeLayers.structures);
     if (snapshot?.territories && snapshot.territories.length > 0) {
