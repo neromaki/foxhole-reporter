@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
 import { join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { resolveConfig } from 'vite';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,6 +28,13 @@ const ICON_SIZE = iconSizeMatch ? parseInt(iconSizeMatch[1], 10) : 32;
 
 const COLUMNS = 16; // Icons per row in sprite
 const PADDING = 2; // Padding between icons to prevent bleeding
+
+async function getBaseUrl() {
+  const mode = process.env.MODE || process.env.NODE_ENV || 'production';
+  const resolved = await resolveConfig({}, 'build', mode);
+  const base = resolved.base || '/';
+  return base.endsWith('/') ? base : `${base}/`;
+}
 
 async function preprocessIcons(files) {
   console.log('🔧 Preprocessing icons (resize + optimize)...');
@@ -73,7 +81,13 @@ async function preprocessIcons(files) {
 async function main() {
   console.log('🎨 Generating icon sprite atlas...');
   console.log(`📏 Using ICON_SIZE: ${ICON_SIZE}px`);
-  
+
+  const baseUrl = process.env.BASE_URL
+    ? (process.env.BASE_URL.endsWith('/') ? process.env.BASE_URL : `${process.env.BASE_URL}/`)
+    : await getBaseUrl();
+  console.log(`🌐 Using BASE_URL: ${baseUrl}`);
+  process.env.BASE_URL = baseUrl;
+
   const files = readdirSync(ICONS_DIR)
     .filter(f => f.endsWith('.png'))
     .sort(); // Consistent ordering
@@ -156,7 +170,7 @@ export interface IconSpriteCoords {
   height: number;
 }
 
-export const ICON_SPRITE_PATH = '/foxhole-reporter/icon-sprite.png';
+export const ICON_SPRITE_PATH = '${baseUrl}icon-sprite.png';
 
 // Sprite atlas dimensions for background-size scaling
 export const SPRITE_COLUMNS = ${COLUMNS};

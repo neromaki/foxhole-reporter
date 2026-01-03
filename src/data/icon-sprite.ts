@@ -10,7 +10,7 @@ export interface IconSpriteCoords {
   height: number;
 }
 
-export const ICON_SPRITE_PATH = '/foxhole-reporter/icon-sprite.png';
+export const ICON_SPRITE_PATH = '/icon-sprite.png';
 
 // Sprite atlas dimensions for background-size scaling
 export const SPRITE_COLUMNS = 16;
