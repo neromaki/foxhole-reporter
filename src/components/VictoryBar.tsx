@@ -42,67 +42,69 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
   const thresholdLeft = `${clamp01(requiredVictoryTowns / scale) * 100}%`;
 
   return (
-    <div className={`w-full visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 pb-0 text-sm text-gray-200 ${className ?? ''}`}>
+    <div className={`w-full md:flex md:justify-center`}>
+      <div className={`w-full md:w-[28rem] visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 pb-0 text-sm text-gray-200 ${className ?? ''}`}>
 
-      <div className="flex flex-row items-start justify-between mt-2 space-x-2">
-        <div className="flex items-center flex-col gap-1">
-          <img src={Colonials?.icon} alt="Colonial" className="h-6 w-6" />
-          <span className="font-medium text-xs" style={{ color: Colonials?.colors.light }}>{Colonials?.namePlural}</span>
-        </div>
+        <div className="flex flex-row items-start justify-between mt-2 space-x-2">
+          <div className="flex items-center flex-col gap-1">
+            <img src={Colonials?.icon} alt="Colonial" className="h-6 w-6" />
+            <span className="font-medium text-xs" style={{ color: Colonials?.colors.light }}>{Colonials?.namePlural}</span>
+          </div>
 
-        <div className={`flex flex-grow flex-col relative`}>
-          <div className="flex-grow relative h-7 overflow-hidden rounded bg-gray-700">
-            <div className="flex h-full w-full justify-between">
-              {counts.colonial > 0 && (
-                <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.saturated }}>
-                    <span className="text-lg font-semibold text-gray-200 text-left ml-2 victory-count">{counts.colonial}</span>
-                </div>
-              )}
-              {scorchedVal > 0 && (
-                <div className="h-full" style={{ width: pct(scorchedVal), backgroundColor: scorchedColor }} />
-              )}
-              {neutralVal > 0 && (
-                <div className="h-full" style={{ width: pct(neutralVal), backgroundColor: Neutral?.colors.base }} />
-              )}
-              {counts.warden > 0 && (
-                <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.saturated }}>
-                    <span className="text-gray-200 text-right text-lg font-semibold mr-2 victory-count">{counts.warden}</span>
-                </div>
-              )}
+          <div className={`flex flex-grow flex-col relative`}>
+            <div className="flex-grow relative h-7 overflow-hidden rounded bg-gray-700">
+              <div className="flex h-full w-full justify-between">
+                {counts.colonial > 0 && (
+                  <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.saturated }}>
+                      <span className="text-lg font-semibold text-gray-200 text-left ml-2 victory-count">{counts.colonial}</span>
+                  </div>
+                )}
+                {scorchedVal > 0 && (
+                  <div className="h-full" style={{ width: pct(scorchedVal), backgroundColor: scorchedColor }} />
+                )}
+                {neutralVal > 0 && (
+                  <div className="h-full" style={{ width: pct(neutralVal), backgroundColor: Neutral?.colors.base }} />
+                )}
+                {counts.warden > 0 && (
+                  <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.saturated }}>
+                      <span className="text-gray-200 text-right text-lg font-semibold mr-2 victory-count">{counts.warden}</span>
+                  </div>
+                )}
+              </div>
+              <div
+                className="absolute inset-y-0 w-[2px] bg-white/80"
+                style={{ left: thresholdLeft, transform: 'translateX(-1px)' }}
+              />
             </div>
-            <div
-              className="absolute inset-y-0 w-[2px] bg-white/80"
-              style={{ left: thresholdLeft, transform: 'translateX(-1px)' }}
-            />
-          </div>
-          <div className="flex items-center justify-center">
-            <div className="flex content-center space-x-1 mt-1">
-                <span className="font-semibold text-xs text-center">{requiredVictoryTowns}</span>
-                <span className="text-xs text-center">to win</span>
-                <span className="font-bold">{warNumber ? <div className="text-xs text-gray-400">War {warNumber}</div> : null}</span>
+            <div className="flex items-center justify-center">
+              <div className="flex content-center space-x-1 mt-1">
+                  <span className="font-semibold text-xs text-center">{requiredVictoryTowns}</span>
+                  <span className="text-xs text-center">to win</span>
+                  <span className="font-bold">{warNumber ? <div className="text-xs text-gray-400">War {warNumber}</div> : null}</span>
+              </div>
             </div>
           </div>
+
+          <div className="flex items-center flex-col gap-1">
+            <img src={Wardens?.icon} alt="Warden" className="h-6 w-6" />
+            <span className="font-medium text-xs" style={{ color: Wardens?.colors.light }}>{Wardens?.namePlural}</span>
+          </div>
         </div>
 
-        <div className="flex items-center flex-col gap-1">
-          <img src={Wardens?.icon} alt="Warden" className="h-6 w-6" />
-          <span className="font-medium text-xs" style={{ color: Wardens?.colors.light }}>{Wardens?.namePlural}</span>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-300">
+          {showNeutral && neutralVal > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: Neutral?.colors.base }} />
+              <span>Neutral {counts.neutral}</span>
+            </div>
+          )}
+          {showScorched && scorchedVal > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: scorchedColor }} />
+              <span>Scorched {counts.scorched}</span>
+            </div>
+          )}
         </div>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-300">
-        {showNeutral && neutralVal > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: Neutral?.colors.base }} />
-            <span>Neutral {counts.neutral}</span>
-          </div>
-        )}
-        {showScorched && scorchedVal > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: scorchedColor }} />
-            <span>Scorched {counts.scorched}</span>
-          </div>
-        )}
       </div>
     </div>
   );
