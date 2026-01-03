@@ -13,7 +13,6 @@ import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
-import { time } from 'console';
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
@@ -61,15 +60,28 @@ interface RegionOverlay {
 export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, changedAllTime, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
+  const [isTouch, setIsTouch] = React.useState(false);
 
   React.useEffect(() => {
     const handler = () => { setZoom(map.getZoom()); };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
+
+  React.useEffect(() => {
+    const touch = (typeof window !== 'undefined') && (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      // @ts-ignore legacy
+      (navigator as any).msMaxTouchPoints > 0
+    );
+    setIsTouch(touch);
+  }, []);
   const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
+  const setPanelState = useMapStore((s) => s.setPanelState);
+  const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
   const { show, hide } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stickyId, setStickyId] = useState<string | null>(null);
@@ -181,11 +193,36 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   };
 
   const handleClick = (p: PathInfo) => {
-    if (!reportModeActive || !p.highlighted) return;
+    //if (!reportModeActive || !p.highlighted) return;
+
+    console.log(`handleClick on territory ${p.territoryId} (stickyId=${stickyId})`);
+    const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
+
+    if (isTouch) {
+      console.log('Touch device detected - showing minimal tooltip and centering map');
+      if (!territory || p.lat == null || p.lng == null) return;
+      setSelectedLocation({
+        tile: territory,
+        lat: p.lat,
+        lng: p.lng,
+        nearbyMajor: null,
+        hexName: getHexByApiName(territory.region)?.displayName ?? null,
+        source: 'territory',
+      });
+      console.log(`Setting info panel to half for territory ${p.territoryId}`);
+      setPanelState('info', 'half');
+      showTooltipMinimal(territory, p.lat, p.lng);
+      //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
+      map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
+      return;
+    }
+
     if (stickyId === p.territoryId) {
+      console.log(`Unsetting stickyId for territory ${p.territoryId}`);
       setStickyId(null);
       hide(0);
     } else {
+      console.log(`Setting stickyId for territory ${p.territoryId}`);
       setStickyId(p.territoryId);
       showTooltipFor(p);
     }
@@ -228,6 +265,17 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       }
     }
     show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true, false);
+  };
+
+  const showTooltipMinimal = (territory: LocationTile, lat?: number, lng?: number) => {
+    if (lat == null || lng == null) return;
+    const bits: string[] = [];
+    if (territory.owner !== 'Neutral') {
+      bits.push(`<img src="${getTeamIcon(territory.owner)}" alt="${territory.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+    }
+    const label = getTownById(territory.id)?.displayName ?? territory.id;
+    bits.push(`<span class="font-semibold">${label}</span>`);
+    show(`<div class="text-xs flex items-center">${bits.join('')}</div>`, lat, lng, 0, false, false);
   };
 
   if (!visible || !snapshot?.territories?.length) {

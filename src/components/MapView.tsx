@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { MapContainer, LayerGroup, Marker, useMap, useMapEvents, ZoomControl, Pane } from 'react-leaflet';
+import { MapContainer, LayerGroup, Marker, useMap, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
@@ -26,7 +26,6 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
-import ContextPopover from './ContextPopover';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -140,7 +139,6 @@ export default function MapView() {
       
       className="h-full w-full bg-gray-900"
     >
-      <ContextPopover />
       <ZoomControls />
       {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       <SharedTooltipProvider>
@@ -242,9 +240,26 @@ function LocationsLayer({
   changedWeekly: Set<string>;
   changedAllTime: Set<string>;
 }) {
+  // Detect if device supports touch
+  const isTouchDevice = () => {
+    return (
+      (typeof window !== 'undefined' &&
+        ('ontouchstart' in window ||
+          navigator.maxTouchPoints > 0 ||
+          (navigator as any).msMaxTouchPoints > 0)) ||
+      false
+    );
+  };
+
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
+  const [isTouch] = React.useState(isTouchDevice());
   const VERBOSE_ZOOM_LOG = false;
+
+  
+
+  const setPanelState = useMapStore((s) => s.setPanelState);
+  const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
 
   React.useEffect(() => {
     const handler = () => {
@@ -258,11 +273,17 @@ function LocationsLayer({
 
   // If at Overview zoom, zoom in on click
   React.useEffect(() => {
-    map.on('click', () => {
+    const onMapClick = () => {
       const z = map.getZoom();
       if (z == MAP_MIN_ZOOM) map.zoomIn();
-    });
-  }, [map]);
+      if (isTouch) {
+        setPanelState('info', 'off');
+        setSelectedLocation(null);
+      }
+    };
+    map.on('click', onMapClick);
+    return () => { map.off('click', onMapClick); };
+  }, [isTouch, map, setPanelState, setSelectedLocation]);
   
 
   // Verbose zoom event logging to trace hitch points
@@ -625,9 +646,18 @@ function LocationsLayer({
     return `<div class="text-xs">${parts.join('')}</div>`;
   }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
 
-  // Hover handlers
-  const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    show(getTooltipContent(t, lat, lng), lat, lng, 100);
+  // Minimal tooltip for touch devices (label + team icon)
+  const getTooltipContentMinimal = React.useCallback((t: LocationTile) => {
+    const bits: string[] = [];
+    if (t.owner !== 'Neutral') {
+      bits.push(`<img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+    }
+    bits.push(`<span class="font-semibold">${getIconLabel(t.iconType)}</span>`);
+    return `<div class="text-xs flex items-center">${bits.join('')}</div>`;
+  }, []);
+
+
+  const handleMouseDown = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     
     // Apply brightness filter to hovered icon
     const marker = markerRefs.current.get(t.id);
@@ -638,6 +668,11 @@ function LocationsLayer({
         img.style.transition = 'filter 120ms ease';
       }
     }
+  }, [map, setPanelState]);
+
+  // Hover handlers
+  const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    show(getTooltipContent(t, lat, lng), lat, lng, 100);
   }, [show, getTooltipContent]);
 
   const handleMouseOut = React.useCallback((t: LocationTile) => {
@@ -652,6 +687,25 @@ function LocationsLayer({
     }
     
   }, [hide]);
+
+  const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    if (isTouch) {
+      setSelectedLocation({
+        tile: t,
+        lat,
+        lng,
+        nearbyMajor: nearestMajorLabel(t.region, lat, lng),
+        hexName: getHexByApiName(t.region)?.displayName ?? null,
+        source: 'marker',
+      });
+      setPanelState('info', 'half');
+      show(getTooltipContentMinimal(t), lat, lng, 100);
+      //map.flyTo([lat, lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
+      map.panTo([lat, lng], { animate: true, duration: 0.5 });
+      return;
+    }
+    handleMouseOver(t, lat, lng);
+  }, [getTooltipContentMinimal, handleMouseOver, isTouch, nearestMajorLabel, setPanelState, setSelectedLocation, show]);
 
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {
@@ -683,8 +737,11 @@ function LocationsLayer({
             position={[lat, lng]}
             icon={initialIcon}
             eventHandlers={{
-              mouseover: () => handleMouseOver(t, lat, lng),
-              mouseout: () => handleMouseOut(t),
+              click: () => handleMarkerClick(t, lat, lng),
+              ...(isTouch ? {} : {
+                mouseover: () => handleMouseOver(t, lat, lng),
+                mouseout: () => handleMouseOut(t),
+              })
             }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);

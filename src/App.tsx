@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MapView from './components/MapView';
 import LayerTogglePanel from './components/LayerTogglePanel';
 import JobViewPanel from './components/JobViewPanel';
@@ -8,24 +8,38 @@ import { useLatestSnapshot, useWarState } from './lib/queries';
 import { useWarApiDirect } from './lib/hooks/useWarApiDirect';
 import { DATA_SOURCE, WARSTATE_GRAPH_SHOW_NEUTRAL, WARSTATE_GRAPH_SHOW_SCORCHED } from './lib/mapConfig';
 import type { LocationTile } from './types/war';
-import { useMapStore, PanelType, PanelState } from './state/useMapStore';
+import { useMapStore, PanelType } from './state/useMapStore';
 import { BottomSheet } from './components/BottomSheet';
+import InfoSheet from './components/InfoSheet';
+import { ContextPopover } from './components/ContextPopover';
 
 export default function App() {
+  const [isTouch, setIsTouch] = useState(false);
   const { data: supabaseSnapshot } = useLatestSnapshot({ enabled: DATA_SOURCE === 'supabase' });
   const { data: warApiSnapshot } = useWarApiDirect({ enabled: DATA_SOURCE === 'warapi' });
   const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
 
   const { data: warState } = useWarState();
 
-  const panelState = useMapStore((s) => s.panelState);
-  const setPanelState = useMapStore((s) => s.setPanelState);
   const setAllLayers = useMapStore((s) => s.setAllLayers);
+  const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
+
+  const selectedLocation = useMapStore((s) => s.selectedLocation);
 
   const victoryCounts = useMemo<VictoryCounts | null>(() => {
     if (!snapshot?.territories) return null;
     return computeVictoryCounts(snapshot.territories);
   }, [snapshot]);
+
+  useEffect(() => {
+    const touch = (typeof window !== 'undefined') && (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      // @ts-ignore - legacy IE support
+      (navigator as any).msMaxTouchPoints > 0
+    );
+    setIsTouch(touch);
+  }, []);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -47,9 +61,15 @@ export default function App() {
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
           />
-          <div className={`flex flex-col mt-2`}>
-            <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
-            <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
+          <div className={`flex items-start justify-normal`}>
+            <div className={`mt-4 mr-3`}>
+              <ContextPopover />
+            </div>
+
+            <div className={`flex flex-col mt-2 flex-shrink-0`}>
+              <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
+              <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} />
+            </div>
           </div>
         </div>
 
@@ -68,9 +88,22 @@ export default function App() {
           <LayerTogglePanel />
         </BottomSheet>
 
-        <BottomSheet type={'report'} allowedStates={['half']} clickOutsideBehavior={'off'} title={'Reports'}>
+        <BottomSheet type={'report'} allowedStates={['half']} clickOutsideBehavior={'off'} title={'Reports'} headerContent={
+          reportModeActive && (
+            <button
+              className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
+              onClick={() => useMapStore.getState().setActiveReportMode(null)}
+            >Close Report</button>
+          )
+        }>
           <ReportModes />
         </BottomSheet>
+
+        {isTouch && (
+          <BottomSheet type={'info'} allowedStates={['half']} clickOutsideBehavior={'off'} title={selectedLocation && selectedLocation.nearbyMajor ? selectedLocation.nearbyMajor : 'Info'}>
+            <InfoSheet />
+          </BottomSheet>
+        )}
 
       </aside>
 
@@ -85,7 +118,7 @@ function PanelButton({label, targetPanel, icon, onClick}: {label: string, target
 
   const panelState = useMapStore((s) => s.panelState);
   const setPanelState = useMapStore((s) => s.setPanelState);
-  const active = panelState[targetPanel] !== 'off'
+  const active = panelState[targetPanel] !== 'off';
 
   return (
   <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>

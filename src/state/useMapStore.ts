@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { LocationTile } from '../types/war';
 import {
   LayerKey,
   LayerState,
@@ -13,6 +14,14 @@ export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connecte
 export type PanelType = 'layer' | 'report' | 'info';
 export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
 export type ClickOutsideBehavior = 'off' | 'half' | null;
+export type SelectedLocation = {
+  tile: LocationTile;
+  lat: number;
+  lng: number;
+  nearbyMajor: string | null;
+  hexName: string | null;
+  source: 'marker' | 'territory';
+};
 
 interface MapState {
   activeLayers: LayerState;
@@ -34,6 +43,8 @@ interface MapState {
   setPanelState: (panel: PanelType, state: PanelState) => void;
   panelClickOutsideBehavior: Record<PanelType, ClickOutsideBehavior>;
   setPanelClickOutsideBehavior: (panel: PanelType, behavior: ClickOutsideBehavior) => void;
+  selectedLocation: SelectedLocation | null;
+  setSelectedLocation: (sel: SelectedLocation | null) => void;
 }
 
 
@@ -127,15 +138,26 @@ export const useMapStore = create<MapState>((set, get) => ({
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
   panelState: { layer: 'off', report: 'off', info: 'off' },
   setPanelState: (panel, state) => {
-    const s = get();
-    Object.keys(s.panelState).forEach((key) => {
-      s.panelState[key as PanelType] = 'off';
+    set((s) => {
+      const nextPanelState: Record<PanelType, PanelState> = {
+        layer: 'off',
+        report: 'off',
+        info: 'off',
+        [panel]: state,
+      };
+      const shouldClearSelection = nextPanelState.info === 'off';
+      console.log(`Setting panel ${panel} to state ${state} (shouldClearSelection=${shouldClearSelection}), selectedLocation=${s.selectedLocation ? 'set' : 'null'}`);
+      return {
+        panelState: nextPanelState,
+        selectedLocation: shouldClearSelection ? null : s.selectedLocation,
+      };
     });
-    set({ panelState: { ...s.panelState, [panel]: state } });
   },
   panelClickOutsideBehavior: { layer: 'half', report: 'off', info: 'off' },
   setPanelClickOutsideBehavior: (panel, behavior) => {
     const s = get();
     set({ panelClickOutsideBehavior: { ...s.panelClickOutsideBehavior, [panel]: behavior } });
   },
+  selectedLocation: null,
+  setSelectedLocation: (sel) => set({ selectedLocation: sel }),
 }));
