@@ -14,13 +14,14 @@ import { MapIcon, MapIconTag, getMapTag } from '../data/map-icons';
 import { useLatestSnapshot } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { DATA_SOURCE } from '../lib/mapConfig';
+import { Tile } from './Tile';
 
 type NonTreeLayerKey = 'territories' | 'majorLocations' | 'casualties';
 
 const otherLabels: Record<NonTreeLayerKey, string> = {
   territories: 'Territories',
-  majorLocations: 'Major locations',
   casualties: 'Casualties',
+  majorLocations: 'Labels',
 };
 
 function indicatorClass(state: LayerVisualState) {
@@ -29,45 +30,38 @@ function indicatorClass(state: LayerVisualState) {
   return 'bg-gray-600';
 }
 
-function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth: number; countsByIconType: Map<number, number> }) {
+function TreeToggle({ node, depth, countsByIconType }: { node: LayerNode; depth: number; countsByIconType: Map<number, { colonial: number, warden: number, neutral: number }> }) {
   const activeLayers = useMapStore((s) => s.activeLayers);
   const toggle = useMapStore((s) => s.toggleLayer);
 
   const state = useMemo(() => computeVisualState(activeLayers, node.id), [activeLayers, node.id]);
   const disabled = false;
   const icon = node.leaf && node.tags.length > 0 ? getTagIcon(node.tags[0]) : null;
-  const count = node.leaf && node.tags.length > 0 ? getCountForTag(node.tags[0], countsByIconType) : null;
+  const count = node.leaf && node.tags.length > 0 ? getCountForTag(node.tags[0], countsByIconType) : {};
 
   return (
-    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-3 pr-3' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
+    <li className={`space-y-1 depth-${depth} ${depth == 1 && !node.leaf ? 'mt-3' : depth == 0 ? 'px-2' : ''} ${node.leaf ? 'isLeaf' : ''}`}>
+      { node.leaf ? (
+        <div className={`my-0`}>
+          <Tile k={node.id} active={activeLayers[node.id]} callBack={() => toggle(node.id)} icon={icon} label={node.label} counts={count} />
+        </div>
+      ) : (
       <button
         onClick={() => {
           if (disabled) return;
           toggle(node.id);
         }}
         disabled={disabled}
-        className={`relative w-full flex items-center justify-start px-3 py-2 rounded text-sm border transition ${activeLayers[node.id] ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-gray-900 border-gray-800 hover:bg-gray-800 hover:border-gray-700'}`}
+        className={`relative w-full flex items-center justify-start px-3 py-2 rounded-t text-sm transition ${depth > 0 ? activeLayers[node.id] ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-900  hover:bg-gray-800' : 'bg-none border-none'}`}
       >
-        { node.leaf ? (
-          <>
-            <div className={`${!activeLayers[node.id] ? 'opacity-50' : ''}`}>
-              {icon}
-            </div>
-            {typeof count === 'number' && (
-              <span className="absolute top-0 right-0 rounded bg-gray-950/80 text-[10px] leading-none px-1 py-0.5">
-                {count}
-              </span>
-            )}
-          </>
-        ) : (
-          <div className={`flex justify-between items-center w-full`}>
-            <span>{node.label}</span>
-            <span className={`h-3 w-3 rounded-full inline-block ${indicatorClass(state)}`}></span>
-          </div>
-        )}
+        <div className={`flex justify-between items-center w-full`}>
+          <span>{node.label}</span>
+          <span className={`h-3 w-3 rounded-full inline-block ${indicatorClass(state)}`}></span>
+        </div>
       </button>
+      )}
       {node.children && node.children.length > 0 && (
-        <ul className={`inner-ul ml-3 depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex flex-wrap gap-1 bg-gray-950 ml-0 !mt-0 p-2 rounded-b' : ''}`}>
+        <ul className={`inner-ul depth-${depth + 1} ${node.children && node.children.length > 0 && node.children[0].leaf ? 'flex justify-start flex-wrap gap-x-3 gap-y-2 ml-0 !mt-0 px-2 pt-2 pb-4 rounded-b bg-gray-900/60' : ''}`}>
           {node.children.map((child: any) => (
             <TreeToggle key={child.id} node={child} depth={depth + 1} countsByIconType={countsByIconType} />
           ))}
@@ -89,46 +83,28 @@ export default function LayerTogglePanel() {
 
   // Pre-compute counts by iconType for the current snapshot
   const countsByIconType = useMemo(() => {
-    const m = new Map<number, number>();
-    const items = (snapshot as any)?.territories as Array<{ iconType: number }> | undefined;
+    const m = new Map<number, { colonial: number; warden: number; neutral: number }>();
+    const items = (snapshot as any)?.territories as Array<{ iconType: number; teamId?: string }> | undefined;
     if (!items) return m;
     for (const t of items) {
-      const c = m.get(t.iconType) ?? 0;
-      m.set(t.iconType, c + 1);
+      const current = m.get(t.iconType) ?? { colonial: 0, warden: 0, neutral: 0 };
+      const team = t.teamId?.toLowerCase() ?? 'neutral';
+      if (team === 'colonials') current.colonial++;
+      else if (team === 'wardens') current.warden++;
+      else current.neutral++;
+      m.set(t.iconType, current);
     }
     return m;
   }, [snapshot]);
 
   return (
-    <div className="p-4 space-y-4 overflow-y-auto">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-gray-300 uppercase">Layers</h2>
-        <div className="flex gap-2">
-          <button
-            className="px-2 py-1 text-xs rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
-            onClick={() => setAllLayers(true)}
-          >Show all</button>
-          <button
-            className="px-2 py-1 text-xs rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
-            onClick={() => setAllLayers(false)}
-          >Hide all</button>
-        </div>
-      </div>
-
+    <div className="space-y-4">
       <div>
-        <ul className="space-y-3">
+        <ul className="flex justify-around align-items-start flex-wrap">
           {(Object.keys(otherLabels) as Array<keyof typeof otherLabels>).map((k) => {
             return (
               <li key={k}>
-                <button
-                  onClick={() => {
-                    toggle(k as LayerKey);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm border transition ${active[k as LayerKey] ? 'bg-gray-700 border-gray-600' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
-                >
-                  <span>{otherLabels[k]}</span>
-                  <span className={`h-3 w-3 rounded-full ${active[k as LayerKey] ? 'bg-green-400' : 'bg-gray-600'}`}></span>
-                </button>
+                <Tile k={k} active={active[k as LayerKey]} label={otherLabels[k]} counts={{}} callBack={() => toggle(k as LayerKey)} />
               </li>
             );
           })}
@@ -136,14 +112,14 @@ export default function LayerTogglePanel() {
       </div>
 
       <div className="space-y-2">
-        <ul className={`bg-gray-900`}>
+        <ul className={`bg-gray-900/40 rounded-lg pb-2`}>
           <TreeToggle node={structuresRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>
 
 
       <div className="space-y-2">
-        <ul>
+        <ul className={`bg-gray-900/40 rounded-lg pb-2`}>
           <TreeToggle node={resourcesRoot} depth={0} countsByIconType={countsByIconType} />
         </ul>
       </div>
@@ -151,7 +127,7 @@ export default function LayerTogglePanel() {
   );
 }
 
-function getTagIcon(tag: MapIconTag)  {
+function getTagIcon(tag: MapIconTag): { type: string, url: URL, coords: { x: number, y: number }, width: number, height: number, iconType: number } | null {
   const tagData = getMapTag(tag);
   if (!tagData) return null;
   const iconType = tagData.mapIcon;
@@ -171,24 +147,41 @@ function getTagIcon(tag: MapIconTag)  {
     const bgWidth = SPRITE_WIDTH;
     const bgHeight = SPRITE_HEIGHT;
 
-    return (
-        <div style={{ width: bw, height: bw, backgroundImage: `url(${sprite.spritePath})`, backgroundPosition: `-${x}px -${y}px`, backgroundSize: `${bgWidth}px ${bgHeight}px`, backgroundRepeat: 'no-repeat' }}></div>
-    );
+    return { 
+      type: 'sprite' as const, 
+      url: new URL(sprite.spritePath, import.meta.url), 
+      coords: { x: x, y: y },
+      width: bgWidth, 
+      height: bgHeight,
+      iconType: iconType,
+    };
   } else {
-    return (
-      <img src={getIconUrl(iconType)} style={{ width: bw, height: bh }} alt={`Icon ${iconType}`} />
-    )
+    return {
+      type: 'icon' as const,
+      url: new URL(getIconUrl(iconType), import.meta.url),
+      coords: { x: 0, y: 0 },
+      width: bw,
+      height: bh,
+      iconType: iconType,
+    }
   }
 }
 
-function getCountForTag(tag: MapIconTag, countsByIconType: Map<number, number>): number {
+function getCountForTag(tag: MapIconTag, countsByIconType: Map<number, { colonial: number, warden: number, neutral: number }>): object {
   const tagData = getMapTag(tag);
-  if (!tagData) return 0;
+  if (!tagData) return {};
   const iconType = tagData.mapIcon as number;
   if(iconType == MapIcon.Town_Base_1) {
     // Special case: iconType 56, 57 and 58 represents different tiers of the same Town Base
     // Sum counts for all relevant iconTypes
-    return [MapIcon.Town_Base_1, MapIcon.Town_Base_2, MapIcon.Town_Base_3].reduce((sum, it) => sum + (countsByIconType.get(it) ?? 0), 0);
+    return [MapIcon.Town_Base_1, MapIcon.Town_Base_2, MapIcon.Town_Base_3].reduce((sum, it) => {
+      const count = countsByIconType.get(it) ?? { colonial: 0, warden: 0, neutral: 0 };
+      return {
+        colonial: sum.colonial + count.colonial,
+        warden: sum.warden + count.warden,
+        neutral: sum.neutral + count.neutral,
+      };
+    }, { colonial: 0, warden: 0, neutral: 0 });
   }
-  return countsByIconType.get(iconType) ?? 0;
+  return countsByIconType.get(iconType) ?? { colonial: 0, warden: 0, neutral: 0 };
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { MapContainer, LayerGroup, Marker, useMap, useMapEvents, ZoomControl, Pane } from 'react-leaflet';
+import { MapContainer, LayerGroup, Marker, useMap, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -26,7 +26,7 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
-import ContextPopover from './ContextPopover';
+import { isTouchDevice } from '../lib/devices';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -82,7 +82,7 @@ export default function MapView() {
 
   useEffect(() => {
     DEBUG_MODE ?? console.log('[MapView] Data source (config):', DATA_SOURCE);
-    console.log('[MapView] Snapshot data:', snapshot);
+    DEBUG_MODE ?? console.log('[MapView] Snapshot data:', snapshot);
     DEBUG_MODE ?? console.log('[MapView] Location count:', snapshot?.territories?.length ?? 0);
     DEBUG_MODE ?? console.log('[MapView] Structures layer active:', activeLayers.structures);
     if (snapshot?.territories && snapshot.territories.length > 0) {
@@ -140,7 +140,6 @@ export default function MapView() {
       
       className="h-full w-full bg-gray-900"
     >
-      <ContextPopover />
       <ZoomControls />
       {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       <SharedTooltipProvider>
@@ -244,7 +243,11 @@ function LocationsLayer({
 }) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
-  const VERBOSE_ZOOM_LOG = false;
+  const [isTouch] = React.useState(isTouchDevice());
+  const VERBOSE_ZOOM_LOG = false;  
+
+  const setPanelState = useMapStore((s) => s.setPanelState);
+  const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
 
   React.useEffect(() => {
     const handler = () => {
@@ -258,11 +261,21 @@ function LocationsLayer({
 
   // If at Overview zoom, zoom in on click
   React.useEffect(() => {
-    map.on('click', () => {
+    const onMapClick = () => {
       const z = map.getZoom();
       if (z == MAP_MIN_ZOOM) map.zoomIn();
-    });
-  }, [map]);
+      // Only close info panel on map tap if enough time has passed since marker click
+      if (isTouch) {
+        const timeSinceMarkerClick = Date.now() - lastMarkerClickTimeRef.current;
+        if (timeSinceMarkerClick > 100) {
+          setPanelState('info', 'off');
+          setSelectedLocation(null);
+        }
+      }
+    };
+    map.on('click', onMapClick);
+    return () => { map.off('click', onMapClick); };
+  }, [isTouch, map, setPanelState, setSelectedLocation]);
   
 
   // Verbose zoom event logging to trace hitch points
@@ -288,6 +301,7 @@ function LocationsLayer({
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
   const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
+  const lastMarkerClickTimeRef = React.useRef<number>(0);
 
   const { show, hide } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
@@ -625,9 +639,23 @@ function LocationsLayer({
     return `<div class="text-xs">${parts.join('')}</div>`;
   }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
 
-  // Hover handlers
-  const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    show(getTooltipContent(t, lat, lng), lat, lng, 100);
+  // Minimal tooltip for touch devices (label + team icon)
+  const getTooltipContentMinimal = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    const parts: string[] = [];
+    parts.push(`<div class="flex items-center">`);
+    if (t.owner !== 'Neutral') {
+      parts.push(`<img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+    }
+    const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
+    console.log('nearbyMajor', nearbyMajor);
+    if (nearbyMajor) parts.push(`<div class="font-semibold">${nearbyMajor}</div>`);
+    parts.push(`</div>`);
+    parts.push(`<span class="text-xs">${getIconLabel(t.iconType)}</span>`);
+    return `<div class="text-xs flex flex-col items-start">${parts.join('')}</div>`;
+  }, []);
+
+
+  const handleMouseDown = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     
     // Apply brightness filter to hovered icon
     const marker = markerRefs.current.get(t.id);
@@ -638,6 +666,11 @@ function LocationsLayer({
         img.style.transition = 'filter 120ms ease';
       }
     }
+  }, [map, setPanelState]);
+
+  // Hover handlers
+  const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    show(getTooltipContent(t, lat, lng), lat, lng, 100);
   }, [show, getTooltipContent]);
 
   const handleMouseOut = React.useCallback((t: LocationTile) => {
@@ -653,6 +686,28 @@ function LocationsLayer({
     
   }, [hide]);
 
+  const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    if (isTouch) {
+      lastMarkerClickTimeRef.current = Date.now();
+      setSelectedLocation({
+        tile: t,
+        lat,
+        lng,
+        id: t.id,
+        owner: t.owner,
+        history: null,
+        name: nearestMajorLabel(t.region, lat, lng),
+        hexName: getHexByApiName(t.region)?.displayName ?? null,
+        source: 'marker',
+      });
+      setPanelState('info', 'half');
+      show(getTooltipContentMinimal(t, lat, lng), lat, lng, 100);
+      map.panTo([lat, lng], { animate: true, duration: 0.5 });
+      return;
+    }
+    handleMouseOver(t, lat, lng);
+  }, [getTooltipContentMinimal, handleMouseOver, isTouch, map, nearestMajorLabel, setPanelState, setSelectedLocation, show]);
+
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {
     if (VERBOSE_ZOOM_LOG) console.log('[Zoom][effect] reapply due to report/diff change', { reportMode, daily: changedDaily.size, weekly: changedWeekly.size, z: map.getZoom() });
@@ -661,7 +716,7 @@ function LocationsLayer({
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   // Hide when zoomed out to -1 or lower, or in report mode
-  if ((zoom < -1 || reportMode)) return null;
+  if ((zoom < MAP_MARKER_MIN_ZOOM || reportMode)) return null;
 
   return (
     <LayerGroup>
@@ -683,8 +738,14 @@ function LocationsLayer({
             position={[lat, lng]}
             icon={initialIcon}
             eventHandlers={{
-              mouseover: () => handleMouseOver(t, lat, lng),
-              mouseout: () => handleMouseOut(t),
+              click: (e) => {
+                if (isTouch) L.DomEvent.stop(e);
+                handleMarkerClick(t, lat, lng);
+              },
+              ...(isTouch ? {} : {
+                mouseover: () => handleMouseOver(t, lat, lng),
+                mouseout: () => handleMouseOut(t),
+              })
             }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);

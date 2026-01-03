@@ -2,7 +2,7 @@
 // Uses sprite atlas for efficient loading
 import { mapIcons, MapIconTag } from '../data/map-icons';
 import { DEBUG_MODE, ICON_SIZE } from './appConfig';
-import { ICON_SPRITE_PATH, ICON_SPRITE_METADATA, getIconSpritePosition, hasIconInSprite } from '../data/icon-sprite';
+import { ICON_SPRITE_PATH, ICON_SPRITE_METADATA, getIconSpritePosition, hasIconInSprite, SPRITE_HEIGHT, SPRITE_WIDTH } from '../data/icon-sprite';
 
 // Returns sprite path and background position for use with CSS
 export function getIconSprite(iconType: number, owner?: string): { spritePath: string; position: string; size: number } | null {

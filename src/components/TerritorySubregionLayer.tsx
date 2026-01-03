@@ -4,7 +4,7 @@ import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
 import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY } from '../lib/mapConfig';
-import { useMapStore } from '../state/useMapStore';
+import { useMapStore, TerritoryHistory } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
@@ -13,16 +13,11 @@ import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
-import { time } from 'console';
+import { getTimeSinceLastCapture, formatTimeAgo } from '../lib/time';
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
-type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
-type TerritoryHistory = {
-  name: string;
-  currentOwner: LocationTile['owner'];
-  events: TerritoryHistoryEntry[];
-};
+
 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
@@ -61,15 +56,28 @@ interface RegionOverlay {
 export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, changedAllTime, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
+  const [isTouch, setIsTouch] = React.useState(false);
 
   React.useEffect(() => {
     const handler = () => { setZoom(map.getZoom()); };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
   }, [map]);
+
+  React.useEffect(() => {
+    const touch = (typeof window !== 'undefined') && (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      // @ts-ignore legacy
+      (navigator as any).msMaxTouchPoints > 0
+    );
+    setIsTouch(touch);
+  }, []);
   const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
   const reportMode = useMapStore((s) => s.activeReportMode);
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
+  const setPanelState = useMapStore((s) => s.setPanelState);
+  const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
   const { show, hide } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stickyId, setStickyId] = useState<string | null>(null);
@@ -86,9 +94,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [map]);
 
   useEffect(() => {
+    return;
+    console.log(`[TerritorySubregion] reportMode changed: now ${reportMode ?? 'null'}`);
     if (!reportMode) {
       setHoveredId(null);
       setStickyId(null);
+      console.log('[TerritorySubregion] Exiting report mode - hiding tooltip');
       hide(0);
     }
   }, [reportMode, hide]);
@@ -170,7 +181,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);
     //if (!reportModeActive || !p.highlighted) return;
-    showTooltipFor(p);
+    if(!isTouch) showTooltipFor(p);
   };
 
   const handleLeave = (p: PathInfo) => {
@@ -182,6 +193,31 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   const handleClick = (p: PathInfo) => {
     if (!reportModeActive || !p.highlighted) return;
+
+    const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
+
+    if (isTouch) {
+      if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
+      const hist = historyById.get(p.territoryId);
+      const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
+      setSelectedLocation({
+        tile: territory,
+        lat: p.lat,
+        lng: p.lng,
+        id: p.territoryId,
+        name: p.name,
+        owner: owner,
+        history: hist ?? null,
+        hexName: getHexByApiName(territory.region)?.displayName ?? null,
+        source: 'territory',
+      });
+      setPanelState('info', 'half');
+      showTooltipMinimal(territory, p.lat, p.lng);
+      //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
+      p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
+      return;
+    }
+
     if (stickyId === p.territoryId) {
       setStickyId(null);
       hide(0);
@@ -228,6 +264,17 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       }
     }
     show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true, false);
+  };
+
+  const showTooltipMinimal = (territory: LocationTile, lat?: number, lng?: number) => {
+    if (lat == null || lng == null) return;
+    const bits: string[] = [];
+    if (territory.owner !== 'Neutral') {
+      bits.push(`<img src="${getTeamIcon(territory.owner)}" alt="${territory.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+    }
+    const label = getTownById(territory.id)?.displayName ?? territory.id;
+    bits.push(`<span class="font-semibold">${label}</span>`);
+    show(`<div class="text-xs flex items-center">${bits.join('')}</div>`, lat, lng, 0, false, false);
   };
 
   if (!visible || !snapshot?.territories?.length) {
@@ -307,10 +354,20 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     stroke={p.stroke}
                     strokeWidth={strokeWidth}
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
-                    onMouseEnter={() => handleHover(p)}
+                    onMouseEnter={() => {
+                      handleHover(p)
+                      if (isTouch && !reportModeActive) setPanelState('info', 'off');
+                    }}
                     onMouseLeave={() => handleLeave(p)}
-                    onClick={() => handleClick(p)}
-                    onTouchStart={() => handleClick(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      //if (!isTouch) handleClick(p);
+                      handleClick(p);
+                    }}
+                    onTouchStart={(e) => {
+                      //e.stopPropagation();
+                      //handleClick(p);
+                    }}
                     className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
                 );
@@ -390,31 +447,4 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       ))}
     </>
   );
-}
-
-function getTimeSinceLastCapture(events: TerritoryHistoryEntry[]): number | null {
-  if (events.length === 0) return null;
-  const latestEvent = getLatestCaptureEvent(events);
-  if (!latestEvent) return null;
-  return getHoursAgo(latestEvent.at) ?? -1;
-}
-
-function getLatestCaptureEvent(events: TerritoryHistoryEntry[]): TerritoryHistoryEntry | null {
-  return events.find((event) => event.owner != Teams.Neutral) || null;
-}
-
-
-function getHoursAgo(iso: string): number {
-  const diff = Date.now() - Date.parse(iso);
-  return Math.max(0, Math.round(diff / 3600000));
-}
-
-function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - Date.parse(iso);
-  const mins = Math.max(1, Math.round(diff / 60000));
-  if (mins >= 60) {
-    const hours = Math.round(mins / 60);
-    return `${hours} hr${hours === 1 ? '' : 's'} ago`;
-  }
-  return `${mins} min${mins === 1 ? '' : 's'} ago`;
 }

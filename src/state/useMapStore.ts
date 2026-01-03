@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { LocationTile } from '../types/war';
 import {
   LayerKey,
   LayerState,
@@ -8,9 +9,28 @@ import {
   getDefaultLayerState,
 } from './layers';
 
-type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
-
+export type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type PanelType = 'layer' | 'report' | 'info';
+export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
+export type ClickOutsideBehavior = 'off' | 'half' | null;
+export type SelectedLocation = {
+  tile: LocationTile;
+  lat: number;
+  lng: number;
+  id: string | null;
+  name: string | null;
+  owner: string | null;
+  history: any | null;
+  hexName: string | null;
+  source: 'marker' | 'territory';
+};
+export type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
+export type TerritoryHistory = {
+  name: string;
+  currentOwner: LocationTile['owner'];
+  events: TerritoryHistoryEntry[];
+};
 
 interface MapState {
   activeLayers: LayerState;
@@ -28,7 +48,14 @@ interface MapState {
   setRealtimeStatus: (status: RealtimeConnectionStatus) => void;
   contextPopoverContent: string | null;
   setContextPopoverContent: (html: string | null) => void;
+  panelState: Record<PanelType, PanelState>;
+  setPanelState: (panel: PanelType, state: PanelState) => void;
+  panelClickOutsideBehavior: Record<PanelType, ClickOutsideBehavior>;
+  setPanelClickOutsideBehavior: (panel: PanelType, behavior: ClickOutsideBehavior) => void;
+  selectedLocation: SelectedLocation | null;
+  setSelectedLocation: (sel: SelectedLocation | null) => void;
 }
+
 
 const defaultLayers: LayerState = getDefaultLayerState();
 
@@ -115,7 +142,33 @@ export const useMapStore = create<MapState>((set, get) => ({
     const state = get();
     const next = mode === state.activeReportMode ? null : mode;
     set({ activeReportMode: next });
+    state.setPanelState('report', next !== null ? 'half' : 'off');
   },
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
+  panelState: { layer: 'off', report: 'off', info: 'off' },
+  setPanelState: (panel, state) => {
+    set((s) => {
+      const nextPanelState: Record<PanelType, PanelState> = {
+        layer: 'off',
+        report: s.activeReportMode != null ? 'half' : 'off',
+        info: 'off',
+        [panel]: state,
+      };
+      const shouldClearSelection = nextPanelState.info === 'off';
+      return {
+        panelState: nextPanelState,
+        selectedLocation: shouldClearSelection ? null : s.selectedLocation,
+      };
+    });
+  },
+  panelClickOutsideBehavior: { layer: 'half', report: 'off', info: 'off' },
+  setPanelClickOutsideBehavior: (panel, behavior) => {
+    const s = get();
+    set({ panelClickOutsideBehavior: { ...s.panelClickOutsideBehavior, [panel]: behavior } });
+  },
+  selectedLocation: null,
+  setSelectedLocation: (sel) => {
+    set({ selectedLocation: sel });
+  },
 }));
