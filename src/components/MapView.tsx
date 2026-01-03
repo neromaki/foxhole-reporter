@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -716,7 +716,7 @@ function LocationsLayer({
 
   const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
   // Hide when zoomed out to -1 or lower, or in report mode
-  if ((zoom < -1 || reportMode)) return null;
+  if ((zoom < MAP_MARKER_MIN_ZOOM || reportMode)) return null;
 
   return (
     <LayerGroup>
