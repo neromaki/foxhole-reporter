@@ -98,9 +98,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [map]);
 
   useEffect(() => {
+    return;
+    console.log(`[TerritorySubregion] reportMode changed: now ${reportMode ?? 'null'}`);
     if (!reportMode) {
       setHoveredId(null);
       setStickyId(null);
+      console.log('[TerritorySubregion] Exiting report mode - hiding tooltip');
       hide(0);
     }
   }, [reportMode, hide]);
@@ -189,11 +192,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     if (reportModeActive) return; // keep tooltip open in report mode
     if (stickyId && stickyId === p.territoryId) return;
     setHoveredId((prev) => (prev === p.territoryId ? null : prev));
+    console.log(`handleLeave on territory ${p.territoryId}`);
     hide(120);
   };
 
   const handleClick = (p: PathInfo) => {
-    //if (!reportModeActive || !p.highlighted) return;
+    if (!reportModeActive || !p.highlighted) return;
 
     console.log(`handleClick on territory ${p.territoryId} (stickyId=${stickyId})`);
     const territory = p.territoryId ? territoryById.get(p.territoryId) : null;

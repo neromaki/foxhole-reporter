@@ -276,9 +276,13 @@ function LocationsLayer({
     const onMapClick = () => {
       const z = map.getZoom();
       if (z == MAP_MIN_ZOOM) map.zoomIn();
+      // Only close info panel on map tap if enough time has passed since marker click
       if (isTouch) {
-        setPanelState('info', 'off');
-        setSelectedLocation(null);
+        const timeSinceMarkerClick = Date.now() - lastMarkerClickTimeRef.current;
+        if (timeSinceMarkerClick > 100) {
+          setPanelState('info', 'off');
+          setSelectedLocation(null);
+        }
       }
     };
     map.on('click', onMapClick);
@@ -309,6 +313,7 @@ function LocationsLayer({
   const markerRefs = React.useRef<Map<string, L.Marker>>(new Map());
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
   const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
+  const lastMarkerClickTimeRef = React.useRef<number>(0);
 
   const { show, hide } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
@@ -690,6 +695,7 @@ function LocationsLayer({
 
   const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     if (isTouch) {
+      lastMarkerClickTimeRef.current = Date.now();
       setSelectedLocation({
         tile: t,
         lat,
@@ -700,12 +706,11 @@ function LocationsLayer({
       });
       setPanelState('info', 'half');
       show(getTooltipContentMinimal(t), lat, lng, 100);
-      //map.flyTo([lat, lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
       map.panTo([lat, lng], { animate: true, duration: 0.5 });
       return;
     }
     handleMouseOver(t, lat, lng);
-  }, [getTooltipContentMinimal, handleMouseOver, isTouch, nearestMajorLabel, setPanelState, setSelectedLocation, show]);
+  }, [getTooltipContentMinimal, handleMouseOver, isTouch, map, nearestMajorLabel, setPanelState, setSelectedLocation, show]);
 
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {
@@ -737,7 +742,10 @@ function LocationsLayer({
             position={[lat, lng]}
             icon={initialIcon}
             eventHandlers={{
-              click: () => handleMarkerClick(t, lat, lng),
+              click: (e) => {
+                if (isTouch) L.DomEvent.stop(e);
+                handleMarkerClick(t, lat, lng);
+              },
               ...(isTouch ? {} : {
                 mouseover: () => handleMouseOver(t, lat, lng),
                 mouseout: () => handleMouseOut(t),

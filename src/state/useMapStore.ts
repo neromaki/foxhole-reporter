@@ -132,6 +132,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setActiveReportMode: (mode) => {
     const state = get();
     const next = mode === state.activeReportMode ? null : mode;
+    console.log(`[MapStore] Setting activeReportMode to ${next}`);
     set({ activeReportMode: next });
   },
   contextPopoverContent: null,
@@ -159,5 +160,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ panelClickOutsideBehavior: { ...s.panelClickOutsideBehavior, [panel]: behavior } });
   },
   selectedLocation: null,
-  setSelectedLocation: (sel) => set({ selectedLocation: sel }),
+  setSelectedLocation: (sel) => {
+    set({ selectedLocation: sel });
+  },
 }));
