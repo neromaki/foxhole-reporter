@@ -18,9 +18,18 @@ export type SelectedLocation = {
   tile: LocationTile;
   lat: number;
   lng: number;
-  nearbyMajor: string | null;
+  id: string | null;
+  name: string | null;
+  owner: string | null;
+  history: any | null;
   hexName: string | null;
   source: 'marker' | 'territory';
+};
+export type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
+export type TerritoryHistory = {
+  name: string;
+  currentOwner: LocationTile['owner'];
+  events: TerritoryHistoryEntry[];
 };
 
 interface MapState {

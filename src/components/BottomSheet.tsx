@@ -14,6 +14,7 @@ interface BottomSheetProps {
   allowedStates: PanelState[];
   clickOutsideBehavior?: ClickOutsideBehavior;
   title: string;
+  icon?: string | null;
   headerContent?: React.ReactNode;
 }
 
@@ -23,6 +24,7 @@ export function BottomSheet({
   allowedStates = ['off'] as PanelState[],
   clickOutsideBehavior = null,
   title = '',
+  icon = null,
   headerContent = null,
 }: BottomSheetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -191,7 +193,10 @@ export function BottomSheet({
         )}
           {/* Title bar */}
           <div className="flex items-center justify-between pb-4">
-            <h2 className="text-lg font-semibold tracking-wide text-gray-300">{title}</h2>
+            <div className={`flex items-center gap-1`}>
+              {icon && <img src={icon} alt={title} className="w-6 h-6" />}
+              <h2 className="text-lg font-semibold tracking-wide text-gray-300">{title}</h2>
+            </div>
             <div className={`flex items-center gap-2`}>
               <div className={`mr-2`}>
                 {headerContent}

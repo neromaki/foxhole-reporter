@@ -652,13 +652,18 @@ function LocationsLayer({
   }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
 
   // Minimal tooltip for touch devices (label + team icon)
-  const getTooltipContentMinimal = React.useCallback((t: LocationTile) => {
-    const bits: string[] = [];
+  const getTooltipContentMinimal = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    const parts: string[] = [];
+    parts.push(`<div class="flex items-center">`);
     if (t.owner !== 'Neutral') {
-      bits.push(`<img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+      parts.push(`<img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>`);
     }
-    bits.push(`<span class="font-semibold">${getIconLabel(t.iconType)}</span>`);
-    return `<div class="text-xs flex items-center">${bits.join('')}</div>`;
+    const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
+    console.log('nearbyMajor', nearbyMajor);
+    if (nearbyMajor) parts.push(`<div class="font-semibold">${nearbyMajor}</div>`);
+    parts.push(`</div>`);
+    parts.push(`<span class="text-xs">${getIconLabel(t.iconType)}</span>`);
+    return `<div class="text-xs flex flex-col items-start">${parts.join('')}</div>`;
   }, []);
 
 
@@ -700,12 +705,15 @@ function LocationsLayer({
         tile: t,
         lat,
         lng,
-        nearbyMajor: nearestMajorLabel(t.region, lat, lng),
+        id: t.id,
+        owner: t.owner,
+        history: null,
+        name: nearestMajorLabel(t.region, lat, lng),
         hexName: getHexByApiName(t.region)?.displayName ?? null,
         source: 'marker',
       });
       setPanelState('info', 'half');
-      show(getTooltipContentMinimal(t), lat, lng, 100);
+      show(getTooltipContentMinimal(t, lat, lng), lat, lng, 100);
       map.panTo([lat, lng], { animate: true, duration: 0.5 });
       return;
     }

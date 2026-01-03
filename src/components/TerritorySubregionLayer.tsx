@@ -4,7 +4,7 @@ import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
 import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY } from '../lib/mapConfig';
-import { useMapStore } from '../state/useMapStore';
+import { useMapStore, TerritoryHistory } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
@@ -13,15 +13,11 @@ import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
+import { getTimeSinceLastCapture, formatTimeAgo } from '../lib/time';
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
-type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
-type TerritoryHistory = {
-  name: string;
-  currentOwner: LocationTile['owner'];
-  events: TerritoryHistoryEntry[];
-};
+
 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
@@ -185,7 +181,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);
     //if (!reportModeActive || !p.highlighted) return;
-    showTooltipFor(p);
+    console.log(`[TerritorySubregion] handleHover called for territoryId=${p.territoryId}, name=${p.name}, highlighted=${p.highlighted}`);
+    if(!isTouch) showTooltipFor(p);
   };
 
   const handleLeave = (p: PathInfo) => {
@@ -196,6 +193,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   };
 
   const handleClick = (p: PathInfo) => {
+    console.log(`[TerritorySubregion] handleClick called for territoryId=${p.territoryId}, name=${p.name}, highlighted=${p.highlighted}`);
     if (!reportModeActive || !p.highlighted) return;
 
     console.log(`handleClick on territory ${p.territoryId} (stickyId=${stickyId})`);
@@ -203,19 +201,24 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
     if (isTouch) {
       console.log('Touch device detected - showing minimal tooltip and centering map');
-      if (!territory || p.lat == null || p.lng == null) return;
+      if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
+      const hist = historyById.get(p.territoryId);
+      const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
       setSelectedLocation({
         tile: territory,
         lat: p.lat,
         lng: p.lng,
-        nearbyMajor: null,
+        id: p.territoryId,
+        name: p.name,
+        owner: owner,
+        history: hist ?? null,
         hexName: getHexByApiName(territory.region)?.displayName ?? null,
         source: 'territory',
       });
       setPanelState('info', 'half');
       showTooltipMinimal(territory, p.lat, p.lng);
       //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
-      map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
+      p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
       return;
     }
 
@@ -224,6 +227,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       hide(0);
     } else {
       setStickyId(p.territoryId);
+      console.log(`Setting sticky tooltip for territory ${p.territoryId}`);
       showTooltipFor(p);
     }
   };
@@ -275,6 +279,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     }
     const label = getTownById(territory.id)?.displayName ?? territory.id;
     bits.push(`<span class="font-semibold">${label}</span>`);
+    console.log(`showing tooltip minimal for ${territory.id} at ${lat}, ${lng}`);
     show(`<div class="text-xs flex items-center">${bits.join('')}</div>`, lat, lng, 0, false, false);
   };
 
@@ -355,14 +360,17 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     stroke={p.stroke}
                     strokeWidth={strokeWidth}
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
-                    onMouseEnter={() => handleHover(p)}
+                    onMouseEnter={() => {
+                      handleHover(p)
+                      if (isTouch && !reportModeActive) setPanelState('info', 'off');
+                    }}
                     onMouseLeave={() => handleLeave(p)}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isTouch) handleClick(p);
                     }}
                     onTouchStart={(e) => {
-                      e.stopPropagation();
+                      //e.stopPropagation();
                       handleClick(p);
                     }}
                     className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
@@ -444,31 +452,4 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       ))}
     </>
   );
-}
-
-function getTimeSinceLastCapture(events: TerritoryHistoryEntry[]): number | null {
-  if (events.length === 0) return null;
-  const latestEvent = getLatestCaptureEvent(events);
-  if (!latestEvent) return null;
-  return getHoursAgo(latestEvent.at) ?? -1;
-}
-
-function getLatestCaptureEvent(events: TerritoryHistoryEntry[]): TerritoryHistoryEntry | null {
-  return events.find((event) => event.owner != Teams.Neutral) || null;
-}
-
-
-function getHoursAgo(iso: string): number {
-  const diff = Date.now() - Date.parse(iso);
-  return Math.max(0, Math.round(diff / 3600000));
-}
-
-function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - Date.parse(iso);
-  const mins = Math.max(1, Math.round(diff / 60000));
-  if (mins >= 60) {
-    const hours = Math.round(mins / 60);
-    return `${hours} hr${hours === 1 ? '' : 's'} ago`;
-  }
-  return `${mins} min${mins === 1 ? '' : 's'} ago`;
 }

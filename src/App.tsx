@@ -12,6 +12,7 @@ import { useMapStore, PanelType } from './state/useMapStore';
 import { BottomSheet } from './components/BottomSheet';
 import InfoSheet from './components/InfoSheet';
 import { ContextPopover } from './components/ContextPopover';
+import { getTeams } from './data/teams';
 
 export default function App() {
   const [isTouch, setIsTouch] = useState(false);
@@ -30,6 +31,11 @@ export default function App() {
     if (!snapshot?.territories) return null;
     return computeVictoryCounts(snapshot.territories);
   }, [snapshot]);
+
+  const teams = getTeams();
+  const selectedTeam = selectedLocation && selectedLocation.tile && selectedLocation.tile.owner !== 'Neutral'
+    ? teams.find(t => t.name === selectedLocation.tile.owner)
+    : null;
 
   useEffect(() => {
     const touch = (typeof window !== 'undefined') && (
@@ -100,7 +106,7 @@ export default function App() {
         </BottomSheet>
 
         {isTouch && (
-          <BottomSheet type={'info'} allowedStates={['half']} clickOutsideBehavior={'off'} title={selectedLocation && selectedLocation.nearbyMajor ? selectedLocation.nearbyMajor : 'Info'}>
+          <BottomSheet type={'info'} allowedStates={['half']} clickOutsideBehavior={'off'} icon={selectedTeam && selectedTeam.icon} title={selectedLocation && selectedLocation.name ? selectedLocation.name : 'Info'}>
             <InfoSheet />
           </BottomSheet>
         )}

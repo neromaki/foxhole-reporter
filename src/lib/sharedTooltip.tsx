@@ -86,7 +86,6 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const hide = (closeDelay: number = 220) => {
-    console.log(`[SharedTooltip] hide requested with delay ${closeDelay}ms`);
     if (openTimeoutRef.current) {
       clearTimeout(openTimeoutRef.current);
       openTimeoutRef.current = null;
