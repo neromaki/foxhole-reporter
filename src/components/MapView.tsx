@@ -26,6 +26,7 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
+import { isTouchDevice } from '../lib/devices';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -240,23 +241,10 @@ function LocationsLayer({
   changedWeekly: Set<string>;
   changedAllTime: Set<string>;
 }) {
-  // Detect if device supports touch
-  const isTouchDevice = () => {
-    return (
-      (typeof window !== 'undefined' &&
-        ('ontouchstart' in window ||
-          navigator.maxTouchPoints > 0 ||
-          (navigator as any).msMaxTouchPoints > 0)) ||
-      false
-    );
-  };
-
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
   const [isTouch] = React.useState(isTouchDevice());
-  const VERBOSE_ZOOM_LOG = false;
-
-  
+  const VERBOSE_ZOOM_LOG = false;  
 
   const setPanelState = useMapStore((s) => s.setPanelState);
   const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);

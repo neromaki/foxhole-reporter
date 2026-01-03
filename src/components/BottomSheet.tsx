@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMapStore, PanelType, ClickOutsideBehavior, PanelState } from '../state/useMapStore';
+import { isTouchDevice } from '../lib/devices';
 
 export const SHEET_HEIGHTS = {
   off: 0,
