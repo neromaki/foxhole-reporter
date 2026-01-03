@@ -142,6 +142,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     const state = get();
     const next = mode === state.activeReportMode ? null : mode;
     set({ activeReportMode: next });
+    state.setPanelState('report', next !== null ? 'half' : 'off');
   },
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
@@ -150,7 +151,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     set((s) => {
       const nextPanelState: Record<PanelType, PanelState> = {
         layer: 'off',
-        report: 'off',
+        report: s.activeReportMode != null ? 'half' : 'off',
         info: 'off',
         [panel]: state,
       };

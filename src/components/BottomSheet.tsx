@@ -14,6 +14,7 @@ interface BottomSheetProps {
   type: PanelType;
   allowedStates: PanelState[];
   clickOutsideBehavior?: ClickOutsideBehavior;
+  closeBehavior?: (() => void) | null;
   title: string;
   icon?: string | null;
   headerContent?: React.ReactNode;
@@ -24,6 +25,7 @@ export function BottomSheet({
   type,
   allowedStates = ['off'] as PanelState[],
   clickOutsideBehavior = null,
+  closeBehavior = null,
   title = '',
   icon = null,
   headerContent = null,
@@ -208,7 +210,7 @@ export function BottomSheet({
               </div>
               <button 
                 className="text-gray-400 hover:text-gray-200"
-                onClick={() => setPanelState(type, 'off')}
+                onClick={closeBehavior ? closeBehavior : () => setPanelState(type, 'off')}
                 >
                   <img src={new URL(`../images/icn_close.png`, import.meta.url).href} className={`w-6 h-6`} />
               </button>
