@@ -41,7 +41,6 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [map]);
 
   const show = (html: string, lat: number, lng: number, openDelay: number = 120, sticky: boolean = false) => {
-    console.log(`[SharedTooltip] show requested at (${lat}, ${lng}) with delay ${openDelay}ms${sticky ? ' (sticky)' : ''}`);
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;

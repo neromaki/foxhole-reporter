@@ -181,7 +181,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);
     //if (!reportModeActive || !p.highlighted) return;
-    console.log(`[TerritorySubregion] handleHover called for territoryId=${p.territoryId}, name=${p.name}, highlighted=${p.highlighted}`);
     if(!isTouch) showTooltipFor(p);
   };
 
@@ -193,14 +192,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   };
 
   const handleClick = (p: PathInfo) => {
-    console.log(`[TerritorySubregion] handleClick called for territoryId=${p.territoryId}, name=${p.name}, highlighted=${p.highlighted}`);
     if (!reportModeActive || !p.highlighted) return;
 
-    console.log(`handleClick on territory ${p.territoryId} (stickyId=${stickyId})`);
     const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
 
     if (isTouch) {
-      console.log('Touch device detected - showing minimal tooltip and centering map');
       if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
       const hist = historyById.get(p.territoryId);
       const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
@@ -227,7 +223,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       hide(0);
     } else {
       setStickyId(p.territoryId);
-      console.log(`Setting sticky tooltip for territory ${p.territoryId}`);
       showTooltipFor(p);
     }
   };
@@ -279,7 +274,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     }
     const label = getTownById(territory.id)?.displayName ?? territory.id;
     bits.push(`<span class="font-semibold">${label}</span>`);
-    console.log(`showing tooltip minimal for ${territory.id} at ${lat}, ${lng}`);
     show(`<div class="text-xs flex items-center">${bits.join('')}</div>`, lat, lng, 0, false, false);
   };
 
