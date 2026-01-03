@@ -192,7 +192,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     if (reportModeActive) return; // keep tooltip open in report mode
     if (stickyId && stickyId === p.territoryId) return;
     setHoveredId((prev) => (prev === p.territoryId ? null : prev));
-    console.log(`handleLeave on territory ${p.territoryId}`);
     hide(120);
   };
 
@@ -213,7 +212,6 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         hexName: getHexByApiName(territory.region)?.displayName ?? null,
         source: 'territory',
       });
-      console.log(`Setting info panel to half for territory ${p.territoryId}`);
       setPanelState('info', 'half');
       showTooltipMinimal(territory, p.lat, p.lng);
       //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
@@ -222,11 +220,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     }
 
     if (stickyId === p.territoryId) {
-      console.log(`Unsetting stickyId for territory ${p.territoryId}`);
       setStickyId(null);
       hide(0);
     } else {
-      console.log(`Setting stickyId for territory ${p.territoryId}`);
       setStickyId(p.territoryId);
       showTooltipFor(p);
     }
@@ -361,8 +357,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
                     onMouseEnter={() => handleHover(p)}
                     onMouseLeave={() => handleLeave(p)}
-                    onClick={() => handleClick(p)}
-                    onTouchStart={() => handleClick(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isTouch) handleClick(p);
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      handleClick(p);
+                    }}
                     className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
                 );

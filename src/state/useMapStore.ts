@@ -132,7 +132,6 @@ export const useMapStore = create<MapState>((set, get) => ({
   setActiveReportMode: (mode) => {
     const state = get();
     const next = mode === state.activeReportMode ? null : mode;
-    console.log(`[MapStore] Setting activeReportMode to ${next}`);
     set({ activeReportMode: next });
   },
   contextPopoverContent: null,
@@ -147,7 +146,6 @@ export const useMapStore = create<MapState>((set, get) => ({
         [panel]: state,
       };
       const shouldClearSelection = nextPanelState.info === 'off';
-      console.log(`Setting panel ${panel} to state ${state} (shouldClearSelection=${shouldClearSelection}), selectedLocation=${s.selectedLocation ? 'set' : 'null'}`);
       return {
         panelState: nextPanelState,
         selectedLocation: shouldClearSelection ? null : s.selectedLocation,
