@@ -367,11 +367,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     onMouseLeave={() => handleLeave(p)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isTouch) handleClick(p);
+                      //if (!isTouch) handleClick(p);
+                      handleClick(p);
                     }}
                     onTouchStart={(e) => {
                       //e.stopPropagation();
-                      handleClick(p);
+                      //handleClick(p);
                     }}
                     className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />
