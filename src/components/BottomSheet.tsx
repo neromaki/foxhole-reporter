@@ -48,6 +48,8 @@ export function BottomSheet({
 
   allowedStates = ['off', ...allowedStates];
 
+  const [isTouch] = React.useState(isTouchDevice());
+
   // Set the click outside behavior when component mounts
   useEffect(() => {
     if (clickOutsideBehavior !== null) {
@@ -164,20 +166,22 @@ export function BottomSheet({
   const easing = 'cubic-bezier(0.2, 0.0, 0, 1.0)';
   const transitionClass = dragStartY !== null ? '' : `transition-transform duration-[250ms]`;
   const showDragHandle = allowedStates.length > 2;
+  const desktopSidebarWidth = `27rem`;
 
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-x-0 bottom-0 z-[450] h-screen pointer-events-none`}
+      className={`BACKDROP ${panelState} ${type} fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto z-[450] h-screen pointer-events-none`}
       onClick={handleBackdropClick}
     >
       <div
         ref={sheetRef}
-        className={`w-full bg-gray-800 rounded-t-lg ${active ? 'px-2 pt-4' : 'p-0'} ${transitionClass} fixed inset-x-0 bottom-0 z-[451] pointer-events-auto will-change-transform`}
+        className={`PANEL ${panelState} w-full md:w-[28rem] bg-gray-800 rounded-t-lg md:rounded-tl-none md:rounded-br-lg ${active ? 'px-2 pt-4' : 'p-0'} md:px-2 md:pt-4 ${transitionClass} fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto md:-translate-x-full ${panelState !== 'off' ? 'md:translate-x-0' : ''} z-[451] pointer-events-auto will-change-transform`}
         style={{
-          transform: `translateY(${transformY}px)`,
+          transform: `${isTouch ? `translateY(${transformY}px)` : ``}`,
           transitionTimingFunction: easing,
-          maxHeight: `${SHEET_HEIGHTS[panelState]}px`,
+          maxHeight: `${isTouch ? `${SHEET_HEIGHTS[panelState]}px` : ''}`,
+          
         }}
       >
         {showDragHandle && (
@@ -215,7 +219,8 @@ export function BottomSheet({
         <div 
           ref={contentRef}
           className="w-full overflow-y-auto h-100 pb-4"
-          style={{ maxHeight: `${SHEET_HEIGHTS[panelState] - (showDragHandle ? (28+28+16) : (44+16))}px`}}>
+          style={{maxHeight: `${isTouch? `${SHEET_HEIGHTS[panelState] - (showDragHandle ? (28+28+16) : (44+16))}px` : '100vh'}`}}
+          >
           {children}
         </div>
       </div>
