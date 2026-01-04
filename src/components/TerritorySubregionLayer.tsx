@@ -4,7 +4,7 @@ import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
 import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY } from '../lib/mapConfig';
-import { useMapStore, TerritoryHistory } from '../state/useMapStore';
+import { useMapStore, TerritoryHistory, SelectedLocation } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
 import { projectRegionPoint } from '../lib/projection';
@@ -178,10 +178,72 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     setDisabledHexes(disabled);
   }, [overlays, setDisabledHexes]);
 
+
+
+  const showTooltip = (selectedLocation: SelectedLocation, minimal?: boolean) => {
+    if (!selectedLocation.lat || !selectedLocation.lng || !selectedLocation.id) return;
+    if (!reportModeActive && (activeLayers.majorLocations && zoom > MAJOR_LABEL_MIN_ZOOM)) return;
+    const lines: string[] = [];
+    const name = selectedLocation.name ?? selectedLocation.id;
+    const owner = selectedLocation.owner ?? 'Neutral';
+    lines.push(`<div class="font-semibold">${name}</div>`);
+    lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}${reportModeActive ? ' gain' : ''}</div>`);
+    if (!minimal) { 
+      const hist = historyById.get(selectedLocation.id);
+      const events = hist?.events ?? [];
+      if(reportModeActive) {
+        if (reportMode == 'daily') {
+          lines.push('<div class="mt-1 font-semibold">History:</div>');
+          if (events.length === 0) {
+            lines.push(`<div class="flex">
+                  <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
+                  <span class="mr-2">${owner}</span>
+                  <span>(>24 hrs ago)</span>
+              </div>`);
+          } else {
+            events.forEach((ev) => {
+              (ev.owner !== 'Neutral') ? lines.push(
+                `<div class="flex">
+                  <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
+                  <span class="mr-2">${ev.owner}</span>
+                  <span>(${formatTimeAgo(ev.at)})</span>
+                </div>`) : '';
+            });
+          }
+        }
+      } else {
+        const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
+        if (timeLastCaptured >= 0) {
+          lines.push(`<div>Captured <span style="font-weight:bold;">${timeLastCaptured} hrs</span> ago</div>`)
+        }
+      }
+    }
+    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, selectedLocation.lat, selectedLocation.lng, 0, true, false);
+  };
+
+  const getSelectedLocationFromPathInfo = (p: PathInfo): SelectedLocation => {
+    const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
+    if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return null as any;
+    const hist = historyById.get(p.territoryId);
+    const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
+
+    return {
+        tile: territory,
+        lat: p.lat,
+        lng: p.lng,
+        id: p.territoryId,
+        name: p.name,
+        owner: owner,
+        history: hist ?? null,
+        hexName: getHexByApiName(territory.region)?.displayName ?? null,
+        source: 'territory' as const,
+    };
+  };
+
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);
     //if (!reportModeActive || !p.highlighted) return;
-    if(!isTouch) showTooltipFor(p);
+    if(!isTouch) showTooltip(getSelectedLocationFromPathInfo(p));
   };
 
   const handleLeave = (p: PathInfo) => {
@@ -195,12 +257,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     if (!isTouch && (!reportModeActive || !p.highlighted)) return;
 
     const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
+    if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
+    const hist = historyById.get(p.territoryId);
+    const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
 
-    if (isTouch) {
-      if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
-      const hist = historyById.get(p.territoryId);
-      const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
-      setSelectedLocation({
+    const selectedLocation = {
         tile: territory,
         lat: p.lat,
         lng: p.lng,
@@ -209,12 +270,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         owner: owner,
         history: hist ?? null,
         hexName: getHexByApiName(territory.region)?.displayName ?? null,
-        source: 'territory',
-      });
+        source: 'territory' as const,
+    };
+
+    if (isTouch) {
+      setSelectedLocation(selectedLocation);
       setPanelState('info', 'half');
-      showTooltipMinimal(territory, p.lat, p.lng);
-      //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
       reportModeActive && p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
+      showTooltip(selectedLocation, true);
       return;
     }
 
@@ -223,58 +286,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       hide(0);
     } else {
       setStickyId(p.territoryId);
-      showTooltipFor(p);
+      showTooltip(selectedLocation);
     }
-  };
-
-  const showTooltipFor = (p: PathInfo) => {
-    if (!p.lat || !p.lng || !p.territoryId) return;
-    if (!reportModeActive && (activeLayers.majorLocations && zoom > MAJOR_LABEL_MIN_ZOOM)) return;
-    const name = p.name ?? p.territoryId;
-    const hist = historyById.get(p.territoryId);
-    const owner = hist?.currentOwner ?? p.owner ?? 'Neutral';
-    const lines: string[] = [];
-    lines.push(`<div class="font-semibold">${name}</div>`);
-    lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}${reportModeActive ? ' gain' : ''}</div>`);
-    const events = hist?.events ?? [];
-    if(reportModeActive) {
-      if (reportMode == 'daily') {
-        lines.push('<div class="mt-1 font-semibold">History:</div>');
-        if (events.length === 0) {
-          lines.push(`<div class="flex">
-                <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
-                <span class="mr-2">${owner}</span>
-                <span>(>24 hrs ago)</span>
-            </div>`);
-        } else {
-          events.forEach((ev) => {
-            (ev.owner !== 'Neutral') ? lines.push(
-              `<div class="flex">
-                <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
-                <span class="mr-2">${ev.owner}</span>
-                <span>(${formatTimeAgo(ev.at)})</span>
-              </div>`) : '';
-          });
-        }
-      }
-    } else {
-      const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
-      if (timeLastCaptured >= 0) {
-        lines.push(`<div>Captured <span style="font-weight:bold;">${timeLastCaptured} hrs</span> ago</div>`)
-      }
-    }
-    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, p.lat, p.lng, 0, true, false);
-  };
-
-  const showTooltipMinimal = (territory: LocationTile, lat?: number, lng?: number) => {
-    if (lat == null || lng == null) return;
-    const bits: string[] = [];
-    if (territory.owner !== 'Neutral') {
-      bits.push(`<img src="${getTeamIcon(territory.owner)}" alt="${territory.owner}" class="inline-block w-4 h-4 mr-1"/>`);
-    }
-    const label = getTownById(territory.id)?.displayName ?? territory.id;
-    bits.push(`<span class="font-semibold">${label}</span>`);
-    show(`<div class="text-xs flex items-center">${bits.join('')}</div>`, lat, lng, 0, false, false);
   };
 
   if (!visible || !snapshot?.territories?.length) {
