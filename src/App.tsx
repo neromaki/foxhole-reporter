@@ -28,6 +28,7 @@ export default function App() {
   const setActiveReportMode = useMapStore((s) => s.setActiveReportMode);
 
   const panelState = useMapStore((s) => s.panelState);
+  const panelsOpen = useMapStore((s) => s.panelsOpen());
   const setPanelState = useMapStore((s) => s.setPanelState);
 
   const selectedLocation = useMapStore((s) => s.selectedLocation);
@@ -72,22 +73,22 @@ export default function App() {
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warNumber={warState?.warNumber}
           />
-          <div className={`w-full flex items-start justify-end`}>
-            <div className={`flex-1 justify-center md:mt-2`}>
-              <ContextPopover />
-            </div>
+        </div>
 
-            <div className={`flex flex-col mt-2 flex-shrink-0`}>
-              <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} />
-              <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} 
-                onClick={() => {
-                  setActiveReportMode(reportModeActive ? null : 'daily');
-                  // const active = panelState['report'] !== 'off';
-                  // setPanelState('report', active ? 'off' : 'half')
-                  // setActiveReportMode(active ? null : 'daily')
-              }} />
-            </div>
-          </div>
+        <div className={`fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:fixed md:top-20 md:left-1/2 md:-translate-x-1/2 md:z-[440] md:pointer-events-auto`}>
+          <ContextPopover />
+        </div>
+
+        <div className={`panel-buttons fixed top-24 right-2 flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:top-auto md:bottom-4 ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
+          <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} disabled={reportModeActive} onClick={() => {
+            if (reportModeActive) return;
+            const active = panelState['layer'] !== 'off';
+            setPanelState('layer', active ? 'off' : 'threequarters');
+          }} />
+          <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} 
+            onClick={() => {
+              setActiveReportMode(reportModeActive ? null : 'daily');
+          }} />
         </div>
 
         <BottomSheet type={'layer'} allowedStates={['full']} clickOutsideBehavior={'off'} title={'Layers'} headerContent={
@@ -144,7 +145,7 @@ export default function App() {
   );
 }
 
-function PanelButton({label, targetPanel, icon, onClick}: {label: string, targetPanel: PanelType, icon: string, onClick?: () => void}): JSX.Element {
+function PanelButton({label, targetPanel, icon, disabled, onClick}: {label: string, targetPanel: PanelType, icon: string, disabled?: boolean, onClick?: () => void}): JSX.Element {
 
   const panelState = useMapStore((s) => s.panelState);
   const setPanelState = useMapStore((s) => s.setPanelState);
@@ -153,8 +154,9 @@ function PanelButton({label, targetPanel, icon, onClick}: {label: string, target
   return (
   <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>
     <button
-      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'}`}
-      onClick={() => onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
+      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      onClick={() => !disabled && onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
+      disabled={disabled}
     >
       <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-7 h-7 ${active ? 'invert' : ''}`} />
     </button>

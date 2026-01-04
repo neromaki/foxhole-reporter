@@ -168,20 +168,24 @@ export function BottomSheet({
   const easing = 'cubic-bezier(0.2, 0.0, 0, 1.0)';
   const transitionClass = dragStartY !== null ? '' : `transition-transform duration-[250ms]`;
   const showDragHandle = allowedStates.length > 2;
-  const desktopSidebarWidth = `27rem`;
 
   return (
     <div
       ref={containerRef}
-      className={`BACKDROP ${panelState} ${type} fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto z-[450] h-screen pointer-events-none`}
+      className={`${type}-${panelState} ${type} fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto z-[450] h-screen pointer-events-none transition-transform duration-[250ms]`}
       onClick={handleBackdropClick}
     >
       <div
         ref={sheetRef}
-        className={`PANEL ${panelState} w-full md:w-[28rem] bg-gray-800 rounded-t-lg md:rounded-tl-none md:rounded-br-lg ${active ? 'px-2 pt-4' : 'p-0'} md:px-2 md:pt-4 ${transitionClass} fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto md:-translate-x-full ${panelState !== 'off' ? 'md:translate-x-0' : ''} z-[451] pointer-events-auto will-change-transform`}
+        className={
+          `w-full md:w-[28rem] bg-gray-800 rounded-t-lg md:rounded-tl-none md:rounded-br-lg ${active ? 'px-2 pt-4' : 'p-0'} 
+          md:px-2 md:pt-4 transition-all duration-[250ms] fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:bottom-auto 
+          ${type == 'report' && `md:bottom-0`} md:-translate-x-full
+           ${panelState !== 'off' ? 'md:translate-x-0' : ''} 
+           z-[451] pointer-events-auto will-change-transform`}
         style={{
           transform: `${isTouch ? `translateY(${transformY}px)` : ``}`,
-          transitionTimingFunction: easing,
+          //transitionTimingFunction: easing,
           maxHeight: `${isTouch ? `${SHEET_HEIGHTS[panelState]}px` : ''}`,
           
         }}
