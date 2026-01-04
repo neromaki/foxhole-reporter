@@ -27,6 +27,7 @@ import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
 import { isTouchDevice } from '../lib/devices';
+import { SelectedLocation } from '../state/useMapStore';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -640,17 +641,16 @@ function LocationsLayer({
   }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
 
   // Minimal tooltip for touch devices (label + team icon)
-  const getTooltipContentMinimal = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+  const getTooltipContentMinimal = React.useCallback((selectedLocation: SelectedLocation) => {
     const parts: string[] = [];
     parts.push(`<div class="flex items-center">`);
-    if (t.owner !== 'Neutral') {
-      parts.push(`<img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>`);
+    if (selectedLocation.tile.owner !== 'Neutral') {
+      parts.push(`<img src="${getTeamIcon(selectedLocation.tile.owner)}" alt="${selectedLocation.tile.owner}" class="inline-block w-4 h-4 mr-1"/>`);
     }
-    const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
-    console.log('nearbyMajor', nearbyMajor);
-    if (nearbyMajor) parts.push(`<div class="font-semibold">${nearbyMajor}</div>`);
+    const name = selectedLocation.name;
+    if (name) parts.push(`<div class="font-semibold">${name}</div>`);
     parts.push(`</div>`);
-    parts.push(`<span class="text-xs">${getIconLabel(t.iconType)}</span>`);
+    parts.push(`<span class="text-xs">${getIconLabel(selectedLocation.tile.iconType)}</span>`);
     return `<div class="text-xs flex flex-col items-start">${parts.join('')}</div>`;
   }, []);
 
@@ -689,7 +689,7 @@ function LocationsLayer({
   const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     if (isTouch) {
       lastMarkerClickTimeRef.current = Date.now();
-      setSelectedLocation({
+      const locationData = {
         tile: t,
         lat,
         lng,
@@ -698,10 +698,11 @@ function LocationsLayer({
         history: null,
         name: nearestMajorLabel(t.region, lat, lng),
         hexName: getHexByApiName(t.region)?.displayName ?? null,
-        source: 'marker',
-      });
+        source: 'marker' as const,
+      };
+      setSelectedLocation(locationData);
       setPanelState('info', 'half');
-      show(getTooltipContentMinimal(t, lat, lng), lat, lng, 100);
+      show(getTooltipContentMinimal(locationData), lat, lng, 100);
       map.panTo([lat, lng], { animate: true, duration: 0.5 });
       return;
     }
