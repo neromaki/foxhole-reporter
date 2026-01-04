@@ -192,7 +192,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   };
 
   const handleClick = (p: PathInfo) => {
-    if (!reportModeActive || !p.highlighted) return;
+    if (!isTouch && (!reportModeActive || !p.highlighted)) return;
 
     const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
 
@@ -214,7 +214,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       setPanelState('info', 'half');
       showTooltipMinimal(territory, p.lat, p.lng);
       //map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 0), { animate: true, duration: 0.5 });
-      p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
+      reportModeActive && p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
       return;
     }
 
@@ -356,7 +356,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
                     onMouseEnter={() => {
                       handleHover(p)
-                      if (isTouch && !reportModeActive) setPanelState('info', 'off');
+                      //if (isTouch && !reportModeActive) setPanelState('info', 'off');
                     }}
                     onMouseLeave={() => handleLeave(p)}
                     onClick={(e) => {
