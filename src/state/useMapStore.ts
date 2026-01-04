@@ -37,6 +37,7 @@ interface MapState {
   toggleLayer: (key: LayerKey) => void;
   setLayers: (layers: Partial<LayerState>) => void;
   setAllLayers: (on: boolean) => void;
+  resetLayers: () => void;
   activeJobViewId: string | null;
   previousLayersSnapshot: LayerState | null;
   setActiveJobView: (viewId: string | null) => void;
@@ -49,6 +50,7 @@ interface MapState {
   contextPopoverContent: string | null;
   setContextPopoverContent: (html: string | null) => void;
   panelState: Record<PanelType, PanelState>;
+  panelsOpen: () => boolean;
   setPanelState: (panel: PanelType, state: PanelState) => void;
   panelClickOutsideBehavior: Record<PanelType, ClickOutsideBehavior>;
   setPanelClickOutsideBehavior: (panel: PanelType, behavior: ClickOutsideBehavior) => void;
@@ -114,6 +116,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     allKeys.forEach((k) => { updates[k] = on; });
     return { activeLayers: { ...s.activeLayers, ...updates } as LayerState };
   }),
+  resetLayers: () => set({ activeLayers: defaultLayers }),
   activeJobViewId: null,
   previousLayersSnapshot: null,
   disabledHexes: new Set<string>(),

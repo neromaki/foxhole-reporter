@@ -3,3 +3,4 @@
 .env.example
 /dist
 /.temp-icons
+src/data/icon-sprite.ts
