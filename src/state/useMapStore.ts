@@ -155,19 +155,18 @@ export const useMapStore = create<MapState>((set, get) => ({
     return Object.values(s.panelState).some((state) => state !== 'off');
   },
   setPanelState: (panel, state) => {
-    set((s) => {
-      const nextPanelState: Record<PanelType, PanelState> = {
-        layer: 'off',
-        report: s.activeReportMode != null ? 'half' : 'off',
-        info: 'off',
-        [panel]: state,
-      };
-      const shouldClearSelection = nextPanelState.info === 'off';
-      return {
-        panelState: nextPanelState,
-        selectedLocation: shouldClearSelection ? null : s.selectedLocation,
-      };
-    });
+    const s = get();
+    const nextPanelState: Record<PanelType, PanelState> = {
+      layer: 'off',
+      report: s.activeReportMode != null ? 'half' : 'off',
+      info: 'off',
+      [panel]: state,
+    };
+    const shouldClearSelection = nextPanelState.info === 'off';
+    set({panelState: nextPanelState});
+    window.setTimeout(() => {
+      set({selectedLocation: shouldClearSelection ? null : s.selectedLocation});
+    }, 250);
   },
   panelClickOutsideBehavior: { layer: 'half', report: 'off', info: 'off' },
   setPanelClickOutsideBehavior: (panel, behavior) => {
