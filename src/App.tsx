@@ -13,6 +13,8 @@ import { BottomSheet } from './components/BottomSheet';
 import InfoSheet from './components/InfoSheet';
 import { ContextPopover } from './components/ContextPopover';
 import { getTeams } from './data/teams';
+import { MapIconTag, checkMapIconHasTag } from './data/map-icons';
+import { getIconLabel } from './lib/icons';
 
 export default function App() {
   const [isTouch, setIsTouch] = useState(false);
@@ -131,7 +133,21 @@ export default function App() {
         </BottomSheet>
 
         {isTouch && (
-          <BottomSheet type={'info'} allowedStates={['half']} clickOutsideBehavior={'off'} icon={selectedTeam && selectedTeam.icon} title={selectedLocation && selectedLocation.name ? selectedLocation.name : 'Info'}>
+          <BottomSheet 
+            type={'info'} 
+            allowedStates={['half']} 
+            clickOutsideBehavior={'off'} 
+            icon={selectedTeam && selectedTeam.icon} 
+            title={
+              (() => {
+                if (selectedLocation) {
+                  const isBase = checkMapIconHasTag(selectedLocation.tile.iconType, MapIconTag.Base);
+                  const iconLabel = getIconLabel(selectedLocation.tile.iconType);
+                  if (isBase && selectedLocation.name) return selectedLocation.name as string;
+                  if (!isBase && iconLabel) return iconLabel as string;
+                }
+                return 'Info'; // fallback ensures a string
+              })()}>
             <InfoSheet />
           </BottomSheet>
         )}

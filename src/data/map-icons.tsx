@@ -317,14 +317,6 @@ const mapTags: Array<MapTagStruct> = [
     }
 ];
 
-export function getMapTag(tag: MapIconTag): MapTagStruct | undefined {
-    return mapTags.find(t => t.tag === tag);
-}
-
-export function getMapTags(): Array<MapTagStruct> {
-    return mapTags;
-}
-
 const MapTagHierarchy = {
     Bases: [MapIconTag.Base_Town, MapIconTag.Base_Relic, MapIconTag.Base_Keep, MapIconTag.Base_Fort, MapIconTag.Base_Garrison, MapIconTag.Base_Hospital, MapIconTag.Base_Forward, MapIconTag.Base_Ship],
     Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport],
@@ -901,5 +893,29 @@ const mapIcons: Array<MapIconStruct> = [
         ]
     }
 ]
+
+export function getMapIcon(mapIconType: number): MapIconStruct | undefined {
+    return mapIcons.find(icon => icon.id === mapIconType);
+}
+
+export function getMapTag(tag: MapIconTag): MapTagStruct | undefined {
+    return mapTags.find(t => t.tag === tag);
+}
+
+export function getMapIconTags(mapIconType: number): Array<MapIconTag> {
+    const icon = getMapIcon(mapIconType);
+    if (!icon) return [];
+    return icon.tags;
+}
+
+export function checkMapIconHasTag(mapIconType: number, tag: MapIconTag): boolean {
+    const icon = getMapIcon(mapIconType);
+    if (!icon) return false;
+    return icon.tags.includes(tag);
+}
+
+export function getMapTags(): Array<MapTagStruct> {
+    return mapTags;
+}
 
 export { MapIcon, MapIconTag, MapTagHierarchy, mapIcons };
