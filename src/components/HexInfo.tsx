@@ -81,7 +81,7 @@ export default function HexInfo({
                   </div>
                 </div>
 
-                <div style="display:flex;flex-direction:row;align-items:center;text-align:left;font-weight:semi-bold;font-size:0.75rem">
+                <div style="display:flex;flex-direction:row;align-items:center;text-align:left;font-weight:semi-bold;font-size:0.8rem">
                   <div style="display:flex;align-items:center;margin-right:0.5rem">
                     <img src="${Colonials?.icon}" alt="Colonial" style="${casualtyIconStyle}" />
                     <div>
