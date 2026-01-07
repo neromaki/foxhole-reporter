@@ -296,11 +296,17 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   return (
     <>
-      {overlays.map((o) => (
+      {overlays.map((o) => {
+        // Compute casualty rates once per overlay
+        const rate = casualtyRates.getRate(o.region);
+        const combined = rate ? rate.warden + rate.colonial : 0;
+        type combinedCasualtyRate = 'low' | 'medium' | 'high' | 'none';
+        const hexCasualtyRate: combinedCasualtyRate = (combined > 200 && combined <= 500) ? 'low' : (combined > 500 && combined <= 1000) ? 'medium' : (combined > 1000) ? 'high' : 'none';
+
+        return (
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
           <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
             <path id="HexBorder" d="M384.425 1L512.845 222.001L385.423 443H128.577L1.15332 222L128.577 1H384.425Z" fill="none" stroke="hsla(0,0%,0%,0.8)" strokeWidth="2" />
-
 
             <g id="Territories" className="transition-opacity duration-150">
               {o.paths.map((p) => {   
@@ -390,24 +396,30 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
               <g className="hexCasualtyVisual">
                 <g id="casualtyRate" opacity={(() => {
                   if (reportModeActive) return 0;
-                  const rate = casualtyRates.getRate(o.region);
-                  if (!rate) return 0;
-                  const combined = rate.warden + rate.colonial;
-                  if (combined > 200 && combined <= 500) return 0.5;
-                  if (combined > 500 && combined <= 1000) return 0.7;
-                  if (combined > 1000) return 0.9;
-                  return 0;
+                  switch (hexCasualtyRate) {
+                    case 'low': return 0.5;
+                    case 'medium': return 0.7;
+                    case 'high': return 0.9;
+                    default: return 0;
+                  }
                 })()} filter={(() => {
                   if (reportModeActive) return '';
-                  const rate = casualtyRates.getRate(o.region);
-                  if (!rate) return '';
-                  const combined = rate.warden + rate.colonial;
-                  if (combined > 200 && combined <= 500) return `url(#casualtyRateLow)`;
-                  if (combined > 500 && combined <= 1000) return `url(#casualtyRateMed)`;
-                  if (combined > 1000) return `url(#casualtyRateHigh)`;
-                  return '';
+                  switch (hexCasualtyRate) {
+                    case 'low': return 'url(#casualtyRateLow)';
+                    case 'medium': return 'url(#casualtyRateMed)';
+                    case 'high': return 'url(#casualtyRateHigh)';
+                    default: return '';
+                  }
                 })()}>
                   <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
+                  <path d="M381.547 6L507.066 222.011L382.533 438H131.467L6.92578 222L131.467 6H381.547Z" fill="none" stroke={(() => {
+                    switch (hexCasualtyRate) {
+                      case 'low': return '#EAED10';
+                      case 'medium': return '#E55A09';
+                      case 'high': return '#FF0000';
+                      default: return 'none';
+                    }
+                  })()} strokeOpacity="0.6" strokeWidth="12"/>
                 </g>
                 <defs>
                   <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
@@ -426,7 +438,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
                     <feOffset />
-                    <feGaussianBlur stdDeviation="25" />
+                    <feGaussianBlur stdDeviation="80" />
                     <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
                     <feColorMatrix type="matrix" values="0 0 0 0 0.841346 0 0 0 0 0.308494 0 0 0 0 0 0 0 0 1 0" />
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />
@@ -437,7 +449,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
                     <feOffset />
-                    <feGaussianBlur stdDeviation="25" />
+                    <feGaussianBlur stdDeviation="45" />
                     <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
                     <feColorMatrix type="matrix" values="0 0 0 0 0.916591 0 0 0 0 0.93109 0 0 0 0 0.0611772 0 0 0 1 0" />
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_593" />
@@ -457,7 +469,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
             )}
           </svg>
         </SVGOverlay>
-      ))}
+        );
+      })}
     </>
   );
 }
