@@ -70,6 +70,12 @@ Deno.serve(async (req: Request) => {
     const warNumber = warInfo?.warNumber ?? 0;
 
 
+    // If the current war has ended and we're in Resistance Mode, don't get data.
+    if(warInfo?.conquestEndTime != null) {
+      console.log(`Current war (${warInfo.warNumber}) ended at ${warInfo.conquestEndTime} and is in Resistance Mode.`);
+      return;
+    }
+
     // Get latest snapshot
     const { data: latestList, error: latestErr } = await supabase
       .from('snapshots')

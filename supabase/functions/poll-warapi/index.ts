@@ -1,6 +1,6 @@
 // Supabase Edge Function: poll-warapi
 // Fetches Foxhole WarAPI snapshot and stores territories in snapshots table.
-import { getServiceClient } from '../../../src/lib/supabaseClient.ts';
+import { getServiceClient } from '../_shared/supabaseClient.ts';
 // Workspace TypeScript may not have Deno types; declare to satisfy editor.
 declare const Deno: any;
 
@@ -22,6 +22,13 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = getServiceClient();
     const war = await fetchWarState();
+
+    // If the current war has ended and we're in Resistance Mode, don't get data.
+    if(war.conquestEndTime != null) {
+      console.log(`Current war (${war.warNumber}) ended at ${war.conquestEndTime} and is in Resistance Mode.`);
+      return;
+    }
+
     const mapList = await fetchMapList();
 
     // Filter out home regions which don't have public data
