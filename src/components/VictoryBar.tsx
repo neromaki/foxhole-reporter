@@ -1,6 +1,7 @@
 import React from 'react';
 import { getTeamData } from '../data/teams';
 import ReportModes from './ReportModes';
+import wars from '../data/wars';
 
 export type VictoryCounts = {
   colonial: number;
@@ -11,10 +12,9 @@ export type VictoryCounts = {
 
 interface VictoryBarProps {
   counts: VictoryCounts | null;
-  requiredVictoryTowns: number | null;
   showNeutral: boolean;
   showScorched: boolean;
-  warNumber?: number | null;
+  warState: ResolvedWarState | null;
   className?: string;
 }
 

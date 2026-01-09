@@ -35,8 +35,10 @@ export interface War {
   war_number: number;
   winner: string;
   war_start_time: Date;
-  war_end_time: Date;
+  war_end_time: Date | null;
   required_victory_towns: number;
+  scheduled_conquest_end_time: Date | null;
+  short_required_victory_towns: number;
 }
 
 export interface WarReport {

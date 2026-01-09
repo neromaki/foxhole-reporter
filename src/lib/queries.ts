@@ -114,8 +114,11 @@ export function useTerritoryDiff(period: 'daily' | 'threeDay' | 'weekly' | 'allT
 }
 
 export interface ResolvedWarState {
-  warNumber: number | null;
-  requiredVictoryTowns: number | null;
+  warNumber: number;
+  warStart: Date;
+  requiredVictoryTowns: number;
+  scheduledConquestEndTime?: Date | null;
+  shortRequiredVictoryTowns: number;
   source: 'supabase' | 'warapi';
 }
 
@@ -138,8 +141,11 @@ export function useWarState(options?: { enabled?: boolean }) {
             console.error('[Queries] War state fetch error (supabase):', error);
           } else if (data && data.required_victory_towns != null) {
             return {
-              warNumber: (data as War).war_number ?? null,
+              warNumber: (data as War).war_number,
+              warStart: (data as War).war_start_time,
               requiredVictoryTowns: Number((data as War).required_victory_towns),
+              scheduledConquestEndTime: (data as War).scheduled_conquest_end_time,
+              shortRequiredVictoryTowns: Number((data as War).short_required_victory_towns),
               source: 'supabase' as const,
             } satisfies ResolvedWarState;
           }
@@ -151,9 +157,12 @@ export function useWarState(options?: { enabled?: boolean }) {
       // 2) WarAPI fallback
       try {
         const warApi = await fetchWarState();
+        if (!warApi) return null;
         return {
-          warNumber: warApi?.warNumber ?? null,
-          requiredVictoryTowns: warApi?.requiredVictoryTowns ?? null,
+          warNumber: warApi.warNumber,
+          warStart: new Date(warApi.conquestStartTime),
+          requiredVictoryTowns: warApi.requiredVictoryTowns,
+          shortRequiredVictoryTowns: warApi.shortRequiredVictoryTowns,
           source: 'warapi' as const,
         } satisfies ResolvedWarState;
       } catch (e) {
