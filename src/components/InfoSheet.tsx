@@ -1,9 +1,12 @@
 import React from 'react';
 import { useMapStore } from '../state/useMapStore';
 import { getIconLabel, getIconSize, getIconSprite, getIconUrl, getIconWikiUrl, iconTypeToFilename } from '../lib/icons';
-import { getTeamData } from '../data/teams';
+import { Teams, getTeamData } from '../data/teams';
 import { ICON_SPRITE_METADATA, SPRITE_HEIGHT, SPRITE_WIDTH } from '../data/icon-sprite';
-import { formatTimeAgo } from '../lib/time';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 export default function InfoSheet() {
   const selected = useMapStore((s) => s.selectedLocation);
@@ -80,10 +83,13 @@ export default function InfoSheet() {
 
       <div className={`flex flex-col items-end gap-y-2`}>
         {team && team.name !== 'Neutral' && (
-          <div className="flex items-center gap-1">
-            <Badge text={team.name} icon={team.icon} className={`text-xs`} style={{ backgroundColor: team.colors.saturated }} />
+          <div className="flex flex-col items-end gap-1">
+            <Badge text={team.name} icon={team.icon} className={`text-xs font-semibold ${tile.owner == 'Colonial' && `shadow-xl`}`} style={{ backgroundColor: team.colors.saturated }} />
             { events.length > 0 && events[0] && (
-              <span>{(`${formatTimeAgo(events[0].at)}`)}</span>
+              <div className={`flex items-center gap-1 text-xs text-gray-400`}>
+                <span>Captured</span>
+                <span>{dayjs(events[0].at).fromNow()}</span>
+              </div>
             )}
           </div>
         )}
@@ -102,7 +108,7 @@ function Badge({ text, icon, className, style }: { text: string; icon?: string; 
   return (
     <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${className ?? ''}`} style={style}>
       {icon && <img src={icon} alt={text} className="w-4 h-4" />}
-      <span>
+      <span className={``}>
         {text}
       </span>
     </div>

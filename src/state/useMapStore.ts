@@ -56,6 +56,8 @@ interface MapState {
   setPanelClickOutsideBehavior: (panel: PanelType, behavior: ClickOutsideBehavior) => void;
   selectedLocation: SelectedLocation | null;
   setSelectedLocation: (sel: SelectedLocation | null) => void;
+  victoryBarDrawer: boolean;
+  setVictoryBarDrawerState: (open: boolean) => void;
 }
 
 
@@ -176,5 +178,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   selectedLocation: null,
   setSelectedLocation: (sel) => {
     set({ selectedLocation: sel });
+  },
+  victoryBarDrawer: false,
+  setVictoryBarDrawerState: (open) => {
+    set({ victoryBarDrawer: open });
   },
 }));

@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { getTeamData } from '../data/teams';
 import ReportModes from './ReportModes';
+import { formatDuration } from '../lib/time';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { ResolvedWarState } from '../lib/queries';
 import wars from '../data/wars';
+
+dayjs.extend(relativeTime);
 
 export type VictoryCounts = {
   colonial: number;
@@ -28,8 +34,17 @@ function clamp01(v: number) {
   return Math.min(1, Math.max(0, v));
 }
 
-export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScorched, warNumber, className }: VictoryBarProps) {
-  if (!counts || requiredVictoryTowns == null) return null;
+export function VictoryBar({ counts, showNeutral, showScorched, warState, className }: VictoryBarProps) {
+  const [now, setNow] = useState<Date>(() => new Date());
+  
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!counts || warState?.requiredVictoryTowns == null || warState?.shortRequiredVictoryTowns == null) return null;
+
+  const requiredVictoryTowns = warState.shortRequiredVictoryTowns > 0 ? warState.shortRequiredVictoryTowns : warState.requiredVictoryTowns;
 
   const neutralVal = showNeutral ? counts.neutral : 0;
   const scorchedVal = showScorched ? counts.scorched : 0;
@@ -80,7 +95,7 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
               <div className="flex content-center space-x-1 mt-1">
                   <span className="font-semibold text-xs text-center">{requiredVictoryTowns}</span>
                   <span className="text-xs text-center">to win</span>
-                  <span className="font-bold">{warNumber ? <div className="text-xs text-gray-400">War {warNumber}</div> : null}</span>
+                  <span className="font-bold">{warState?.warNumber ? <div className="text-xs text-gray-400">War {warState.warNumber}</div> : null}</span>
               </div>
             </div>
           </div>
@@ -105,6 +120,14 @@ export function VictoryBar({ counts, requiredVictoryTowns, showNeutral, showScor
             </div>
           )}
         </div>
+        <div className={`flex justify-center w-full`}>
+          <img src={new URL(`../images/icn_chevron-down.png`, import.meta.url).href} className="inline-block h-5 w-5" />
+        </div>
+        {warState?.warStart && (
+          <div className="mt-2 text-xs text-gray-400">
+            War {warState.warNumber} started {formatDuration(warState.warStart, "{DD} days, {HH} hours, {MM} minutes, {SS} seconds", now)} ago on {dayjs(warState.warStart).format('MMMM D, YYYY h:mm A')}
+          </div>
+        )}
       </div>
     </div>
   );
