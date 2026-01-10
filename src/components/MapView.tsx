@@ -138,6 +138,7 @@ export default function MapView() {
       zoomControl={false}
       zoomSnap={0.1}
       zoomDelta={0.5}
+      attributionControl={false}
       
       className="h-full w-full bg-gray-900"
     >
