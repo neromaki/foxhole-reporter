@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -304,6 +304,7 @@ function LocationsLayer({
   const iconTypeById = React.useRef<Map<string, number>>(new Map());
   const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
   const lastMarkerClickTimeRef = React.useRef<number>(0);
+  const mouseDownPositionRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const { show, hide, buildTooltipContent } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
@@ -620,28 +621,20 @@ function LocationsLayer({
       history: null,
       name: nearestMajorLabel(t.region, lat, lng),
       hexName: getHexByApiName(t.region)?.displayName ?? null,
-      source: 'marker' as const,
+      source: 'mapIcon' as const,
     };
   }, [majorLabelsByMap]);
 
 
-  const handleMouseDown = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    
-    // Apply brightness filter to hovered icon
-    const marker = markerRefs.current.get(t.id);
-    if (marker) {
-      const img = markerIconElement(marker);
-      if (img) {
-        img.style.filter = 'brightness(1.3)';
-        img.style.transition = 'filter 120ms ease';
-      }
-    }
+  const handleMouseDown = React.useCallback((e: any, t: LocationTile, lat: number, lng: number) => {
+    // Track mouse position for click detection (differentiate from panning)
+    mouseDownPositionRef.current = { x: e.originalEvent.pageX, y: e.originalEvent.pageY };
   }, [map, setPanelState]);
 
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
     // Suppress hover tooltip if this item is already selected
-    if (selectedLocation && selectedLocation.id === t.id && selectedLocation.source === 'marker') {
+    if (selectedLocation && selectedLocation.id === t.id && selectedLocation.source === 'mapIcon') {
       return;
     }
     const locationData = buildLocationData(t, lat, lng);
@@ -658,19 +651,23 @@ function LocationsLayer({
   }, [show, buildTooltipContent, buildLocationData, selectedLocation, reportMode, isTouch]);
 
   const handleMouseOut = React.useCallback((t: LocationTile) => {
-    hide('hover', 200);
-    
-    const marker = markerRefs.current.get(t.id);
-    if (marker) {
-      const img = markerIconElement(marker);
-      if (img) {
-        img.style.filter = 'none';
-      }
-    }
-    
+    hide('hover', 200);    
   }, [hide]);
 
-  const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+  const handleMarkerClick = React.useCallback((e: any, t: LocationTile, lat: number, lng: number) => {
+    // Check if this is a real click vs a drag/pan operation
+    if (!isTouch && mouseDownPositionRef.current) {
+      const dx = e.originalEvent.pageX - mouseDownPositionRef.current.x;
+      const dy = e.originalEvent.pageY - mouseDownPositionRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > CLICK_DISTANCE_THRESHOLD) {
+        // User was panning, not clicking - ignore
+        mouseDownPositionRef.current = null;
+        return;
+      }
+    }
+    mouseDownPositionRef.current = null;
+
     lastMarkerClickTimeRef.current = Date.now();
     const locationData = buildLocationData(t, lat, lng);
     setSelectedLocation(locationData);
@@ -685,7 +682,7 @@ function LocationsLayer({
       hexName: locationData.hexName,
     });
     show('selected', { html, lat, lng, openDelay: 0, sticky: true });
-    
+
     if (isTouch) {
       map.panTo([lat, lng], { animate: true, duration: 0.5 });
       return;
@@ -723,9 +720,12 @@ function LocationsLayer({
             position={[lat, lng]}
             icon={initialIcon}
             eventHandlers={{
+              mousedown: (e) => {
+                if (!isTouch) handleMouseDown(e, t, lat, lng);
+              },
               click: (e) => {
                 if (isTouch) L.DomEvent.stop(e);
-                handleMarkerClick(t, lat, lng);
+                handleMarkerClick(e, t, lat, lng);
               },
               ...(isTouch ? {} : {
                 mouseover: () => handleMouseOver(t, lat, lng),
@@ -747,6 +747,7 @@ function LocationsLayer({
                     ? !!(changedAllTime && (changedAllTime as Set<string>).has(t.id))
                     : false;
                   img.style.opacity = reportMode ? (highlighted ? '1' : '0.35') : '1';
+                  img.style.filter = selectedLocation && selectedLocation.id === t.id && selectedLocation.source === 'mapIcon' ? 'brightness(2)' : 'none';
                 }
               }
             }}

@@ -23,7 +23,7 @@ export type SelectedLocation = {
   owner: string | null;
   history: any | null;
   hexName: string | null;
-  source: 'marker' | 'territory';
+  source: 'mapIcon' | 'territory';
 };
 export type TerritoryHistoryEntry = { owner: LocationTile['owner']; at: string };
 export type TerritoryHistory = {

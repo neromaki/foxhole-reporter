@@ -172,7 +172,7 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       // Bring selected tooltip to front
       if (type === 'selected') {
         const el = (tooltip as any).getElement?.() || (tooltip as any)._container;
-        if (el) el.style.zIndex = '1000';
+        if (el) el.style.zIndex = '600';
       }
 
       // Setup event listeners

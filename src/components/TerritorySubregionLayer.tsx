@@ -3,7 +3,7 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY } from '../lib/mapConfig';
+import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
 import { useMapStore, TerritoryHistory, SelectedLocation } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
@@ -85,6 +85,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const selectedLocation = useMapStore((s) => s.selectedLocation);
   const { show, hide, buildTooltipContent } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mouseDownPosition, setMouseDownPosition] = useState<{ x: number; y: number } | null>(null);
   const activeLayers = useMapStore((s) => s.activeLayers);
 
 
@@ -238,7 +239,20 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     hide('hover', 120);
   };
 
-  const handleClick = (p: PathInfo) => {
+  const handleClick = (e: React.MouseEvent, p: PathInfo) => {
+    // Check if this is a real click vs a drag/pan operation
+    if (!isTouch && mouseDownPosition) {
+      const dx = e.pageX - mouseDownPosition.x;
+      const dy = e.pageY - mouseDownPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > CLICK_DISTANCE_THRESHOLD) {
+        // User was panning, not clicking - ignore
+        setMouseDownPosition(null);
+        return;
+      }
+    }
+    setMouseDownPosition(null);
+
     // Desktop: only clickable in report mode on highlighted territories
     if (!isTouch && (reportModeActive && !p.highlighted)) return;
 
@@ -290,11 +304,13 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 const active = (hoveredId === p.territoryId) || (selectedLocation?.id === p.territoryId && selectedLocation?.source === 'territory');
                 const hist = historyById.get(p.territoryId || '');  
                 const events = hist?.events ?? [];
+                const teamColors = getTeamColors(p.owner || 'Neutral');
                 
                 const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
                 let fill = p.baseColor;
                 let fillOpacity = p.baseOpacity;
+                let stroke = p.stroke;
                 let strokeWidth = p.strokeWidth;
 
                 // Figure out opacities and colors based on report mode and state
@@ -336,6 +352,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                       fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
                     }
                   }
+
+                  if (selectedLocation && selectedLocation.id === p.territoryId && selectedLocation.source === 'territory') {
+                    strokeWidth = 2;
+                    stroke = teamColors ? teamColors.saturated : stroke;
+                    fillOpacity = TERRITORY_OVERVIEW_OPACITY;
+                  }
                 }
                 
                 const interactive = reportModeActive ? p.highlighted ? true : false : true; 
@@ -346,7 +368,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                     d={p.d}
                     fill={fill}
                     fillOpacity={fillOpacity}
-                    stroke={p.stroke}
+                    stroke={stroke}
                     strokeWidth={strokeWidth}
                     style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
                     onMouseEnter={() => {
@@ -354,14 +376,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                       //if (isTouch && !reportModeActive) setPanelState('info', 'off');
                     }}
                     onMouseLeave={() => handleLeave(p)}
+                    onMouseDown={(e) => {
+                      if (!isTouch) setMouseDownPosition({ x: e.pageX, y: e.pageY });
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      //if (!isTouch) handleClick(p);
-                      handleClick(p);
-                    }}
-                    onTouchStart={(e) => {
-                      //e.stopPropagation();
-                      //handleClick(p);
+                      handleClick(e, p);
                     }}
                     className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
                   />

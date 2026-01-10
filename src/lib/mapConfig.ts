@@ -27,3 +27,6 @@ export const TERRITORY_REPORT_HIGHLIGHTED_OPACITY = 0.8;
 // Victory bar display
 export const WARSTATE_GRAPH_SHOW_NEUTRAL = false;
 export const WARSTATE_GRAPH_SHOW_SCORCHED = false;
+
+// Click detection - distance threshold to differentiate clicks from panning/dragging (in pixels)
+export const CLICK_DISTANCE_THRESHOLD = 5;
