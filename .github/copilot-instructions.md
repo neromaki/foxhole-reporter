@@ -1,0 +1,20 @@
+# Foxhole Reporter – AI Guide
+- Frontend is a Vite + React + TypeScript single-page app; map UI lives in src/components/MapView.tsx with layered overlays (territories, structures, casualty visuals) and panel UI driven by Zustand state in src/state/useMapStore.ts.
+- Data model: Supabase tables snapshots (territories + war reports), territory_diffs (ownership changes for daily/3d/weekly/allTime), wars (war metadata). Hooks in src/lib/queries.ts fetch via Supabase, quantize coordinates, and subscribe to realtime updates (feature-flag REALTIME_SNAPSHOTS_ENABLED).
+- Map rendering: uses Leaflet + react-leaflet with CRS.Simple; markers scale with zoom and cache icons/sprites (see LocationsLayer in MapView.tsx). Territory polygons use prebundled SVG paths from src/data/territory-paths.ts; overlay rendering and hover/click behavior live in TerritorySubregionLayer.tsx.
+- Shared tooltip behavior is centralized in src/lib/sharedTooltip.tsx; use the provided context instead of bespoke tooltips so hover/sticky logic stays consistent across layers.
+- Color/label data lives under src/data (teams.tsx, map-flags.tsx, map-icons.tsx, towns.tsx, regions.tsx, territory-paths.ts). Keep additions consistent with these sources and update bundling scripts as needed.
+- Config/constants: src/lib/mapConfig.ts controls opacity, zoom thresholds, and layer defaults; src/lib/appConfig.ts holds feature flags (DEBUG_MODE, ICON_SIZE). Use these instead of hardcoding values.
+- External data fetching: src/lib/warApi.ts wraps Foxhole WarAPI with ETag-aware caching and browser/localStorage persistence; keep it Deno-friendly (no DOM APIs) because Edge Functions import it. Avoid breaking fetchJsonWithCache semantics when changing endpoints.
+- Supabase Edge Functions (Deno) live in supabase/functions: poll-warapi pulls dynamic map items + war reports into snapshots (skips when conquestEndTime is set); diff-territory computes ownership changes for major flags only (iconTypes 56,57,58,45,27,29) and writes territory_diffs. Shared client util in supabase/functions/_shared/supabaseClient.ts.
+- Asset pipelines: build/deploy scripts run bundle-territory-svgs.js (packs map/subregion SVGs into src/data/territory-paths.ts) and generate-icon-sprite.js (builds sprite atlas). Run these when assets change; build/ deploy scripts already invoke them.
+- Styling: Tailwind is used across the app; map overlays often rely on inline styles and classNames for transitions. Preserve existing class patterns when extending UI.
+- State + panels: useMapStore manages layers, report modes, selectedLocation, and panel open states. Toggling report mode auto-opens the report panel and changes layer defaults; avoid duplicating this logic in components.
+- Testing/dev flows: npm run dev starts Vite (hosted for LAN). npm run build runs bundling + sprite generation before vite build. npm run preview serves built assets. lint with npm run lint.
+- Environment: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for frontend API access. Supabase CLI commands: supabase migration up, supabase functions deploy poll-warapi / diff-territory (see README.md).
+- Deployment: static frontend publishes via GitHub Pages workflow (.github/workflows/pages.yml). Supabase scheduled functions run via cron (see README). Keep frontend build output in dist/.
+- When adding new map data or icons, update source files under map/, run bundling scripts, and keep types in src/types/war in sync.
+- Keep code browser-safe: avoid Node-only APIs in src/lib files shared by Edge Functions. For Deno files under supabase/functions, keep imports extension-suffixed (.ts) and avoid Node globals.
+- Performance: Leaflet can lag with many markers/polygons. Use memoization, React.useCallback, and ref caching (e.g., markerRefs) to minimize re-renders. Batch state updates in useMapStore where possible. Focus on optimizing memory usage and reducing noticable lag during interactions.
+- Follow existing code style: prefer functional components with hooks, use Tailwind for styling, and keep logic modular. Add comments for complex map interactions or data flows.
+
