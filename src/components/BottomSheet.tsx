@@ -178,7 +178,7 @@ export function BottomSheet({
       <div
         ref={sheetRef}
         className={
-          `w-full md:w-[28rem] bg-gray-800 rounded-t-lg md:rounded-tl-none md:rounded-br-lg ${active ? 'px-2 pt-4' : 'p-0'} md:px-2 md:pt-4 transition-all duration-[250ms] fixed inset-x-0 bottom-0 md:left-0 md:right-auto ${type == 'report' ? `md:bottom-0` : `md:bottom-auto`} md:-translate-x-full ${panelState !== 'off' ? 'md:translate-x-0' : ''} z-[451] pointer-events-auto will-change-transform`}
+          `w-full md:w-[28rem] bg-gray-800 rounded-t-lg md:rounded-tl-none md:rounded-br-lg ${active ? 'px-2 pt-4' : 'p-0'} md:px-2 md:pt-4 transition-all duration-[250ms] fixed inset-x-0 bottom-0 md:left-0 md:right-auto md:h-full ${type == 'report' ? `md:top-0` : `md:bottom-auto`} md:-translate-x-full ${panelState !== 'off' ? 'md:translate-x-0' : ''} z-[451] pointer-events-auto will-change-transform`}
         style={{
           transform: `${isTouch ? `translateY(${transformY}px)` : ``}`,
           //transitionTimingFunction: easing,

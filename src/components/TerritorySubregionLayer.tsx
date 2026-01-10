@@ -13,7 +13,11 @@ import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
-import { getTimeSinceLastCapture, formatTimeAgo } from '../lib/time';
+import { getTimeSinceLastCapture } from '../lib/time';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 // Remove dynamic SVG loading - now using pre-bundled paths
 
@@ -206,7 +210,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 `<div class="flex">
                   <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
                   <span class="mr-2">${ev.owner}</span>
-                  <span>(${formatTimeAgo(ev.at)})</span>
+                  <span>(${dayjs(ev.at).fromNow()})</span>
                 </div>`) : '';
             });
           }
@@ -311,7 +315,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
             <g id="Territories" className="transition-opacity duration-150">
               {o.paths.map((p) => {   
                 const affected = p.highlighted; 
-                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);  
+                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);
                 const hist = historyById.get(p.territoryId || '');  
                 const events = hist?.events ?? [];
                 

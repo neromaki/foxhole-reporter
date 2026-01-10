@@ -23,7 +23,7 @@ export function ContextPopover() {
       </div> */}
         
       {content && (
-        <div className={`flex rounded bg-gray-300 text-[16px] text-gray-200`}>
+        <div className={`flex rounded bg-gray-200 text-[16px] text-gray-200`}>
           <span className={`text-xs md:text-sm text-gray-800 p-3`}>{content}</span>
           { reportModeActive && (
             <button className={`flex justify-center items-center text-xs min-w-11 border-l border-gray-400/20 bg-gray-400/30`} onClick={() => {

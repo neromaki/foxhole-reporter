@@ -67,24 +67,28 @@ export default function App() {
         </div>
 
         
-        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-end z-[430] pointer-events-none`}>
+        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-center z-[430] pointer-events-none`}>
           <VictoryBar
             counts={victoryCounts}
-            requiredVictoryTowns={warState?.requiredVictoryTowns ?? null}
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
-            warNumber={warState?.warNumber}
+            warState={warState !== undefined ? warState : { warNumber: 0, warStart: new Date(), requiredVictoryTowns: 0, shortRequiredVictoryTowns: 0, source: 'supabase' }} 
+            className={`md:mt-2`}
           />
+          <div className={`fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:relative md:top-auto md:left-auto md:right-auto md:z-[440] md:pointer-events-auto`}>
+            <ContextPopover />
+          </div>
         </div>
 
         <div className={`fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:fixed md:top-20 md:left-1/2 md:-translate-x-1/2 md:z-[440] md:pointer-events-auto`}>
-          <ContextPopover />
+          
         </div>
 
-        <div className={`panel-buttons fixed top-24 right-2 flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:top-auto md:bottom-4 ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
-          <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} disabled={reportModeActive} onClick={() => {
-            if (reportModeActive) return;
+        <div className={`panel-buttons fixed top-24 right-2 flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:top-4 md:bottom-auto ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
+          <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} onClick={() => {
+            //if (reportModeActive) return;
             const active = panelState['layer'] !== 'off';
+            setActiveReportMode(null);
             setPanelState('layer', active ? 'off' : 'threequarters');
           }} />
           <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} 
@@ -132,7 +136,7 @@ export default function App() {
           <ReportModes />
         </BottomSheet>
 
-        {isTouch && (
+        
           <BottomSheet 
             type={'info'} 
             allowedStates={['half']} 
@@ -150,7 +154,7 @@ export default function App() {
               })()}>
             <InfoSheet />
           </BottomSheet>
-        )}
+        
 
       </aside>
 
@@ -168,13 +172,14 @@ function PanelButton({label, targetPanel, icon, disabled, onClick}: {label: stri
   const active = panelState[targetPanel] !== 'off';
 
   return (
-  <div className={`border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>
+  <div className={`flex justify-stretch border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>
     <button
-      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800 md:bg-gray-700'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={() => !disabled && onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
       disabled={disabled}
     >
       <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-7 h-7 ${active ? 'invert' : ''}`} />
+      <span className={`mt-1 ${active ? 'invert' : ''}`}>{label}</span>
     </button>
   </div>
   );
