@@ -305,8 +305,9 @@ function LocationsLayer({
   const ownerById = React.useRef<Map<string, LocationTile['owner']>>(new Map());
   const lastMarkerClickTimeRef = React.useRef<number>(0);
 
-  const { show, hide } = useSharedTooltip();
+  const { show, hide, buildTooltipContent } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
+  const selectedLocation = useMapStore(s => s.selectedLocation);
 
   // Load static maps to access projected Major labels for nearest-location lookup
   const { data: staticMaps } = useStaticMaps(true);
@@ -608,52 +609,20 @@ function LocationsLayer({
   }, [visibleTerritories]);
 
 
-  // Helper to build tooltip content
-  const getTooltipContent = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    const isVictoryBase = (t.flags & 0x01) !== 0;
-    const isScorched = (t.flags & 0x10) !== 0;
-    const isBuildSite = (t.flags & 0x04) !== 0;
-    const parts = [];
-    const wikiUrl = getIconWikiUrl(t.iconType);
-    const labelHtml = wikiUrl
-      ? `<a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="font-medium underline decoration-dotted">${getIconLabel(t.iconType)}</a>`
-      : `<span class="font-semibold">${getIconLabel(t.iconType)}</span>`;
-    parts.push(labelHtml);
-    const nearbyMajor = nearestMajorLabel(t.region, lat, lng);
-    if (nearbyMajor) parts.push(`<div class="font-semibold">${nearbyMajor}</div>`);
-    const hexName = getHexByApiName(t.region)?.displayName;
-    if (hexName) parts.push(`<div class="text-gray-800">${hexName}</div>`);
-    if (t.owner !== 'Neutral') parts.push(`<div class="flex"><img src="${getTeamIcon(t.owner)}" alt="${t.owner}" class="inline-block w-4 h-4 mr-1"/>${t.owner}</div>`);
-    if (isVictoryBase) parts.push('<div class="text-amber-400">Victory Base</div>');
-    if (isScorched) parts.push('<div class="text-red-400">Scorched</div>');
-    if (isBuildSite) parts.push('<div class="text-blue-400">Build Site</div>');
-    /* Disabled for now to reduce tooltip noise
-    if (changedDaily.has(t.id)) {
-      parts.push('<div class="text-purple-400">Changed 24h</div>');
-    }
-    if (changedThreeDay.has(t.id)) {
-      parts.push('<div class="text-purple-400">Changed 3d</div>');
-    }
-    if (changedWeekly.has(t.id)) {
-      parts.push('<div class="text-amber-400">Changed 7d</div>');
-    }
-    */
-    return `<div class="text-xs">${parts.join('')}</div>`;
-  }, [changedDaily, changedThreeDay, changedWeekly, changedAllTime, majorLabelsByMap]);
-
-  // Minimal tooltip for touch devices (label + team icon)
-  const getTooltipContentMinimal = React.useCallback((selectedLocation: SelectedLocation) => {
-    const parts: string[] = [];
-    parts.push(`<div class="flex items-center">`);
-    if (selectedLocation.tile.owner !== 'Neutral') {
-      parts.push(`<img src="${getTeamIcon(selectedLocation.tile.owner)}" alt="${selectedLocation.tile.owner}" class="inline-block w-4 h-4 mr-1"/>`);
-    }
-    const name = selectedLocation.name;
-    if (name) parts.push(`<div class="font-semibold">${name}</div>`);
-    parts.push(`</div>`);
-    parts.push(`<span class="text-xs">${getIconLabel(selectedLocation.tile.iconType)}</span>`);
-    return `<div class="text-xs flex flex-col items-start">${parts.join('')}</div>`;
-  }, []);
+  // Helper to build location data for tooltip
+  const buildLocationData = React.useCallback((t: LocationTile, lat: number, lng: number): SelectedLocation => {
+    return {
+      tile: t,
+      lat,
+      lng,
+      id: t.id,
+      owner: t.owner,
+      history: null,
+      name: nearestMajorLabel(t.region, lat, lng),
+      hexName: getHexByApiName(t.region)?.displayName ?? null,
+      source: 'marker' as const,
+    };
+  }, [majorLabelsByMap]);
 
 
   const handleMouseDown = React.useCallback((t: LocationTile, lat: number, lng: number) => {
@@ -671,11 +640,25 @@ function LocationsLayer({
 
   // Hover handlers
   const handleMouseOver = React.useCallback((t: LocationTile, lat: number, lng: number) => {
-    show(getTooltipContent(t, lat, lng), lat, lng, 100);
-  }, [show, getTooltipContent]);
+    // Suppress hover tooltip if this item is already selected
+    if (selectedLocation && selectedLocation.id === t.id && selectedLocation.source === 'marker') {
+      return;
+    }
+    const locationData = buildLocationData(t, lat, lng);
+    const html = buildTooltipContent({
+      platform: isTouch ? 'mobile' : 'desktop',
+      action: 'hover',
+      source: 'mapIcon',
+      location: locationData,
+      reportMode: reportMode,
+      nearbyMajorLabel: locationData.name,
+      hexName: locationData.hexName,
+    });
+    show('hover', { html, lat, lng, openDelay: 100 });
+  }, [show, buildTooltipContent, buildLocationData, selectedLocation, reportMode, isTouch]);
 
   const handleMouseOut = React.useCallback((t: LocationTile) => {
-    hide(200);
+    hide('hover', 200);
     
     const marker = markerRefs.current.get(t.id);
     if (marker) {
@@ -688,27 +671,27 @@ function LocationsLayer({
   }, [hide]);
 
   const handleMarkerClick = React.useCallback((t: LocationTile, lat: number, lng: number) => {
+    lastMarkerClickTimeRef.current = Date.now();
+    const locationData = buildLocationData(t, lat, lng);
+    setSelectedLocation(locationData);
+    setPanelState('info', 'half');
+    const html = buildTooltipContent({
+      platform: 'mobile',
+      action: 'selected',
+      source: 'mapIcon',
+      location: locationData,
+      reportMode: reportMode,
+      nearbyMajorLabel: locationData.name,
+      hexName: locationData.hexName,
+    });
+    show('selected', { html, lat, lng, openDelay: 0, sticky: true });
+    
     if (isTouch) {
-      lastMarkerClickTimeRef.current = Date.now();
-      const locationData = {
-        tile: t,
-        lat,
-        lng,
-        id: t.id,
-        owner: t.owner,
-        history: null,
-        name: nearestMajorLabel(t.region, lat, lng),
-        hexName: getHexByApiName(t.region)?.displayName ?? null,
-        source: 'marker' as const,
-      };
-      setSelectedLocation(locationData);
-      setPanelState('info', 'half');
-      show(getTooltipContentMinimal(locationData), lat, lng, 100);
       map.panTo([lat, lng], { animate: true, duration: 0.5 });
       return;
     }
     handleMouseOver(t, lat, lng);
-  }, [getTooltipContentMinimal, handleMouseOver, isTouch, map, nearestMajorLabel, setPanelState, setSelectedLocation, show]);
+  }, [buildLocationData, buildTooltipContent, handleMouseOver, isTouch, map, setPanelState, setSelectedLocation, show, reportMode]);
 
   // Re-apply styles when report mode or diff sets change
   React.useEffect(() => {

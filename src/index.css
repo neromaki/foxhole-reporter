@@ -7,6 +7,8 @@ html, body, #root { height: 100%; }
 .map-label { text-shadow: 0 0 2px #000, 0 0 4px #000, 1px 1px 2px #000; white-space: nowrap; }
 .map-label-major { z-index: 9999 !important;}
 .shared-tooltip { width: max-content; max-width: none; }
+.shared-tooltip-hover { z-index: 900; }
+.shared-tooltip-selected { z-index: 1000; }
 svg { outline: none;}
 
 .victory-count, .text-shadow {

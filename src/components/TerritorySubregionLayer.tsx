@@ -82,9 +82,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const setPanelState = useMapStore((s) => s.setPanelState);
   const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
-  const { show, hide } = useSharedTooltip();
+  const selectedLocation = useMapStore((s) => s.selectedLocation);
+  const { show, hide, buildTooltipContent } = useSharedTooltip();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [stickyId, setStickyId] = useState<string | null>(null);
   const activeLayers = useMapStore((s) => s.activeLayers);
 
 
@@ -102,9 +102,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     console.log(`[TerritorySubregion] reportMode changed: now ${reportMode ?? 'null'}`);
     if (!reportMode) {
       setHoveredId(null);
-      setStickyId(null);
       console.log('[TerritorySubregion] Exiting report mode - hiding tooltip');
-      hide(0);
+      hide('hover', 0);
     }
   }, [reportMode, hide]);
 
@@ -184,46 +183,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
 
 
-  const showTooltip = (selectedLocation: SelectedLocation, minimal?: boolean) => {
-    if (!selectedLocation.lat || !selectedLocation.lng || !selectedLocation.id) return;
-    if (!reportModeActive && (activeLayers.majorLocations && zoom > MAJOR_LABEL_MIN_ZOOM)) return;
-    const lines: string[] = [];
-    const name = selectedLocation.name ?? selectedLocation.id;
-    const owner = selectedLocation.owner ?? 'Neutral';
-    lines.push(`<div class="font-semibold">${name}</div>`);
-    lines.push(`<div class="flex"><img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>${owner}${reportModeActive ? ' gain' : ''}</div>`);
-    if (!minimal) { 
-      const hist = historyById.get(selectedLocation.id);
-      const events = hist?.events ?? [];
-      if(reportModeActive) {
-        if (reportMode == 'daily') {
-          lines.push('<div class="mt-1 font-semibold">History:</div>');
-          if (events.length === 0) {
-            lines.push(`<div class="flex">
-                  <img src="${getTeamIcon(owner)}" alt="${owner}" class="inline-block w-4 h-4 mr-1"/>
-                  <span class="mr-2">${owner}</span>
-                  <span>(>24 hrs ago)</span>
-              </div>`);
-          } else {
-            events.forEach((ev) => {
-              (ev.owner !== 'Neutral') ? lines.push(
-                `<div class="flex">
-                  <img src="${getTeamIcon(ev.owner)}" alt="${ev.owner}" class="inline-block w-4 h-4 mr-1"/>
-                  <span class="mr-2">${ev.owner}</span>
-                  <span>(${dayjs(ev.at).fromNow()})</span>
-                </div>`) : '';
-            });
-          }
-        }
-      } else {
-        const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
-        if (timeLastCaptured >= 0) {
-          lines.push(`<div>Captured <span style="font-weight:bold;">${timeLastCaptured} hrs</span> ago</div>`)
-        }
-      }
-    }
-    show(`<div class="text-xs flex flex-col">${lines.join('')}</div>`, selectedLocation.lat, selectedLocation.lng, 0, true, false);
-  };
+
 
   const getSelectedLocationFromPathInfo = (p: PathInfo): SelectedLocation => {
     const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
@@ -246,51 +206,63 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   const handleHover = (p: PathInfo) => {
     setHoveredId(p.territoryId);
-    //if (!reportModeActive || !p.highlighted) return;
-    if(!isTouch) showTooltip(getSelectedLocationFromPathInfo(p));
+    
+    // Suppress hover tooltip if this territory is already selected
+    if (selectedLocation && selectedLocation.id === p.territoryId && selectedLocation.source === 'territory') {
+      return;
+    }
+    
+    // In report mode, only show hover on highlighted territories
+    if (reportModeActive && !p.highlighted) {
+      return;
+    }
+    
+    if (!isTouch) {
+      const locationData = getSelectedLocationFromPathInfo(p);
+      if (!locationData || !locationData.lat || !locationData.lng) return;
+      //if (!reportModeActive /*&& (activeLayers.majorLocations && zoom > MAJOR_LABEL_MIN_ZOOM)*/) return;
+      
+      const html = buildTooltipContent({
+        platform: 'desktop',
+        action: 'hover',
+        source: 'territory',
+        location: locationData,
+        reportMode: reportMode,
+      });
+      show('hover', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0 });
+    }
   };
 
   const handleLeave = (p: PathInfo) => {
-    if (reportModeActive) return; // keep tooltip open in report mode
-    if (stickyId && stickyId === p.territoryId) return;
     setHoveredId((prev) => (prev === p.territoryId ? null : prev));
-    hide(120);
+    hide('hover', 120);
   };
 
   const handleClick = (p: PathInfo) => {
-    if (!isTouch && (!reportModeActive || !p.highlighted)) return;
+    // Desktop: only clickable in report mode on highlighted territories
+    if (!isTouch && (reportModeActive && !p.highlighted)) return;
 
-    const territory = p.territoryId ? territoryById.get(p.territoryId) : null;
-    if (!territory || p.lat == null || p.lng == null || p.territoryId == null) return;
-    const hist = historyById.get(p.territoryId);
-    const owner = hist?.currentOwner ?? p.owner ?? territory.owner ?? 'Neutral';
+    const locationData = getSelectedLocationFromPathInfo(p);
+    if (!locationData || !locationData.lat || !locationData.lng) return;
 
-    const selectedLocation = {
-        tile: territory,
-        lat: p.lat,
-        lng: p.lng,
-        id: p.territoryId,
-        name: p.name,
-        owner: owner,
-        history: hist ?? null,
-        hexName: getHexByApiName(territory.region)?.displayName ?? null,
-        source: 'territory' as const,
-    };
+    // Touch: set selection, show selected tooltip, open panel, and pan
+    setSelectedLocation(locationData);
+    setPanelState('info', 'half');
+    
+    const html = buildTooltipContent({
+      platform: isTouch ? 'mobile' : 'desktop',
+      action: 'selected',
+      source: 'territory',
+      location: locationData,
+      reportMode: reportMode,
+    });
+    show('selected', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0, sticky: true });
 
-    if (isTouch) {
-      setSelectedLocation(selectedLocation);
-      setPanelState('info', 'half');
-      reportModeActive && p.lat && p.lng && map.panTo([p.lat, p.lng], { animate: true, duration: 0.5 });
-      showTooltip(selectedLocation, true);
+    if (isTouch) {      
+      if (reportModeActive && locationData.lat && locationData.lng) {
+        map.panTo([locationData.lat, locationData.lng], { animate: true, duration: 0.5 });
+      }
       return;
-    }
-
-    if (stickyId === p.territoryId) {
-      setStickyId(null);
-      hide(0);
-    } else {
-      setStickyId(p.territoryId);
-      showTooltip(selectedLocation);
     }
   };
 
@@ -315,7 +287,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
             <g id="Territories" className="transition-opacity duration-150">
               {o.paths.map((p) => {   
                 const affected = p.highlighted; 
-                const active = (hoveredId === p.territoryId || stickyId === p.territoryId);
+                const active = (hoveredId === p.territoryId) || (selectedLocation?.id === p.territoryId && selectedLocation?.source === 'territory');
                 const hist = historyById.get(p.territoryId || '');  
                 const events = hist?.events ?? [];
                 
