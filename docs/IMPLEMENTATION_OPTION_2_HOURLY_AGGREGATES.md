@@ -139,7 +139,6 @@ CREATE TABLE IF NOT EXISTS territory_ownership_hourly (
   id BIGSERIAL PRIMARY KEY,
   war_number INT NOT NULL,
   territory_id TEXT NOT NULL,
-  territory_name TEXT,
   hex_region TEXT NOT NULL,
   hour_start TIMESTAMPTZ NOT NULL,
   hour_end TIMESTAMPTZ NOT NULL,
@@ -148,8 +147,6 @@ CREATE TABLE IF NOT EXISTS territory_ownership_hourly (
   icon_type INT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  CONSTRAINT fk_war_territory FOREIGN KEY (war_number) REFERENCES wars(war_number) ON DELETE CASCADE,
   UNIQUE (territory_id, hour_start)
 );
 
@@ -184,8 +181,6 @@ CREATE TABLE IF NOT EXISTS casualty_hourly (
   day_of_war INT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  CONSTRAINT fk_war_casualty FOREIGN KEY (war_number) REFERENCES wars(war_number) ON DELETE CASCADE,
   UNIQUE (region, hour_start)
 );
 
@@ -205,15 +200,12 @@ CREATE TABLE IF NOT EXISTS territory_lifecycle (
   id BIGSERIAL PRIMARY KEY,
   war_number INT NOT NULL,
   territory_id TEXT NOT NULL,
-  territory_name TEXT,
   hex_region TEXT,
   previous_owner TEXT,
   new_owner TEXT,
   changed_at TIMESTAMPTZ NOT NULL,
   icon_type INT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  
-  CONSTRAINT fk_war_lifecycle FOREIGN KEY (war_number) REFERENCES wars(war_number) ON DELETE CASCADE
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_territory_lifecycle 
@@ -232,6 +224,8 @@ CREATE POLICY IF NOT EXISTS "Insert only for authenticated"
   ON territory_lifecycle FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 ```
 
+Note: All schema columns use snake_case; frontend code maps to camelCase when needed.
+
 Run migration:
 ```bash
 supabase migration up
@@ -244,10 +238,10 @@ supabase migration up
 Create: `supabase/functions/aggregate-hourly-summaries/index.ts`
 
 ```typescript
-import { createClient } from "../_shared/supabaseClient.ts";
+import { getServiceClient } from "../_shared/supabaseClient.ts";
 import { Snapshot, WarReport, LocationTile } from "../../src/types/war.ts";
 
-const supabase = createClient();
+const supabase = getServiceClient();
 
 // Major map flags: bases, relics, keeps, forts
 const MAJOR_MAP_FLAGS = [56, 57, 58, 45, 27, 29];
@@ -355,7 +349,6 @@ function groupSnapshotsByHour(snapshots: Snapshot[]): HourlyBucket[] {
 interface TerritoryOwnershipRow {
   war_number: number;
   territory_id: string;
-  territory_name: string | null;
   hex_region: string;
   hour_start: string;
   hour_end: string;
@@ -374,7 +367,7 @@ async function aggregateTerritoryOwnership(
   let previousHourTerritories: Map<string, LocationTile> | null = null;
 
   for (const bucket of buckets) {
-    // Use the last snapshot of the hour as ground truth
+    // Use the last snapshot of the hour as ground truth (hour-level detection; earlier snapshots in the same hour are superseded)
     const snapshot = bucket.snapshots[bucket.snapshots.length - 1];
     const territories = snapshot.territories || [];
 
@@ -383,7 +376,7 @@ async function aggregateTerritoryOwnership(
 
     for (const tile of territories) {
       // Only track major map flags
-      if (!MAJOR_MAP_FLAGS.includes(tile.icon_type)) continue;
+      if (!MAJOR_MAP_FLAGS.includes(tile.iconType)) continue;
       // Skip neutral territories
       if (tile.owner === "Neutral") continue;
 
@@ -396,13 +389,12 @@ async function aggregateTerritoryOwnership(
       rows.push({
         war_number: warNumber,
         territory_id: tile.id,
-        territory_name: tile.town_name || null,
         hex_region: tile.region,
         hour_start: bucket.hour,
         hour_end: bucket.hourEnd,
         owner: tile.owner,
         owner_changed_during_hour: ownerChanged,
-        icon_type: tile.icon_type,
+        icon_type: tile.iconType,
       });
     }
 
@@ -443,8 +435,9 @@ async function aggregateCasualties(buckets: HourlyBucket[], warNumber: number): 
       currentHourReports.set(report.region, report);
 
       const prevReport = previousHourReports?.get(report.region);
-      const wardenDelta = prevReport ? report.warden_casualties - prevReport.warden_casualties : 0;
-      const colonialDelta = prevReport ? report.colonial_casualties - prevReport.colonial_casualties : 0;
+      // First-hour delta is 0 (no prior baseline); subsequent hours compute current - previous
+      const wardenDelta = prevReport ? report.wardenCasualties - prevReport.wardenCasualties : 0;
+      const colonialDelta = prevReport ? report.colonialCasualties - prevReport.colonialCasualties : 0;
 
       // Rate is delta / hour duration (always 1 hour)
       const wardenRate = wardenDelta;
@@ -457,11 +450,11 @@ async function aggregateCasualties(buckets: HourlyBucket[], warNumber: number): 
         hour_end: bucket.hourEnd,
         warden_casualties_delta: wardenDelta,
         colonial_casualties_delta: colonialDelta,
-        warden_casualties_total: report.warden_casualties,
-        colonial_casualties_total: report.colonial_casualties,
+        warden_casualties_total: report.wardenCasualties,
+        colonial_casualties_total: report.colonialCasualties,
         warden_rate_per_hour: wardenRate,
         colonial_rate_per_hour: colonialRate,
-        day_of_war: report.day_of_war || null,
+        day_of_war: report.dayOfWar || null,
       });
     }
 
@@ -526,8 +519,10 @@ name = "SUPABASE_SERVICE_ROLE_KEY"
 value = "env(SUPABASE_SERVICE_ROLE_KEY)"
 
 [functions.aggregate_hourly_summaries]
-cron = "0 1 * * *"  # Daily at 01:00 UTC
+schedule = "0 1 * * *"  # Daily at 01:00 UTC (Supabase CLI v2)
 ```
+
+Note: If your project uses an older CLI/dashboard, keep `cron = "0 1 * * *"` instead of `schedule`.
 
 Or configure via Supabase dashboard:
 1. Go to **Edge Functions** → `aggregate-hourly-summaries` → **Settings**
@@ -543,9 +538,9 @@ Or configure via Supabase dashboard:
 Create: `supabase/functions/backfill-hourly-aggregates/index.ts`
 
 ```typescript
-import { createClient } from "../_shared/supabaseClient.ts";
+import { getServiceClient } from "../_shared/supabaseClient.ts";
 
-const supabase = createClient();
+const supabase = getServiceClient();
 
 Deno.serve(async (req: Request) => {
   try {
@@ -554,8 +549,8 @@ Deno.serve(async (req: Request) => {
     // Fetch all wars
     const { data: wars, error: warsError } = await supabase
       .from("wars")
-      .select("war_number")
-      .order("war_number", { ascending: false });
+      .select("warNumber")
+      .order("warNumber", { ascending: false });
 
     if (warsError) {
       throw new Error(`Failed to fetch wars: ${warsError.message}`);
@@ -565,26 +560,26 @@ Deno.serve(async (req: Request) => {
 
     // For each war, compute all hourly aggregates
     for (const war of wars) {
-      console.log(`[backfill-hourly-aggregates] Processing war ${war.war_number}...`);
+      console.log(`[backfill-hourly-aggregates] Processing war ${war.warNumber}...`);
 
       // Fetch all snapshots for this war
       const { data: snapshots, error: snapshotError } = await supabase
         .from("snapshots")
         .select("*")
-        .eq("war_number", war.war_number)
+        .eq("war_number", war.warNumber)
         .order("created_at", { ascending: true });
 
       if (snapshotError) {
-        console.error(`Failed to fetch snapshots for war ${war.war_number}: ${snapshotError.message}`);
+        console.error(`Failed to fetch snapshots for war ${war.warNumber}: ${snapshotError.message}`);
         continue;
       }
 
       if (!snapshots || snapshots.length === 0) {
-        console.log(`[backfill-hourly-aggregates] No snapshots for war ${war.war_number}`);
+        console.log(`[backfill-hourly-aggregates] No snapshots for war ${war.warNumber}`);
         continue;
       }
 
-      console.log(`[backfill-hourly-aggregates] War ${war.war_number}: ${snapshots.length} snapshots`);
+      console.log(`[backfill-hourly-aggregates] War ${war.warNumber}: ${snapshots.length} snapshots`);
 
       // Call aggregate-hourly-summaries for each day of the war
       const daysProcessed = new Set<string>();
@@ -603,14 +598,14 @@ Deno.serve(async (req: Request) => {
               Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             },
             body: JSON.stringify({
-              warNumber: war.war_number,
+              warNumber: war.warNumber,
               dateUtc: date,
             }),
           }
         );
 
         const resultBody = await result.json();
-        console.log(`[backfill-hourly-aggregates] War ${war.war_number}, date ${date}: ${resultBody.message}`);
+        console.log(`[backfill-hourly-aggregates] War ${war.warNumber}, date ${date}: ${resultBody.message}`);
       }
     }
 
@@ -634,7 +629,7 @@ curl -X POST https://<PROJECT_ID>.supabase.co/functions/v1/backfill-hourly-aggre
   -d {}
 ```
 
-**Timing**: Backfill takes ~5–10 minutes depending on data volume (processes all wars sequentially).
+**Timing**: Backfill takes ~5–30 minutes depending on data volume (processed sequentially per war). Optional: parallelize per day with bounded concurrency (e.g., 4–8 workers) to reduce total runtime.
 
 ---
 
@@ -643,6 +638,7 @@ curl -X POST https://<PROJECT_ID>.supabase.co/functions/v1/backfill-hourly-aggre
 Add to `src/lib/queries.ts`:
 
 ```typescript
+// Note: Reuse the existing Supabase client from src/lib/supabaseClient.ts
 /**
  * Fetch hourly territory ownership data for a selected territory.
  * Returns data points suitable for pie charts and ownership timelines.
@@ -720,7 +716,7 @@ export async function fetchRegionCasualtyTrend(
 export async function fetchTerritoryLifecycle(territoryId: string) {
   const { data, error } = await supabase
     .from("territory_lifecycle")
-    .select("changed_at, previous_owner, new_owner, territory_name")
+    .select("changed_at, previous_owner, new_owner")
     .eq("territory_id", territoryId)
     .order("changed_at", { ascending: false });
 
@@ -741,7 +737,7 @@ Create: `src/components/OwnershipTimelineGraph.tsx`
 
 ```typescript
 import React from 'react';
-import { ResponsiveLineChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 interface OwnershipData {
   hour_start: string;
@@ -755,24 +751,28 @@ interface OwnershipTimelineGraphProps {
 }
 
 export const OwnershipTimelineGraph: React.FC<OwnershipTimelineGraphProps> = ({ data, territoryName }) => {
-  // Transform raw data into chart format
+  // Transform raw data into chart format with binary series per owner
   const chartData = data.map((entry) => ({
     timestamp: new Date(entry.hour_start).toLocaleString(),
-    owner: entry.owner,
+    colonialOwned: entry.owner === 'Colonial' ? 1 : 0,
+    wardenOwned: entry.owner === 'Warden' ? 1 : 0,
     changed: entry.owner_changed_during_hour ? 1 : 0,
   }));
 
   return (
     <div className="w-full h-80 p-4 bg-white rounded-lg shadow">
       <h3 className="text-lg font-semibold mb-4">{territoryName} - Ownership Over Time</h3>
-      <ResponsiveLineChart width={600} height={300} data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="timestamp" />
-        <YAxis domain={['dataMin - 0.1', 'dataMax + 0.1']} />
-        <Tooltip />
-        <Legend />
-        <Line type="stepAfter" dataKey="owner" stroke="#8884d8" />
-      </ResponsiveLineChart>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="timestamp" />
+          <YAxis type="number" domain={[0, 1]} />
+          <Tooltip />
+          <Legend />
+          <Line type="stepAfter" dataKey="wardenOwned" stroke="#ef4444" name="Warden" />
+          <Line type="stepAfter" dataKey="colonialOwned" stroke="#3b82f6" name="Colonial" />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 };
@@ -799,7 +799,7 @@ interface OwnershipPieChartProps {
 export const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipHistory, territoryName }) => {
   const pieData = computeOwnershipPieChart(ownershipHistory);
   const chartData = Object.entries(pieData)
-    .filter(([_, value]) => value > 0)
+    .filter(([name, value]) => name !== 'Neutral' && value > 0)
     .map(([name, value]) => ({
       name,
       value: Math.round(value * 100),
@@ -828,7 +828,7 @@ Create: `src/components/CasualtyTrendGraph.tsx`
 
 ```typescript
 import React from 'react';
-import { ResponsiveLineChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 interface CasualtyData {
   hour_start: string;
@@ -851,15 +851,17 @@ export const CasualtyTrendGraph: React.FC<CasualtyTrendGraphProps> = ({ data, re
   return (
     <div className="w-full h-80 p-4 bg-white rounded-lg shadow">
       <h3 className="text-lg font-semibold mb-4">{regionName} - Casualty Rate Over Time</h3>
-      <ResponsiveLineChart width={600} height={300} data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="timestamp" />
-        <YAxis label={{ value: 'Casualties/Hour', angle: -90, position: 'insideLeft' }} />
-        <Tooltip formatter={(value) => `${value.toFixed(0)} /hr`} />
-        <Legend />
-        <Line type="monotone" dataKey="wardenRate" stroke="#ef4444" name="Warden" />
-        <Line type="monotone" dataKey="colonialRate" stroke="#3b82f6" name="Colonial" />
-      </ResponsiveLineChart>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="timestamp" />
+          <YAxis type="number" />
+          <Tooltip formatter={(value) => (typeof value === 'number' ? `${Math.round(value as number)} /hr` : '')} />
+          <Legend />
+          <Line type="monotone" dataKey="wardenRate" stroke="#ef4444" name="Warden" />
+          <Line type="monotone" dataKey="colonialRate" stroke="#3b82f6" name="Colonial" />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 };
@@ -881,6 +883,7 @@ import {
   fetchTerritoryLifecycle 
 } from '../lib/queries';
 import { useEffect, useState } from 'react';
+import { useMapStore } from '../state/useMapStore';
 
 export const InfoSheet: React.FC = () => {
   const selectedLocation = useMapStore((s) => s.selectedLocation);

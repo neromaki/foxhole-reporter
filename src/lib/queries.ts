@@ -202,6 +202,99 @@ export function useSnapshotsSince(hours: number, options?: { enabled?: boolean }
   });
 }
 
+// ===========================
+// Hourly Aggregates Queries
+// ===========================
+
+/**
+ * Fetch hourly territory ownership data for a selected territory.
+ * Returns data points suitable for pie charts and ownership timelines.
+ */
+export async function fetchTerritoryOwnershipHistory(
+  territoryId: string,
+  hoursBack: number = 24 * 7 // Default: last 7 days
+) {
+  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from("territory_ownership_hourly")
+    .select("hour_start, owner, owner_changed_during_hour")
+    .eq("territory_id", territoryId)
+    .gte("hour_start", since)
+    .order("hour_start", { ascending: true });
+
+  if (error) {
+    console.error(`Failed to fetch territory ownership history: ${error.message}`);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Compute pie chart data from ownership history.
+ * Returns: { Colonial: 0.45, Warden: 0.55, Neutral: 0.0 }
+ */
+export function computeOwnershipPieChart(
+  ownershipHistory: Array<{ hour_start: string; owner: string }>
+) {
+  const counts = { Colonial: 0, Warden: 0, Neutral: 0 } as Record<string, number>;
+  for (const entry of ownershipHistory) {
+    counts[entry.owner]++;
+  }
+
+  const total = ownershipHistory.length;
+  return {
+    Colonial: total > 0 ? counts.Colonial / total : 0,
+    Warden: total > 0 ? counts.Warden / total : 0,
+    Neutral: total > 0 ? counts.Neutral / total : 0,
+  };
+}
+
+/**
+ * Fetch casualty rates for a region over time.
+ * Returns hourly casualty deltas and computed rates.
+ */
+export async function fetchRegionCasualtyTrend(
+  region: string,
+  hoursBack: number = 24 * 7
+) {
+  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from("casualty_hourly")
+    .select("hour_start, warden_rate_per_hour, colonial_rate_per_hour, warden_casualties_delta, colonial_casualties_delta")
+    .eq("region", region)
+    .gte("hour_start", since)
+    .order("hour_start", { ascending: true });
+
+  if (error) {
+    console.error(`Failed to fetch casualty trend: ${error.message}`);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch ownership events (capture/loss) for a territory.
+ * Returns precise timestamps of ownership transitions.
+ */
+export async function fetchTerritoryLifecycle(territoryId: string) {
+  const { data, error } = await supabase
+    .from("territory_lifecycle")
+    .select("changed_at, previous_owner, new_owner")
+    .eq("territory_id", territoryId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    console.error(`Failed to fetch territory lifecycle: ${error.message}`);
+    return [];
+  }
+
+  return data || [];
+}
+
 // Fetch the latest N snapshots (ordered newest-first) for cases where a previous snapshot is needed
 export function useLatestSnapshots(count: number, options?: { enabled?: boolean }) {
   return useQuery<Snapshot[]>({

@@ -1,0 +1,35 @@
+name: Aggregate Hourly Summaries Scheduler
+
+on:
+  schedule:
+    - cron: '0 1 * * *'      # daily at 01:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  call-aggregate-hourly-summaries:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call aggregate-hourly-summaries Edge Function
+        env:
+          FUNCTION_URL: "https://${{ secrets.VITE_SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/aggregate-hourly-summaries"
+          FUNCTION_AUTH_HEADER: ${{ secrets.FUNCTION_AUTH_HEADER }}
+        run: |
+          set -euo pipefail
+          echo "Calling aggregate-hourly-summaries at $FUNCTION_URL"
+          if [ -n "${FUNCTION_AUTH_HEADER:-}" ]; then
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+              -d '{}' || true)
+          else
+            http_status=$(curl -sS -o /dev/stderr -w "%{http_code}" -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -d '{}' || true)
+          fi
+
+          http_status="${http_status:-0}"
+          echo "HTTP status: $http_status"
+          if [ "$http_status" -ge 400 ]; then
+            echo "Function returned error status $http_status"
+            exit 1
+          fi
