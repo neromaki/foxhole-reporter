@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMapStore } from '../state/useMapStore';
 import { getIconLabel, getIconSize, getIconSprite, getIconUrl, getIconWikiUrl, iconTypeToFilename } from '../lib/icons';
 import { Teams, getTeams, getTeamData } from '../data/teams';
@@ -6,11 +6,56 @@ import { ICON_SPRITE_METADATA, SPRITE_HEIGHT, SPRITE_WIDTH } from '../data/icon-
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import tinycolor from 'tinycolor2';
+import { 
+  fetchTerritoryOwnershipHistory, 
+  computeOwnershipPieChart, 
+  fetchRegionCasualtyTrend 
+} from '../lib/queries';
+import { OwnershipPieChart } from './OwnershipPieChart';
+import { OwnershipTimelineGraph } from './OwnershipTimelineGraph';
+import { CasualtyTrendGraph } from './CasualtyTrendGraph';
 
 dayjs.extend(relativeTime);
 
 export default function InfoSheet() {
   const selected = useMapStore((s) => s.selectedLocation);
+  
+  // State for aggregated data
+  const [ownershipHistory, setOwnershipHistory] = useState<any[]>([]);
+  const [ownershipPieData, setOwnershipPieData] = useState<any>(null);
+  const [casualtyTrend, setCasualtyTrend] = useState<any[]>([]);
+  const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
+
+  // Fetch aggregated data when selection changes
+  useEffect(() => {
+    if (!selected) {
+      setOwnershipHistory([]);
+      setOwnershipPieData(null);
+      setCasualtyTrend([]);
+      return;
+    }
+
+    setIsLoadingAggregates(true);
+
+    // Fetch ownership history if territory is selected
+    if (selected.source === 'territory' && selected.id) {
+      fetchTerritoryOwnershipHistory(selected.id, 24 * 7)
+        .then((data) => {
+          setOwnershipHistory(data);
+          const pieData = computeOwnershipPieChart(data);
+          setOwnershipPieData(pieData);
+        })
+        .catch((err) => console.error('Failed to fetch ownership history:', err))
+        .finally(() => setIsLoadingAggregates(false));
+    }
+
+    // Fetch casualty trend for the region
+    if (selected.hexName) {
+      fetchRegionCasualtyTrend(selected.hexName, 24 * 7)
+        .then((data) => setCasualtyTrend(data))
+        .catch((err) => console.error('Failed to fetch casualty trend:', err));
+    }
+  }, [selected]);
 
   if (!selected) {
     return <div className="text-sm text-gray-400">Tap a location to see details.</div>;
@@ -78,12 +123,29 @@ export default function InfoSheet() {
   );
 
   function OwnershipGraph() {
+    // Only show for territory selections
+    if (!selected || selected.source !== 'territory' || !ownershipPieData || !ownershipHistory.length) {
+      return null;
+    }
+
     return (
-      <div className="w-full">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2"></h3>
-        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
-          
+      <div className="w-full space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Ownership Distribution (7 Days)</h3>
+          <OwnershipPieChart data={ownershipPieData} />
         </div>
+        
+        <div>
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Ownership Timeline (7 Days)</h3>
+          <OwnershipTimelineGraph data={ownershipHistory} />
+        </div>
+        
+        {casualtyTrend.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Casualty Trend (Region, 7 Days)</h3>
+            <CasualtyTrendGraph data={casualtyTrend} />
+          </div>
+        )}
       </div>
     );
   }
