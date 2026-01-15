@@ -53,7 +53,7 @@ export const TeamColors: Record<Teams, TeamColorsStruct> = {
 }
 
 
-interface TeamStruct {
+export interface TeamStruct {
     name: Teams;
     namePlural: string;
     colors: TeamColorsStruct;

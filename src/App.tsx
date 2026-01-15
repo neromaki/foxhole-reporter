@@ -40,6 +40,29 @@ export default function App() {
     return computeVictoryCounts(snapshot.territories);
   }, [snapshot]);
 
+  const countsByIconType = useMemo(() => {
+    const m = new Map<number, { colonial: number; warden: number; neutral: number }>();
+    const items = (snapshot as any)?.territories;
+    
+    if (!items) return m;
+    for (const t of items) {
+      const current = m.get(t.iconType) ?? { colonial: 0, warden: 0, neutral: 0 };
+      const team = t.owner?.toLowerCase() ?? 'neutral';
+      
+      if (team === 'colonial') { 
+        current.colonial++;
+      }
+      else if (team === 'warden') {
+        current.warden++;
+      }
+      else {
+        current.neutral++;
+      }
+      m.set(t.iconType, current);
+    }
+    return m;
+  }, [snapshot]);
+
   const teams = getTeams();
   const selectedTeam = selectedLocation && selectedLocation.tile && selectedLocation.tile.owner !== 'Neutral'
     ? teams.find(t => t.name === selectedLocation.tile.owner)
@@ -73,6 +96,7 @@ export default function App() {
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warState={warState !== undefined ? warState : { warNumber: 0, warStart: new Date(), requiredVictoryTowns: 0, shortRequiredVictoryTowns: 0, source: 'supabase' }} 
+            mapIconCounts={countsByIconType}
             className={`md:mt-2`}
           />
           <div className={`fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:relative md:top-auto md:left-auto md:right-auto md:z-[440] md:pointer-events-auto`}>

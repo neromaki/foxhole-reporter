@@ -894,7 +894,7 @@ const mapIcons: Array<MapIconStruct> = [
     }
 ]
 
-export function getMapIcon(mapIconType: number): MapIconStruct | undefined {
+export function getMapIcon(mapIconType: number | MapIcon): MapIconStruct | undefined {
     return mapIcons.find(icon => icon.id === mapIconType);
 }
 
