@@ -117,7 +117,7 @@ export default function App() {
           }} />
           <PanelButton label="Reports" targetPanel="report" icon={'icn_reports'} 
             onClick={() => {
-              setActiveReportMode(reportModeActive ? null : 'daily');
+              setActiveReportMode(reportModeActive ? null : 'territory_daily');
           }} />
         </div>
 
@@ -143,7 +143,7 @@ export default function App() {
         <BottomSheet type={'report'} allowedStates={['half']} clickOutsideBehavior={null} title={'Reports'} closeBehavior={() => {
           const active = panelState['report'] !== 'off';
           setPanelState('report', active ? 'off' : 'half')
-          setActiveReportMode(active ? null : 'daily')
+          setActiveReportMode(active ? null : 'territory_daily')
         }} 
         headerContent={
           reportModeActive && (
@@ -152,7 +152,7 @@ export default function App() {
               onClick={() => {
                 const active = panelState['report'] !== 'off';
                 setPanelState('report', active ? 'off' : 'half')
-                setActiveReportMode(active ? null : 'daily')
+                setActiveReportMode(active ? null : 'territory_daily')
               }}
             >Close Report</button>
           )

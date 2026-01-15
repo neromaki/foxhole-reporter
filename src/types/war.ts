@@ -25,7 +25,7 @@ export interface TerritoryDiffEntry {
 }
 
 export interface TerritoryDiff {
-  period: 'daily' | 'weekly';
+  period: 'territory_daily' | 'territory_weekly';
   generated_at: string;
   changes: TerritoryDiffEntry[];
 }

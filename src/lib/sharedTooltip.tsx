@@ -278,7 +278,7 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (action === 'selected' || platform === 'desktop') {
         if (reportMode) {
-          if (reportMode === 'daily') {
+          if (reportMode === 'territory_daily') {
             lines.push('<div class="mt-1 font-semibold">History:</div>');
             if (events.length === 0) {
               lines.push(`<div class="flex">

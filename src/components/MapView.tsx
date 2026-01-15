@@ -36,16 +36,16 @@ export default function MapView() {
   const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
   const { data: latestTwoSnapshots } = useLatestSnapshots(2, { enabled: DATA_SOURCE === 'supabase' });
   
-  const { data: dailyDiff } = useTerritoryDiff('daily');
+  const { data: dailyDiff } = useTerritoryDiff('territory_daily');
   const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
 
-  const { data: threeDayDiff } = useTerritoryDiff('threeDay');
+  const { data: threeDayDiff } = useTerritoryDiff('territory_threeDay');
   const changedThreeDay = useMemo<Set<string>>(() => new Set((threeDayDiff?.changes ?? []).map((c: { id: string }) => c.id)), [threeDayDiff]);
 
-  const { data: weeklyDiff } = useTerritoryDiff('weekly');
+  const { data: weeklyDiff } = useTerritoryDiff('territory_weekly');
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
-  const { data: allTimeDiff } = useTerritoryDiff('allTime');
+  const { data: allTimeDiff } = useTerritoryDiff('territory_allTime');
   const changedAllTime = useMemo<Set<string>>(() => new Set((allTimeDiff?.changes ?? []).map((c: { id: string }) => c.id)), [allTimeDiff]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
@@ -437,13 +437,13 @@ function LocationsLayer({
       if (iconType == null) continue;
       marker.setIcon(getIcon(iconType, z, owner));
       setCount++;
-      const highlighted = reportMode === 'daily'
+      const highlighted = reportMode === 'territory_daily'
         ? !!(changedDaily && (changedDaily as Set<string>).has(id))
-        : reportMode === 'threeDay'
+        : reportMode === 'territory_threeDay'
         ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(id))
-        : reportMode === 'weekly'
+        : reportMode === 'territory_weekly'
         ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
-        : reportMode === 'allTime'
+        : reportMode === 'territory_allTime'
         ? !!(changedAllTime && (changedAllTime as Set<string>).has(id))
         : false;
       const img = markerIconElement(marker);
@@ -737,13 +737,13 @@ function LocationsLayer({
               if (ref) {
                 const img = markerIconElement(ref as unknown as L.Marker);
                 if (img) {
-                  const highlighted = reportMode === 'daily'
+                  const highlighted = reportMode === 'territory_daily'
                     ? !!(changedDaily && (changedDaily as Set<string>).has(t.id))
-                    : reportMode === 'threeDay'
+                    : reportMode === 'territory_threeDay'
                     ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(t.id))
-                    : reportMode === 'weekly'
+                    : reportMode === 'territory_weekly'
                     ? !!(changedWeekly && (changedWeekly as Set<string>).has(t.id))
-                    : reportMode === 'allTime'
+                    : reportMode === 'territory_allTime'
                     ? !!(changedAllTime && (changedAllTime as Set<string>).has(t.id))
                     : false;
                   img.style.opacity = reportMode ? (highlighted ? '1' : '0.35') : '1';

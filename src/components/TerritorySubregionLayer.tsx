@@ -116,10 +116,10 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   }, [snapshot]);
 
   const changedSet = useMemo(() => {
-    if (reportMode === 'daily') return changedDaily;
-    if (reportMode === 'threeDay') return changedThreeDay;
-    if (reportMode === 'weekly') return changedWeekly;
-    if (reportMode === 'allTime') return changedAllTime;
+    if (reportMode === 'territory_daily') return changedDaily;
+    if (reportMode === 'territory_threeDay') return changedThreeDay;
+    if (reportMode === 'territory_weekly') return changedWeekly;
+    if (reportMode === 'territory_allTime') return changedAllTime;
     return null;
   }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime]);
 

@@ -9,10 +9,10 @@ export function ContextPopover() {
   const setPanelState = useMapStore((s) => s.setPanelState);
 
   const content = useMapStore((s) => {
-    if(s.activeReportMode == 'daily') return `Showing changes since 24 hours ago`;
-    if(s.activeReportMode == 'threeDay') return 'Showing changes since 3 days ago';
-    if(s.activeReportMode == 'weekly') return 'Showing changes since 7 days ago';
-    if(s.activeReportMode == 'allTime') return 'Showing changes since the start of the war';
+    if(s.activeReportMode == 'territory_daily') return `Showing changes since 24 hours ago`;
+    if(s.activeReportMode == 'territory_threeDay') return 'Showing changes since 3 days ago';
+    if(s.activeReportMode == 'territory_weekly') return 'Showing changes since 7 days ago';
+    if(s.activeReportMode == 'territory_allTime') return 'Showing changes since the start of the war';
     return s.contextPopoverContent;
   });
 

@@ -8,8 +8,9 @@ import {
   getDescendants,
   getDefaultLayerState,
 } from './layers';
+import { MapIcon } from '../data/map-icons';
 
-export type ReportMode = 'daily' | 'threeDay' | 'weekly' | 'allTime' | null;
+export type ReportMode = 'territory_daily' | 'territory_threeDay' | 'territory_weekly' | 'territory_allTime' | 'threats' |null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PanelType = 'layer' | 'report' | 'info';
 export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
@@ -58,6 +59,8 @@ interface MapState {
   setSelectedLocation: (sel: SelectedLocation | null) => void;
   victoryBarDrawer: boolean;
   setVictoryBarDrawerState: (open: boolean) => void;
+  stackComparisonMapIcon: MapIcon | null;
+  setStackComparisonMapIcon: (icon: MapIcon | null) => void;
 }
 
 
@@ -182,5 +185,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   victoryBarDrawer: false,
   setVictoryBarDrawerState: (open) => {
     set({ victoryBarDrawer: open });
+  },
+  stackComparisonMapIcon: null,
+  setStackComparisonMapIcon: (icon) => {
+    set({ stackComparisonMapIcon: icon });
   },
 }));
