@@ -46,17 +46,40 @@ Deno.serve(async (req: Request) => {
   try {
     // Allow manual trigger or scheduled invocation
     const payload = await req.json().catch(() => ({}));
-    const warNumber = payload.warNumber || 1; // Default to war 1 if not specified
+    let warNumber = payload.warNumber;
     const dateUtc = payload.dateUtc || new Date(Date.now() - 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
-    console.log(`[aggregate-hourly-summaries] Starting aggregation for war ${warNumber}, date ${dateUtc}`);
+    if (!warNumber) {
+        console.log(`[aggregate-hourly-summaries] No warNumber provided, getting latest war.`);
+        // Fetch all wars
+        const { data: wars, error: warsError } = await supabase
+        .from("wars")
+        .select("warNumber")
+        .order("warNumber", { ascending: false })
+        .limit(1);
 
+        if (warsError) {
+            throw new Error(`Failed to fetch wars: ${warsError.message}`);
+        }
+        console.log(`[aggregate-hourly-summaries] Found latest war: ${wars[0]?.warNumber}   `);
+        warNumber = wars[0]?.warNumber;
+    }
+
+    if (!warNumber) {
+      console.log(`[aggregate-hourly-summaries] No warNumber provided. Exiting.`);
+      return new Response(JSON.stringify({ message: `No warNumber provided (${warNumber})`, skipped: true }), {
+        status: 500,
+      });
+    }
+      
     // Fetch all snapshots for the target date
     const dayStart = new Date(`${dateUtc}T00:00:00Z`).toISOString();
     const dayEnd = new Date(`${dateUtc}T23:59:59Z`).toISOString();
-
+    
+    console.log(`[aggregate-hourly-summaries] Starting aggregation for war ${warNumber}, between ${dayStart} and ${dayEnd}`);
+      
     const { data: snapshots, error: snapshotError } = await supabase
       .from("snapshots")
       .select("*")

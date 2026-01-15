@@ -13,7 +13,8 @@ Deno.serve(async (req: Request) => {
     const { data: wars, error: warsError } = await supabase
       .from("wars")
       .select("warNumber")
-      .order("warNumber", { ascending: false });
+      .order("warNumber", { ascending: false })
+      .limit(1);
 
     if (warsError) {
       throw new Error(`Failed to fetch wars: ${warsError.message}`);
@@ -58,7 +59,7 @@ Deno.serve(async (req: Request) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              "Authorization": `Bearer ${Deno.env.get("VITE_SUPABASE_ANON_KEY")}`,
             },
             body: JSON.stringify({
               warNumber: war.warNumber,
@@ -67,8 +68,13 @@ Deno.serve(async (req: Request) => {
           }
         );
 
+        if (!result.ok) {
+          console.error(`[backfill-hourly-aggregates] HTTP ${result.status} for war ${war.warNumber}, date ${date}`);
+          continue;
+        }
+
         const resultBody = await result.json();
-        console.log(`[backfill-hourly-aggregates] War ${war.warNumber}, date ${date}: ${resultBody.message}`);
+        console.log(`[backfill-hourly-aggregates] War ${war.warNumber}, date ${date}: ${resultBody?.message || "completed"}`);
       }
     }
 

@@ -128,6 +128,9 @@ export default function InfoSheet() {
       return null;
     }
 
+    // Check if timeline has both Colonial and Warden entries
+    const showTimeline = ownershipHistory.some((entry) => entry.owner === 'Colonial') && ownershipHistory.some((entry) => entry.owner === 'Warden');
+
     return (
       <div className="w-full space-y-4">
         <div>
@@ -135,10 +138,12 @@ export default function InfoSheet() {
           <OwnershipPieChart data={ownershipPieData} />
         </div>
         
-        <div>
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Ownership Timeline (7 Days)</h3>
-          <OwnershipTimelineGraph data={ownershipHistory} />
-        </div>
+        {showTimeline ? (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Ownership Timeline (7 Days)</h3>
+            <OwnershipTimelineGraph data={ownershipHistory} />
+          </div>
+        ) : null}
         
         {casualtyTrend.length > 0 && (
           <div>

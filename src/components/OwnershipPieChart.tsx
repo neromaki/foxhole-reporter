@@ -42,8 +42,11 @@ export function OwnershipPieChart({ data }: OwnershipPieChartProps) {
           nameKey="name"
           cx="50%"
           cy="50%"
+          innerRadius={60}
           outerRadius={80}
           label={({ name, value }) => `${name}: ${value}%`}
+          isAnimationActive={false}
+          animationEasing="ease-out"
         >
           {chartData.map((entry) => (
             <Cell key={entry.name} fill={COLORS[entry.name as keyof typeof COLORS]} />

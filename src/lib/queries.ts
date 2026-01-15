@@ -208,27 +208,40 @@ export function useSnapshotsSince(hours: number, options?: { enabled?: boolean }
 
 /**
  * Fetch hourly territory ownership data for a selected territory.
+ * Filters by current war number to ensure data consistency across war boundaries.
  * Returns data points suitable for pie charts and ownership timelines.
  */
 export async function fetchTerritoryOwnershipHistory(
   territoryId: string,
-  hoursBack: number = 24 * 7 // Default: last 7 days
+  hoursBack: number = 24 * 7 // Default: last 7 days (for filtering within current war)
 ) {
-  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+  try {
+    // Get current war number to ensure we only get data from the active war
+    const war = await fetchWarState();
+    const currentWarNumber = war?.warNumber ?? null;
 
-  const { data, error } = await supabase
-    .from("territory_ownership_hourly")
-    .select("hour_start, owner, owner_changed_during_hour")
-    .eq("territory_id", territoryId)
-    .gte("hour_start", since)
-    .order("hour_start", { ascending: true });
+    if (currentWarNumber === null) {
+      console.warn('[Queries] Could not determine current war number for ownership history');
+      return [];
+    }
 
-  if (error) {
-    console.error(`Failed to fetch territory ownership history: ${error.message}`);
+    const { data, error } = await supabase
+      .from("territory_ownership_hourly")
+      .select("hour_start, owner, owner_changed_during_hour")
+      .eq("territory_id", territoryId)
+      .eq("war_number", currentWarNumber)
+      .order("hour_start", { ascending: true });
+
+    if (error) {
+      console.error(`Failed to fetch territory ownership history: ${error.message}`);
+      return [];
+    }
+
+    return data || [];
+  } catch (e) {
+    console.error('Error fetching territory ownership history:', e);
     return [];
   }
-
-  return data || [];
 }
 
 /**
