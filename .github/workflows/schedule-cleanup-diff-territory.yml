@@ -1,4 +1,4 @@
-name: Diff Territory Scheduler
+name: Territory Diff Cleanup
 
 on:
   schedule:
