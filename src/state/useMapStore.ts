@@ -9,6 +9,7 @@ import {
   getDefaultLayerState,
 } from './layers';
 import { MapIcon } from '../data/map-icons';
+import { ReportSpec } from './reports';
 
 export type ReportMode = 'territory_daily' | 'territory_threeDay' | 'territory_weekly' | 'territory_allTime' | 'threats' |null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -35,7 +36,7 @@ export type TerritoryHistory = {
 
 interface MapState {
   activeLayers: LayerState;
-  toggleLayer: (key: LayerKey) => void;
+  toggleLayer: (key: LayerKey, value?: boolean) => void;
   setLayers: (layers: Partial<LayerState>) => void;
   setAllLayers: (on: boolean) => void;
   resetLayers: () => void;
@@ -44,6 +45,13 @@ interface MapState {
   setActiveJobView: (viewId: string | null) => void;
   activeReportMode: ReportMode;
   setActiveReportMode: (mode: ReportMode) => void;
+  // New report system fields
+  activeReport: ReportSpec | null;
+  reportLayersSnapshot: LayerState | null;
+  reportHighlightedSet: Set<string> | null;
+  pendingReportForConfirmation: ReportSpec | null;
+  setActiveReport: (report: ReportSpec | null, skipConfirm?: boolean) => void;
+  setReportHighlightedSet: (set: Set<string> | null) => void;
   disabledHexes: Set<string>;
   setDisabledHexes: (hexes: Set<string>) => void;
   realtimeStatus: RealtimeConnectionStatus;
@@ -68,12 +76,20 @@ const defaultLayers: LayerState = getDefaultLayerState();
 
 export const useMapStore = create<MapState>((set, get) => ({
   activeLayers: defaultLayers,
-  toggleLayer: (key) => set((s) => {
-    const hasChildren = getChildren(key).length > 0;
+  toggleLayer: (key, value) => set((s) => {
+    // If value is explicitly provided, use it; otherwise toggle
     const currentlyOn = !!s.activeLayers[key];
+    const targetValue = value !== undefined ? value : !currentlyOn;
+    
+    // If no change needed, return same state
+    if (targetValue === currentlyOn) {
+      return {};
+    }
+
+    const hasChildren = getChildren(key).length > 0;
     if (!hasChildren) {
-      const turningOn = !currentlyOn;
-      const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: !currentlyOn };
+      const turningOn = targetValue;
+      const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: targetValue };
       if (turningOn) {
         getAncestors(key).forEach((ancestor) => {
           nextActiveLayers[ancestor] = true;
@@ -93,10 +109,9 @@ export const useMapStore = create<MapState>((set, get) => ({
 
     const children = getChildren(key);
     const descendants = getDescendants(key);
-    const turnOn = !currentlyOn;
-    const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: turnOn };
+    const nextActiveLayers: LayerState = { ...s.activeLayers, [key]: targetValue };
 
-    if (turnOn) {
+    if (targetValue) {
       const anyDescendantOn = descendants.some((d) => s.activeLayers[d]);
       if (!anyDescendantOn) {
         descendants.forEach((d) => { nextActiveLayers[d] = true; });
@@ -152,6 +167,75 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ activeReportMode: next });
     state.setPanelState('report', next !== null ? 'half' : 'off');
   },
+  // New report system implementation
+  activeReport: null,
+  reportLayersSnapshot: null,
+  reportHighlightedSet: null,
+  pendingReportForConfirmation: null,
+  setActiveReport: (report, skipConfirm = false) => {
+    const state = get();
+    if (report) {
+      const currentReport = state.activeReport;
+      const isContextSwitch =
+        currentReport &&
+        report.reportContextGroup &&
+        currentReport.reportContextGroup &&
+        currentReport.reportContextGroup !== report.reportContextGroup;
+
+      // If switching between different context groups and layers were modified, show confirmation
+      if (isContextSwitch && state.reportLayersSnapshot && !skipConfirm) {
+        // Store pending report and wait for user confirmation
+        set({ pendingReportForConfirmation: report });
+        return;
+      }
+
+      // For same-context switching: only adjust layers that differ
+      const isSameContext =
+        currentReport &&
+        report.reportContextGroup &&
+        currentReport.reportContextGroup === report.reportContextGroup;
+
+      let snapshot = state.reportLayersSnapshot;
+
+      if (!isSameContext) {
+        // Different context or first activation: snapshot current state
+        snapshot = { ...state.activeLayers };
+      }
+
+      // Apply report's layer defaults using toggleLayer (respects tree structure)
+      for (const [key, shouldEnable] of Object.entries(report.defaultLayers)) {
+        const currentValue = state.activeLayers[key as keyof LayerState] ?? false;
+        if (shouldEnable !== currentValue) {
+          state.toggleLayer(key as LayerKey, shouldEnable);
+        }
+      }
+
+      set({
+        activeReport: report,
+        reportLayersSnapshot: snapshot,
+        pendingReportForConfirmation: null,
+      });
+      state.setPanelState('report', 'half');
+    } else {
+      // Deactivating a report: restore snapshot
+      if (state.reportLayersSnapshot) {
+        const currentLayers = state.activeLayers;
+        for (const [key, shouldEnable] of Object.entries(state.reportLayersSnapshot)) {
+          const currentValue = currentLayers[key as keyof LayerState] ?? false;
+          if (shouldEnable !== currentValue) {
+            state.toggleLayer(key as LayerKey, shouldEnable);
+          }
+        }
+      }
+      set({ 
+        activeReport: null, 
+        reportLayersSnapshot: null,
+        pendingReportForConfirmation: null,
+      });
+      state.setPanelState('report', 'off');
+    }
+  },
+  setReportHighlightedSet: (set_) => set({ reportHighlightedSet: set_ }),
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
   panelState: { layer: 'off', report: 'off', info: 'off' },

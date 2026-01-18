@@ -16,10 +16,18 @@ Currently, the app has two separate but parallel systems:
 These systems overlap in functionality and visual behavior but are implemented independently. The goal is to **unify them into a single, extensible Report system** that:
 
 - Supports built-in reports (converted JobViews + Territory diffs + Threats)
-- Allows user-created, persistent reports (localStorage initially)
+- Allows user-created, persistent reports (localStorage in future phases)
 - Decouples visual "view modes" (territory dimming, minimal, none) from business logic
 - Enables future complex reports (stacked overlays, data union, custom analytics)
 - Snapshots/restores user layer preferences when entering/exiting reports
+
+**Key Architecture Decisions:**
+- **Territory Diff Periods**: Backend stores periods as `daily`, `threeDay`, `weekly`, `allTime` in the `territory_diffs` table. Frontend uses `territory_daily`, `territory_threeDay`, `territory_weekly`, `territory_allTime` for clarity (distinguishing from other potential time-based metrics like casualty trends)
+- **MapIcon Filtering**: Supports both `ANY` (any tag match) and `ALL` (all tags must match) modes, preserving existing JobView semantics
+- **Threats Highlighting**: Storm Cannons/Rockets highlight territories containing those structures (computed from icon locations when report is active)
+- **UI Structure**: JobViewPanel and ReportModes will merge into a single Reports panel with categorized navigation
+- **Minimal ViewModes**: Start with core opacity/visibility rules; expand styling incrementally as needed
+- **Query Pattern**: Use `useActiveReportDiff()` hook (Option A) for clean separation of diff fetching logic
 
 ---
 
@@ -75,15 +83,7 @@ Create the foundation for configurable reports:
 // Type definitions for reports
 export type ViewMode = 'territoryDimming' | 'minimal' | 'none';
 export type ReportSource = 'builtin' | 'user';
-
-export interface ReportMetadata {
-  // Extensible for future complexity
-  // Examples:
-  // - { sources: ['threat-data', 'casualty-data'], union: true }
-  // - { highlightZones: 'threat-estimation' }
-  // Leave open for now; allow arbitrary key-value pairs
-  [key: string]: any;
-}
+export type FilterMode = 'ANY' | 'ALL';
 
 export interface ReportSpec {
   id: string;                    // Unique identifier (e.g., 'logistics-frontline', 'threats-storm')
@@ -91,10 +91,14 @@ export interface ReportSpec {
   category: string;              // Primary category (e.g., 'Territory', 'Threats', 'Jobs')
   subcategory?: string;          // Optional secondary grouping (e.g., 'Resource Mining', 'Logistics')
   mapIconTags: MapIconTag[];     // MapIcon tags to filter/show (empty = show no icons)
+  filterMode?: FilterMode;       // 'ANY' (default): any tag matches; 'ALL': all tags must match
   viewMode: ViewMode;            // Visual presentation mode
   defaultLayers: LayerState;     // Complete desired layer state when report activates
   reportContextGroup?: string;   // Group for context-aware report switching (e.g., 'territory', 'threats', 'jobs-mining')
-  metadata?: ReportMetadata;     // Future: complexity hints, data sources, etc.
+  metadata?: {                   // Optional extensible metadata for future features
+    stackComparisonIcons?: MapIcon[];  // For threats reports: which icons to show in VictoryBar
+    [key: string]: any;           // Allow arbitrary future metadata
+  };
   source: ReportSource;          // 'builtin' (immutable) or 'user' (from localStorage)
 }
 ```
@@ -103,7 +107,7 @@ export interface ReportSpec {
 
 ```typescript
 export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
-  // Territory Reports
+  // Territory Reports (map to territory_diffs table periods: daily, threeDay, weekly, allTime)
   'territory-daily': {
     id: 'territory-daily',
     name: '1 Day',
@@ -160,11 +164,11 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     id: 'threats-rocket',
     name: 'Rockets',
     category: 'Threats',
-    mapIconTags: [MapIconTag.Rocket, MapIconTag.Rocket_Site],
+    mapIconTags: [MapIconTag.Rocket_Structure],  // Matches Rocket_Site and Rocket_Site_With_Rocket
     viewMode: 'territoryDimming',
     defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'threats',
-    metadata: { stackComparisonIcons: [MapIcon.Rocket] },
+    metadata: { stackComparisonIcons: [MapIcon.Rocket_Site] },
     source: 'builtin',
   },
   // Job Views - Resource Mining
@@ -174,6 +178,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Salvage, MapIconTag.Refinery],
+    filterMode: 'ANY',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
@@ -185,6 +190,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Component, MapIconTag.Refinery],
+    filterMode: 'ANY',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
@@ -196,6 +202,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Sulfur, MapIconTag.Refinery],
+    filterMode: 'ANY',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
@@ -207,6 +214,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Coal],
+    filterMode: 'ANY',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
@@ -218,6 +226,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Oil],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
@@ -230,6 +239,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Storage],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
@@ -241,6 +251,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Logistics],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
@@ -252,6 +263,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Logistics, MapIconTag.Production],
+    filterMode: 'ANY',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
@@ -264,6 +276,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Production',
     mapIconTags: [MapIconTag.Production],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
@@ -275,6 +288,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Production',
     mapIconTags: [MapIconTag.Vehicle_Factory],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
@@ -286,6 +300,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Production',
     mapIconTags: [MapIconTag.Shipyard],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
@@ -297,6 +312,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     category: 'Job Views',
     subcategory: 'Production',
     mapIconTags: [MapIconTag.Construction_Yard],
+    filterMode: 'ALL',
     viewMode: 'minimal',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
@@ -320,21 +336,16 @@ export function getAllReports(): ReportSpec[] {
 
 **File:** `src/state/useMapStore.ts`
 
-Replace hardcoded report mode with generic report support:
+Replace hardcoded report mode with generic report support. Use `toggleLayer()` to respect the layer hierarchy tree structure:
 
 ```typescript
-// Current state (to be replaced):
-// export type ReportMode = 'territory_daily' | 'territory_threeDay' | 'territory_weekly' | 'territory_allTime' | 'threats' | null;
-// activeReportMode: ReportMode;
-// setActiveReportMode: (mode: ReportMode) => void;
-
 // New state:
-export type ReportMode = ReportSpec | null;  // Change: now a spec object
+export type ReportMode = ReportSpec | null;
 
 interface MapState {
   activeReport: ReportSpec | null;
   reportLayersSnapshot: LayerState | null;
-  setActiveReport: (report: ReportSpec | null) => void;
+  setActiveReport: (report: ReportSpec | null, skipConfirm?: boolean) => void;
   reportHighlightedSet: Set<string> | null;
   setReportHighlightedSet: (set: Set<string> | null) => void;
   // ... other state fields ...
@@ -360,48 +371,54 @@ export const useMapStore = create<MapState>((set, get) => ({
 
       // If switching between different context groups and layers were modified, show confirmation
       if (isContextSwitch && state.reportLayersSnapshot && !skipConfirm) {
-        // Show confirmation dialog (implementation in component layer)
-        // User can confirm to proceed, which will call setActiveReport(report, true)
-        state.showContextSwitchConfirmation(report);
+        // Trigger confirmation dialog via store state
+        set({ pendingReportForConfirmation: report });
         return;
       }
 
-      // For same-context switching: only remove previous report's defaultLayers, apply new ones
+      // For same-context switching: only adjust layers that differ
       const isSameContext =
         currentReport &&
         report.reportContextGroup &&
         currentReport.reportContextGroup === report.reportContextGroup;
 
       let snapshot = state.reportLayersSnapshot;
-      let nextLayers: LayerState;
 
-      if (isSameContext && snapshot) {
-        // Same context: remove old report's defaults, apply new report's defaults
-        nextLayers = removeLayerDefaults(snapshot, currentReport!.defaultLayers);
-        nextLayers = applyLayerDefaults(nextLayers, report.defaultLayers);
-      } else {
-        // Different context or first activation: full snapshot and apply
+      if (!isSameContext) {
+        // Different context or first activation: snapshot current state
         snapshot = { ...state.activeLayers };
-        nextLayers = report.defaultLayers;
+      }
+
+      // Apply report's layer defaults using toggleLayer (respects tree structure)
+      for (const [key, shouldEnable] of Object.entries(report.defaultLayers)) {
+        const currentValue = state.activeLayers[key as keyof LayerState] ?? false;
+        if (shouldEnable !== currentValue) {
+          state.toggleLayer(key, shouldEnable);
+        }
       }
 
       set({
         activeReport: report,
         reportLayersSnapshot: snapshot,
-        activeLayers: nextLayers,
+        pendingReportForConfirmation: null,
       });
       state.setPanelState('report', 'half');
     } else {
       // Deactivating a report: restore snapshot
       if (state.reportLayersSnapshot) {
-        set({
-          activeReport: null,
-          reportLayersSnapshot: null,
-          activeLayers: state.reportLayersSnapshot,
-        });
-      } else {
-        set({ activeReport: null, reportLayersSnapshot: null });
+        const currentLayers = state.activeLayers;
+        for (const [key, shouldEnable] of Object.entries(state.reportLayersSnapshot)) {
+          const currentValue = currentLayers[key as keyof LayerState] ?? false;
+          if (shouldEnable !== currentValue) {
+            state.toggleLayer(key, shouldEnable);
+          }
+        }
       }
+      set({ 
+        activeReport: null, 
+        reportLayersSnapshot: null,
+        pendingReportForConfirmation: null,
+      });
       state.setPanelState('report', 'off');
     }
   },
@@ -410,65 +427,47 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   // ... existing methods ...
 }));
-
-// Helper to apply report defaults completely (replaces all layers with report's desired state)
-function applyLayerDefaults(base: LayerState, reportDefaults: LayerState): LayerState {
-  return { ...reportDefaults };
-}
-
-// Helper to remove a report's defaults from current state (for context-aware switching)
-function removeLayerDefaults(current: LayerState, reportDefaults: LayerState): LayerState {
-  // Remove only the layers that the report had enabled; preserve everything else
-  const result = { ...current };
-  for (const [key, wasEnabled] of Object.entries(reportDefaults)) {
-    if (wasEnabled) {
-      result[key as keyof LayerState] = false;
-    }
-  }
-  return result;
-}
 ```
+
+**Key Changes:**
+- Use `toggleLayer()` instead of direct layer state mutation to respect parent-child constraints
+- Add `pendingReportForConfirmation` state field for context-switch confirmation dialog
+- Context-aware switching logic: only snapshot on context switch, use toggleLayer for all mutations
 
 **Migration Path:**
 - Keep old `activeReportMode` temporarily for backwards compatibility during transition
-- Update all usages of `activeReportMode` to use `activeReport` and extract properties as needed
+- Update all usages of `activeReportMode` to use `activeReport`
 - Remove old setter once all usages are migrated
 
 ---
 
-#### Step 1.3: Create `ViewModeRenderer` Utility
+#### Step 1.3: Create Minimal `ViewModeRules` Utility
 
 **File:** `src/lib/viewModes.ts` (new)
 
-Centralize styling/interaction rules for each view mode:
+Centralize core styling rules for each view mode. Start minimal; expand as styling is consolidated from components:
 
 ```typescript
 import { ViewMode } from '../state/reports';
 
 export interface ViewModeRules {
-  // Territory opacity/color rules
+  // Territory opacity/visibility
   territory: {
     normalOpacity: number;
     unaffectedOpacity: number;
     affectedOpacity: number;
-    highlightedOpacity: number;
-    applyGrayscale: boolean;  // For unaffected territories
+    applyGrayscale: boolean;  // For unaffected territories in territoryDimming mode
   };
-  // MapIcon visibility/opacity
+  // MapIcon visibility
   mapIcon: {
-    visibleInMinZoom: boolean;  // Show icons even at minimum zoom?
+    visibleAtMinZoom: boolean;  // Show icons at MAP_MARKER_MIN_ZOOM?
     affectedOpacity: number;
     unaffectedOpacity: number;
   };
-  // Interaction rules
+  // Interaction restrictions
   interaction: {
-    restrictHoverToAffected: boolean;  // Only show hover on highlighted territories
-    restrictClickToAffected: boolean;  // Only allow clicks on highlighted territories
-  };
-  // Label visibility
-  labels: {
-    showMajor: boolean;
-    showMinor: boolean;
+    restrictHoverToAffected: boolean;
+    restrictClickToAffected: boolean;
   };
 }
 
@@ -480,21 +479,16 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
           normalOpacity: 0.3,
           unaffectedOpacity: 0.25,
           affectedOpacity: 0.7,
-          highlightedOpacity: 0.8,
           applyGrayscale: true,
         },
         mapIcon: {
-          visibleInMinZoom: true,
+          visibleAtMinZoom: true,
           affectedOpacity: 1,
           unaffectedOpacity: 0.35,
         },
         interaction: {
           restrictHoverToAffected: true,
           restrictClickToAffected: true,
-        },
-        labels: {
-          showMajor: true,
-          showMinor: false,
         },
       };
 
@@ -504,21 +498,16 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
           normalOpacity: 0.3,
           unaffectedOpacity: 0.3,
           affectedOpacity: 0.3,
-          highlightedOpacity: 0.3,
           applyGrayscale: false,
         },
         mapIcon: {
-          visibleInMinZoom: true,
+          visibleAtMinZoom: true,
           affectedOpacity: 1,
           unaffectedOpacity: 1,
         },
         interaction: {
           restrictHoverToAffected: false,
           restrictClickToAffected: false,
-        },
-        labels: {
-          showMajor: true,
-          showMinor: false,
         },
       };
 
@@ -529,11 +518,10 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
           normalOpacity: 0.3,
           unaffectedOpacity: 0.3,
           affectedOpacity: 0.3,
-          highlightedOpacity: 0.3,
           applyGrayscale: false,
         },
         mapIcon: {
-          visibleInMinZoom: false,
+          visibleAtMinZoom: false,
           affectedOpacity: 1,
           unaffectedOpacity: 1,
         },
@@ -541,57 +529,105 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
           restrictHoverToAffected: false,
           restrictClickToAffected: false,
         },
-        labels: {
-          showMajor: true,
-          showMinor: true,
-        },
       };
   }
 }
 ```
 
+**Note:** Label visibility, team colors, strokes, and other styling will remain in component-level code for now. Consolidate into ViewModeRules incrementally as styling is refactored.
+
 ---
 
 ### Phase 2: Decouple Territory Diffs from Highlighting
 
-#### Step 2.1: Refactor Territory Diff Mapping
+#### Step 2.1: Create Territory Diff Period Mapping
 
-**File:** `src/lib/queries.ts`
+**File:** `src/lib/territoryDiffMapping.ts` (new)
 
-Instead of mapping reports to diff sets in components, compute the highlighted set in the query/store layer:
-
-```typescript
-// Add to queries.ts or create new file src/lib/territoryDiffMapping.ts
-export function getTerritoryDiffForReport(report: ReportSpec): 'territory_daily' | 'territory_threeDay' | 'territory_weekly' | 'territory_allTime' | null {
-  if (report.id === 'territory-daily') return 'territory_daily';
-  if (report.id === 'territory-three-day') return 'territory_threeDay';
-  if (report.id === 'territory-weekly') return 'territory_weekly';
-  if (report.id === 'territory-all-time') return 'territory_allTime';
-  return null;
-}
-```
-
-**In MapView.tsx:**
+Map ReportSpec IDs to backend territory_diffs table periods:
 
 ```typescript
-// Fetch the appropriate diff based on active report
-const diffPeriod = activeReport ? getTerritoryDiffForReport(activeReport) : null;
-const { data: diffData } = useTerritoryDiff(diffPeriod, { enabled: !!diffPeriod });
+export type TerritoryDiffPeriod = 'daily' | 'threeDay' | 'weekly' | 'allTime';
 
-// Compute highlighted set and populate store
-useEffect(() => {
-  if (activeReport && diffData?.changes) {
-    const highlightedSet = new Set(diffData.changes.map((c: { id: string }) => c.id));
-    setReportHighlightedSet(highlightedSet);
-  } else {
-    setReportHighlightedSet(null);
+/**
+ * Maps a territory report to the corresponding period in the territory_diffs table.
+ * Frontend uses 'territory_daily' naming for clarity; backend stores 'daily'.
+ */
+export function getTerritoryDiffPeriod(reportId: string): TerritoryDiffPeriod | null {
+  switch (reportId) {
+    case 'territory-daily': return 'daily';
+    case 'territory-three-day': return 'threeDay';
+    case 'territory-weekly': return 'weekly';
+    case 'territory-all-time': return 'allTime';
+    default: return null;
   }
-}, [activeReport, diffData, setReportHighlightedSet]);
+}
 ```
 
 ---
 
-#### Step 2.2: Update `TerritorySubregionLayer.tsx` to Use `reportHighlightedSet`
+#### Step 2.2: Create `useActiveReportDiff()` Hook
+
+**File:** `src/lib/queries.ts` (add new hook)
+
+Create a hook that fetches the active report's territory diff (if applicable):
+
+```typescript
+import { useMapStore } from '../state/useMapStore';
+import { getTerritoryDiffPeriod } from './territoryDiffMapping';
+
+/**
+ * Fetches the appropriate territory diff for the active report (Option A query pattern).
+ * Returns null if no territory report is active.
+ */
+export function useActiveReportDiff() {
+  const activeReport = useMapStore((s) => s.activeReport);
+  
+  // Compute the period from the active report
+  const period = activeReport ? getTerritoryDiffPeriod(activeReport.id) : null;
+  
+  // Only fetch if we have a valid period (territory reports only)
+  const { data, isLoading, error } = useTerritoryDiff(period, {
+    enabled: !!period,
+  });
+
+  return { data, isLoading, error };
+}
+```
+
+---
+
+#### Step 2.3: Wire Diffs to MapView and Populate Highlighting
+
+**File:** `src/components/MapView.tsx`
+
+Use the new hook to populate `reportHighlightedSet`:
+
+```typescript
+import { useActiveReportDiff } from '../lib/queries';
+import { useMapStore } from '../state/useMapStore';
+
+export default function MapView() {
+  const { data: diffData } = useActiveReportDiff();
+  const setReportHighlightedSet = useMapStore(s => s.setReportHighlightedSet);
+
+  // Populate highlighted set when diff data loads
+  useEffect(() => {
+    if (diffData?.changes) {
+      const highlightedSet = new Set(diffData.changes.map((c: any) => c.id));
+      setReportHighlightedSet(highlightedSet);
+    } else {
+      setReportHighlightedSet(null);
+    }
+  }, [diffData, setReportHighlightedSet]);
+
+  // ... rest of MapView ...
+}
+```
+
+---
+
+#### Step 2.4: Update `TerritorySubregionLayer.tsx` to Use `reportHighlightedSet`
 
 **File:** `src/components/TerritorySubregionLayer.tsx`
 
@@ -685,20 +721,17 @@ export default function TerritorySubregionLayer({ /* ... */ }) {
 function LocationsLayer({
   snapshot,
   activeLayers,
-  // Remove changedDaily, changedThreeDay, etc.
   reportHighlightedSet,
 }: { /* ... */ }) {
   const map = useMap();
   const activeReport = useMapStore(s => s.activeReport);
   const rules = activeReport ? getViewModeRules(activeReport.viewMode) : getViewModeRules('none');
 
-  // Refactor visibility condition for MapIcons
-  // Current: if ((zoom < MAP_MARKER_MIN_ZOOM || reportMode)) return null;
-  // New:
-  const shouldHideIcons = !rules.mapIcon.visibleInMinZoom && zoom < MAP_MARKER_MIN_ZOOM;
+  // Icon visibility based on ViewMode
+  const shouldHideIcons = !rules.mapIcon.visibleAtMinZoom && zoom < MAP_MARKER_MIN_ZOOM;
   if (shouldHideIcons) return null;
 
-  // Refactor icon opacity application
+  // Icon opacity application respecting report highlighting
   const updateIcons = (z: number) => {
     // ... existing code ...
     const isHighlighted = reportHighlightedSet?.has(t.id) ?? false;
@@ -706,99 +739,158 @@ function LocationsLayer({
     img.style.opacity = String(opacity);
   };
 
-  // Refactor label visibility
-  const minorVisible = activeLayers.minorLocations && rules.labels.showMinor;
-  // ...
+  // ... rest of component ...
 }
 ```
 
 ---
 
-#### Step 3.3: Update HexInfo Casualty Overlay
+### Phase 3: Implement MapIcon Filtering from Reports
 
-**File:** `src/components/HexInfo.tsx`
-
-Casualty overlay visibility is driven solely by the Casualties layer toggle, like any other layer:
-
-```typescript
-// Casualty overlay rendering:
-const casualtyOverlay = activeLayers.casualties && casualtyRates ? <HexCasualties ... /> : null;
-// No special handling for activeReport needed
-```
-
-The `activeLayers.casualties` value will be controlled by each report's `defaultLayers`, so casualties will be shown/hidden as configured per report. Verify and remove any existing special-case logic that hides casualties when a report is active.
-
----
-
-### Phase 4: Implement MapIcon Filtering from Reports
-
-#### Step 4.1: Create Report Filter Function
+#### Step 3.1: Create Report Filter Function with Mode Support
 
 **File:** `src/state/reports.ts` (add to existing)
 
+Add a function to generate icon filters from reports, supporting both ANY and ALL modes:
+
 ```typescript
+import { MapIconTag } from '../data/map-icons';
+
+/**
+ * Returns a filter function that checks if an icon matches the report's tag criteria.
+ * Supports both ANY mode (any tag matches) and ALL mode (all tags must match).
+ * Returns null if no filtering should be applied (empty tag list).
+ */
 export function getReportMapIconFilter(report: ReportSpec): ((iconTags: MapIconTag[]) => boolean) | null {
-  if (report.mapIconTags.length === 0) return null;  // No filtering
-  return (iconTags: MapIconTag[]) =>
-    report.mapIconTags.some(tag => iconTags.includes(tag));
+  if (report.mapIconTags.length === 0) return null;  // No icon filtering
+  
+  const filterMode = report.filterMode ?? 'ANY';
+  
+  if (filterMode === 'ALL') {
+    // All tags must be present in the icon
+    return (iconTags: MapIconTag[]) =>
+      report.mapIconTags.every(tag => iconTags.includes(tag));
+  } else {
+    // (ANY mode) At least one tag must match
+    return (iconTags: MapIconTag[]) =>
+      report.mapIconTags.some(tag => iconTags.includes(tag));
+  }
 }
 ```
 
 ---
 
-#### Step 4.2: Update MapView.tsx LocationsLayer to Use Report Filter
+#### Step 3.2: Update MapView.tsx LocationsLayer to Apply Report Filter
 
 **File:** `src/components/MapView.tsx`
 
+Apply report-based icon filtering:
+
 ```typescript
+import { getReportMapIconFilter } from '../state/reports';
+
 function LocationsLayer({ /* ... */ }) {
   const activeReport = useMapStore(s => s.activeReport);
   const activeLayers = useMapStore(s => s.activeLayers);
 
-  // Get filter function from report or layer toggles
-  const reportFilter = activeReport ? getReportMapIconFilter(activeReport) : null;
+  // Get filter function from active report
+  const reportIconFilter = useMemo(
+    () => activeReport ? getReportMapIconFilter(activeReport) : null,
+    [activeReport]
+  );
 
-  const jobViewFilter = useMemo(() => {
-    if (reportFilter) return reportFilter;
-    // Fallback to layer-based filtering
-    const excluded = new Set<number>();
-    for (const [key, isOn] of Object.entries(activeLayers)) {
-      if (isOn) continue;
-      const tags = (layerTagsByKey as any)[key];
-      if (!tags) continue;
-      for (const tag of tags) {
-        const icons = getMapIconsByTag(tag);
-        for (const mi of icons) excluded.add(mi.id);
-      }
+  // Filtering logic:
+  // - If a report is active, use its filter (report-based filtering takes precedence)
+  // - Otherwise, icon visibility is controlled by layer toggles (existing behavior)
+  
+  const shouldShowIcon = (iconId: MapIcon, iconTags: MapIconTag[]) => {
+    if (reportIconFilter) {
+      return reportIconFilter(iconTags);
     }
-    return (iconTags: MapIconTag[]) => {
-      const mi = getMapIcon(...);  // pseudocode
-      return !excluded.has(mi.id);
-    };
-  }, [reportFilter, activeLayers]);
+    // When no report is active, layer toggles control visibility
+    return isIconVisibleByLayers(iconId, activeLayers);
+  };
 
-  // Use jobViewFilter as before
-  // ...
+  // Apply in marker rendering loop
+  // ... existing marker rendering code, use shouldShowIcon to filter ...
 }
 ```
 
 ---
 
-### Phase 5: Threats Report & StackComparison
+### Phase 4: Implement Threats Highlighting
 
-#### Step 5.1: Wire Threats Report to StackComparison
+#### Step 4.1: Wire Threats Report Highlighting
+
+**File:** `src/components/MapView.tsx`
+
+Add logic to compute territory highlighting for threats reports when active:
+
+```typescript
+import { useMapStore } from '../state/useMapStore';
+
+export default function MapView() {
+  const activeReport = useMapStore(s => s.activeReport);
+  const setReportHighlightedSet = useMapStore(s => s.setReportHighlightedSet);
+  const { data: diffData } = useActiveReportDiff();
+  const snapshot = useMapStore(s => s.snapshot);
+
+  // Territory highlighting logic
+  useEffect(() => {
+    if (!activeReport) {
+      setReportHighlightedSet(null);
+      return;
+    }
+
+    // Territory reports: use diff data
+    if (diffData?.changes) {
+      const highlightedSet = new Set(diffData.changes.map((c: any) => c.id));
+      setReportHighlightedSet(highlightedSet);
+    }
+    // Threats reports: highlight territories containing threat structures
+    else if (activeReport.category === 'Threats' && snapshot) {
+      const highlightedSet = new Set<string>();
+      
+      // Find all locations with the threat's tags
+      const relevantLocations = snapshot.locations.filter((loc: any) =>
+        getReportMapIconFilter(activeReport)?.(getMapIconTags(loc.iconType)) ?? false
+      );
+
+      // Add territories containing these locations
+      for (const loc of relevantLocations) {
+        const hexId = computeHexId(loc.x, loc.y); // From hexLayout.ts
+        highlightedSet.add(hexId);
+      }
+
+      setReportHighlightedSet(highlightedSet);
+    }
+    // Other reports: no highlighting
+    else {
+      setReportHighlightedSet(null);
+    }
+  }, [activeReport, diffData, snapshot, setReportHighlightedSet]);
+
+  // ... rest of MapView ...
+}
+```
+
+---
+
+### Phase 5: Wire Threats Reports to StackComparison
+
+#### Step 5.1: Add StackComparison Logic to setActiveReport
 
 **File:** `src/state/useMapStore.ts`
 
-Modify `setActiveReport` to handle Threats report metadata:
+Update `setActiveReport` to activate StackComparison for threats reports:
 
 ```typescript
-setActiveReport: (report) => {
+setActiveReport: (report, skipConfirm = false) => {
   const state = get();
   if (report) {
-    // ... existing logic ...
+    // ... existing report activation logic ...
 
-    // Special handling for Threats report
+    // Special handling: activate StackComparison for threats reports
     if (report.metadata?.stackComparisonIcons) {
       state.setStackComparisonMapIcon(report.metadata.stackComparisonIcons);
       state.setVictoryBarDrawerState(true);
@@ -807,13 +899,175 @@ setActiveReport: (report) => {
       state.setVictoryBarDrawerState(false);
     }
   } else {
-    // Deactivating report: clear StackComparison
+    // Deactivating any report: close StackComparison
     state.setStackComparisonMapIcon(null);
     state.setVictoryBarDrawerState(false);
-    // ... restore layers ...
+    
+    // ... existing report deactivation logic ...
   }
-};
+}
 ```
+
+---
+
+### Phase 6: Context-Aware Switching Confirmation Dialog
+
+#### Step 6.1: Add Confirmation Dialog Component
+
+**File:** `src/components/ContextSwitchConfirmationDialog.tsx` (new)
+
+Create a dialog that appears when switching between different context groups:
+
+```typescript
+import { useMapStore } from '../state/useMapStore';
+
+export function ContextSwitchConfirmationDialog() {
+  const pendingReport = useMapStore(s => s.pendingReportForConfirmation);
+  const setActiveReport = useMapStore(s => s.setActiveReport);
+  const [open, setOpen] = useState(!!pendingReport);
+
+  if (!pendingReport) return null;
+
+  const handleConfirm = () => {
+    // Proceed with the switch, bypassing confirmation
+    setActiveReport(pendingReport, true);
+    setOpen(false);
+  };
+
+  const handleCancel = () => {
+    // Clear pending report, stay on current report
+    useMapStore.setState({ pendingReportForConfirmation: null });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open}>
+      <DialogContent>
+        <DialogTitle>Switch Report Type?</DialogTitle>
+        <DialogDescription>
+          Switching to <strong>{pendingReport.name}</strong> will reset your layer changes.
+          Continue?
+        </DialogDescription>
+        <DialogActions>
+          <Button onClick={handleCancel}>Cancel</Button>
+          <Button onClick={handleConfirm} variant="primary">Switch</Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+**Integration:** Render this component in [App.tsx](App.tsx) so it appears at app level.
+
+---
+
+### Phase 7: Merge JobViewPanel into Unified Reports Panel
+
+#### Step 7.1: Update ReportModes.tsx to Show All Reports with Categorization
+
+**File:** `src/components/ReportModes.tsx`
+
+Expand ReportModes to display all reports (Territory, Threats, Job Views) organized by category:
+
+```typescript
+import { getAllReports, BUILTIN_REPORTS } from '../state/reports';
+import { useMapStore } from '../state/useMapStore';
+
+export default function ReportModes() {
+  const activeReport = useMapStore(s => s.activeReport);
+  const setActiveReport = useMapStore(s => s.setActiveReport);
+  const allReports = getAllReports();
+
+  // Group by category, then subcategory
+  const grouped = useMemo(() => {
+    const result: Record<string, Record<string, ReportSpec[]>> = {};
+    for (const report of allReports) {
+      const cat = report.category || 'Other';
+      if (!result[cat]) result[cat] = {};
+      const subcat = report.subcategory || 'Default';
+      if (!result[cat][subcat]) result[cat][subcat] = [];
+      result[cat][subcat].push(report);
+    }
+    return result;
+  }, [allReports]);
+
+  return (
+    <div className="space-y-4 p-3">
+      {Object.entries(grouped).map(([category, subcategories]) => (
+        <div key={category}>
+          <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">{category}</h3>
+          <div className="space-y-3">
+            {Object.entries(subcategories).map(([subcat, reports]) => (
+              <div key={`${category}-${subcat}`}>
+                {subcat !== 'Default' && (
+                  <h4 className="text-xs font-medium text-gray-500 ml-2 mb-1">{subcat}</h4>
+                )}
+                <div className="space-y-1">
+                  {reports.map(report => (
+                    <button
+                      key={report.id}
+                      onClick={() =>
+                        setActiveReport(activeReport?.id === report.id ? null : report)
+                      }
+                      className={`w-full px-3 py-2 rounded text-sm border transition ${
+                        activeReport?.id === report.id
+                          ? 'bg-indigo-700 border-indigo-600'
+                          : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                      }`}
+                    >
+                      {report.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**UI Hierarchy:**
+```
+Territory
+  1 Day
+  3 Days
+  7 Days
+  All Time
+Threats
+  Storm Cannons
+  Rockets
+Job Views
+  Resource Mining
+    Salvage Miner
+    Component Miner
+    ...
+  Logistics
+    Logistics (Frontline)
+    ...
+  Production
+    Factory
+    ...
+```
+
+---
+
+#### Step 7.2: Deprecate JobViewPanel
+
+**File:** `src/components/JobViewPanel.tsx`
+
+Mark as deprecated. Once ReportModes is tested and working, remove entirely and update App.tsx to not render it.
+
+---
+
+### Phase 8: User Reports Persistence (Future Phase)
+
+#### Note on User Reports
+
+User report creation, editing, and localStorage persistence are **designed but not implemented** in this phase. The infrastructure (`ReportSpec.source === 'user'`, `userReports.ts` functions, `metadata` fields) is in place to enable this feature in a future release without requiring architectural changes
 
 ---
 
@@ -947,176 +1201,117 @@ export default function ReportModes() {
                       }`}
                     >
                       {report.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+
 ```
 
 ---
 
-### Phase 8: Remove/Deprecate Old Systems
+## Architecture Summary
 
-#### Step 8.1: Deprecate JobView System
+The refactored Report system unifies Territory ownership tracking, Threats filtering, and Job Views into a single, extensible architecture:
 
-**Files to remove or disable:**
-- `src/components/JobViewPanel.tsx` - No longer needed
-- `src/state/jobViews.ts` - Functionality merged into reports.ts
-- References to `activeJobViewId` in store (after migrating all usages)
-
-Replace JobViewPanel with Reports panel (or fold into existing ReportModes.tsx).
-
----
-
-#### Step 8.2: Clean Up Store
-
-**File:** `src/state/useMapStore.ts`
-
-After migration, remove:
-- `activeJobViewId`
-- `previousLayersSnapshot` (replace with `reportLayersSnapshot`)
-- Old setter `setActiveJobView`
-- Old report mode type and setter
+- **Single Report Registry:** Built-in reports (Territory, Threats, Jobs) + user-created reports (future)
+- **Decoupled Styling:** ViewMode rules control opacity, visibility, and interaction independent of business logic
+- **Smart Layer Management:** Context-aware switching with confirmation dialogs, snapshot/restore behavior
+- **Flexible Filtering:** MapIcon filtering with ANY/ALL mode support, no icon filtering when reports inactive
+- **Territory Highlighting:** Territory reports use diff data; Threats reports compute from structure locations
+- **StackComparison Integration:** Threats reports auto-activate StackComparison drawer with appropriate icons
 
 ---
 
-## Decisions & Resolutions
+## Implementation Summary
 
-### ✅ Resolved Questions
+This plan consists of 8 phases:
 
-1. **Report Categories**: Added `category` and `subcategory` fields to `ReportSpec` for two-level grouping (scalable for future expansion)
-
-2. **Default Layer Merging**: `defaultLayers` represents complete desired state; unspecified layers default to `false`. Ensures predictable behavior for user-created reports.
-
-3. **MapIconTag Validation**: Hybrid approach (Option C) - validate at save time with user-friendly errors, plus runtime safety checks for corrupted localStorage
-
-4. **ViewMode Restrictions**: Strict whitelist enforced: `'territoryDimming' | 'minimal' | 'none'`. New view modes require code updates.
-
-5. **Report Switching Behavior**: Context-aware switching with `reportContextGroup` field
-   - **Same context**: Seamlessly switch between reports, preserving user's layer toggles
-   - **Different context**: Restore original snapshot with confirmation dialog if layers were modified
-   - Prevents unexpected layer state changes and confusion
-
-6. **Casualty Layer**: Treated like any other layer - controlled entirely by `defaultLayers`, no special handling
-   - Removed `hideWhenActive` from `ViewModeRules`
-   - Casualties visibility follows layer toggle and report settings
-
-7. **Complex Reports (Future)**: Single `viewMode` per report; multiple sources contribute to highlight sets only (union/intersection). ViewMode is not combined.
-
-8. **StackComparison Multi-Icon**: VictoryBar already handles multiple icons correctly (vertical stack). No changes needed.
+1. **Phase 1:** Create `ReportSpec` schema, update `useMapStore`, implement minimal `ViewModeRules`
+2. **Phase 2:** Create territory diff period mapping and `useActiveReportDiff()` hook
+3. **Phase 3:** Implement MapIcon filtering with ANY/ALL modes
+4. **Phase 4:** Wire Threats reports to compute territory highlighting
+5. **Phase 5:** Integrate Threats reports with StackComparison
+6. **Phase 6:** Build context-aware switching confirmation dialog
+7. **Phase 7:** Merge JobViewPanel into unified ReportModes component
+8. **Phase 8:** Deprecate JobViewPanel and clean up store (future: implement user report persistence)
 
 ---
 
-## Implementation Notes for Key Features
+## Files Changed
 
-### Context-Aware Report Switching
+### New Files Created
+- `src/state/reports.ts` - Report specs registry and helpers
+- `src/lib/viewModes.ts` - ViewMode rules (minimal set)
+- `src/lib/territoryDiffMapping.ts` - Period mapping for territory diffs
+- `src/components/ContextSwitchConfirmationDialog.tsx` - Context switch confirmation UI
 
-When switching between reports:
+### Files Modified
+- `src/state/useMapStore.ts` - Add `activeReport`, `reportLayersSnapshot`, `reportHighlightedSet`, `setActiveReport()`, `setReportHighlightedSet()`
+- `src/components/MapView.tsx` - Use `useActiveReportDiff()`, populate `reportHighlightedSet`, apply report icon filters
+- `src/components/TerritorySubregionLayer.tsx` - Use `reportHighlightedSet` and `ViewModeRules`
+- `src/components/ReportModes.tsx` - Replace with unified report selector
+- `src/App.tsx` - Render `ContextSwitchConfirmationDialog`
 
-1. **Same context group** (e.g., territory_daily → territory_weekly):
-   - Remove previous report's `defaultLayers` from active state
-   - Apply new report's `defaultLayers`
-   - Preserve any manual toggles user made within the context
-
-2. **Different context groups** (e.g., territory → jobs-mining):
-   - Restore original snapshot that was saved before entering first report
-   - If user made changes, show confirmation dialog:
-     - "Switching to [New Report] will reset your layer changes. Continue?"
-     - Allow user to cancel or proceed
-
-3. **First activation**:
-   - Snapshot user's current `activeLayers`
-   - Apply report's `defaultLayers` completely
-
-### User Report Validation
-
-When saving user reports:
-- Validate `mapIconTags` exist in enum (with graceful fallback)
-- Validate `viewMode` is in whitelist
-- Ensure required fields present (id, name, category, viewMode, defaultLayers)
-- Return user-friendly validation errors via UI
-
-At runtime:
-- Silently filter invalid tags
-- Fallback to 'none' viewMode if invalid
-- Log warnings to console for debugging
-
-## Implementation Order & Phases Summary
-
-1. **Phase 1 (Core):** Create ReportSpec schema, update store, create ViewModeRenderer
-2. **Phase 2 (Decoupling):** Refactor Territory diffs to use generic `reportHighlightedSet`
-3. **Phase 3 (Styling):** Wire ViewModeRules into components
-4. **Phase 4 (Filtering):** Implement MapIcon filtering from report tags
-5. **Phase 5 (Features):** Wire Threats report to StackComparison
-6. **Phase 6 (Persistence):** Add localStorage for user reports
-7. **Phase 7 (UI):** Refactor ReportModes component
-8. **Phase 8 (Cleanup):** Remove JobView system, clean up store
+### Files Deprecated/Removed
+- `src/components/JobViewPanel.tsx` - Deprecate (remove after testing)
+- `src/state/jobViews.ts` - Deprecate (functionality merged into `reports.ts`)
 
 ---
 
-## Files Created/Modified
+## Data Flow Summary
 
-### New Files
-- `src/state/reports.ts` - Report specs and registry
-- `src/lib/viewModes.ts` - ViewMode rules
-- `src/lib/userReports.ts` - localStorage persistence
-- `src/lib/territoryDiffMapping.ts` (optional) - Territory diff mapping
+```
+ReportSpec Registry (built-in + user)
+    ↓
+User selects report via ReportModes panel
+    ↓
+setActiveReport() → check context group & show confirmation if needed
+    ↓
+useMapStore updates:
+  - activeReport: ReportSpec
+  - reportLayersSnapshot: LayerState (on first activation or context switch)
+  - activeLayers: toggled via toggleLayer() to match report defaultLayers
+  - stackComparisonIcons: set if report.metadata.stackComparisonIcons exists
+    ↓
+useActiveReportDiff() fetches territory diffs for territory reports
+    ↓
+MapView computes reportHighlightedSet from:
+  - Territory reports: territory diff changes
+  - Threats reports: locations with matching tags
+  - Other reports: null (no highlighting)
+    ↓
+TerritorySubregionLayer & LocationsLayer consume:
+  - activeReport → ViewMode rules
+  - reportHighlightedSet → territory highlighting
+  - Report icon filter → icon visibility
+```
 
-### Modified Files
-- `src/state/useMapStore.ts` - Add report state and logic
-- `src/components/MapView.tsx` - Use activeReport and ViewModeRules
-- `src/components/TerritorySubregionLayer.tsx` - Use reportHighlightedSet and ViewModeRules
-- `src/components/ReportModes.tsx` - Dynamic report rendering
-- `src/components/HexInfo.tsx` - Verify casualty layer independence
-- `src/App.tsx` - Load user reports on startup
+---
 
-### Deprecated/Removed
-- `src/components/JobViewPanel.tsx` - Remove
-- `src/state/jobViews.ts` - Remove (functionality in reports.ts)
+## Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Period naming (territory_daily vs daily)** | Backend uses generic names; frontend prefix for clarity with other metrics |
+| **toggleLayer() for defaults** | Respects parent-child hierarchy in layer tree; prevents invalid states |
+| **pendingReportForConfirmation field** | Allows confirmation dialog to control flow without breaking encapsulation |
+| **minimal ViewModeRules** | Start with core opacity/visibility; expand as styling consolidates from components |
+| **Option A query pattern** | `useActiveReportDiff()` hook encapsulates mapping; transparent, testable, cacheable |
+| **Threats highlighting from locations** | Computed on-the-fly from active icon locations; no separate diff data needed |
+| **Unified ReportModes component** | Single UI entry point for all report types; JobViewPanel deprecated |
+| **Infrastructure for future user reports** | ReportSpec design supports localStorage persistence without rework |
 
 ---
 
 ## Testing Checklist
 
-- [ ] Activate Territory reports; verify diff highlighting works
-- [ ] Activate Threats report; verify StackComparison drawer opens
-- [ ] Switch between reports; verify layer snapshots work
-- [ ] Manually toggle layers in report mode; verify toggles apply
-- [ ] Exit report mode; verify layers restore to pre-activation state
-- [ ] Create user report via localStorage; verify it loads on app restart
-- [ ] Verify casualty overlay visibility follows layer toggle only
-- [ ] Verify MapIcon filtering works for both Territory and Threats reports
-- [ ] Verify ViewMode styling applies correctly (opacity, grayscale, etc.)
-- [ ] Verify interaction restrictions (hover/click) work in territoryDimming mode
-- [ ] Test on touch and desktop devices
-- [ ] Verify label visibility rules apply per ViewMode
-
----
-
-## Notes for Implementation Agent
-
-When implementing this plan:
-
-1. **Run tests frequently** - This is a large refactor with many interconnected systems. Test each phase before moving to the next.
-
-2. **Preserve backwards compatibility initially** - Keep old store fields/methods during transition, mark as deprecated, remove after full migration.
-
-3. **Check component subscriptions** - Many components subscribe to `activeReportMode`, `activeJobViewId`, and diff sets. Ensure all usages are updated to use new `activeReport` and `reportHighlightedSet`.
-
-4. **Verify mapIcon filtering** - The JobView filtering logic is complex. Test that report filters produce the same results as old JobView filters for parity.
-
-5. **User report validation** - Consider adding a validation UI (toast/notification) for invalid user reports, or silent fallback to defaults.
-
-6. **Documentation** - Update component comments to reflect new report structure; remove old ReportMode comments.
-
-7. **TypeScript** - Ensure strict typing; ReportSpec should be immutable/readonly where possible to prevent accidental mutations.
+- [ ] Territory reports: activate each period, verify correct diffs load and highlight
+- [ ] Threats reports: activate each type, verify StackComparison drawer opens with correct icon
+- [ ] Layer snapshots: switch contexts, verify confirmation dialog, confirm/cancel behavior
+- [ ] Same context: switch between 2+ territory reports, verify layers adjust without snapshot restore
+- [ ] MapIcon filtering: verify ANY/ALL modes work correctly, filtering disabled when no report active
+- [ ] Casualty overlay: verify it respects layer toggle only, not report mode
+- [ ] ViewMode styling: verify opacity, grayscale, interaction restrictions apply per mode
+- [ ] UI: verify ReportModes displays all categories/subcategories, selection state correct
+- [ ] Backwards compatibility: confirm old `activeReportMode` still works during migration
+- [ ] Cross-browser: test on desktop and mobile viewports
 
 ---
 
