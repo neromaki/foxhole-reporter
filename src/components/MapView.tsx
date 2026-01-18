@@ -36,16 +36,16 @@ export default function MapView() {
   const snapshot = DATA_SOURCE === 'warapi' ? warApiSnapshot : supabaseSnapshot;
   const { data: latestTwoSnapshots } = useLatestSnapshots(2, { enabled: DATA_SOURCE === 'supabase' });
   
-  const { data: dailyDiff } = useTerritoryDiff('territory_daily');
+  const { data: dailyDiff } = useTerritoryDiff('daily');
   const changedDaily = useMemo<Set<string>>(() => new Set((dailyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [dailyDiff]);
 
-  const { data: threeDayDiff } = useTerritoryDiff('territory_threeDay');
+  const { data: threeDayDiff } = useTerritoryDiff('threeDay');
   const changedThreeDay = useMemo<Set<string>>(() => new Set((threeDayDiff?.changes ?? []).map((c: { id: string }) => c.id)), [threeDayDiff]);
 
-  const { data: weeklyDiff } = useTerritoryDiff('territory_weekly');
+  const { data: weeklyDiff } = useTerritoryDiff('weekly');
   const changedWeekly = useMemo<Set<string>>(() => new Set((weeklyDiff?.changes ?? []).map((c: { id: string }) => c.id)), [weeklyDiff]);
 
-  const { data: allTimeDiff } = useTerritoryDiff('territory_allTime');
+  const { data: allTimeDiff } = useTerritoryDiff('allTime');
   const changedAllTime = useMemo<Set<string>>(() => new Set((allTimeDiff?.changes ?? []).map((c: { id: string }) => c.id)), [allTimeDiff]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
