@@ -25,10 +25,6 @@ dayjs.extend(relativeTime);
 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
-  changedDaily: Set<string>;
-  changedThreeDay: Set<string>;
-  changedWeekly: Set<string>;
-  changedAllTime: Set<string>;
   visible: boolean;
   historyById: Map<string, TerritoryHistory>;
   casualtyRates: ReturnType<typeof useCasualtyRates>;
@@ -57,7 +53,7 @@ interface RegionOverlay {
   hasAnyTerritory?: boolean;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, changedAllTime, visible, historyById, casualtyRates }: Props) {
+export default function TerritorySubregionLayer({ snapshot, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
   const [isTouch, setIsTouch] = React.useState(false);
@@ -77,8 +73,15 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     );
     setIsTouch(touch);
   }, []);
-  const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
+  
+  // New unified report system
+  const activeReport = useMapStore((s) => s.activeReport);
+  const reportHighlightedSet = useMapStore((s) => s.reportHighlightedSet);
+  const reportModeActive = activeReport !== null;
+  
+  // Keep old reportMode for backward compatibility during transition
   const reportMode = useMapStore((s) => s.activeReportMode);
+  
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const setPanelState = useMapStore((s) => s.setPanelState);
   const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
@@ -115,13 +118,8 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     return map;
   }, [snapshot]);
 
-  const changedSet = useMemo(() => {
-    if (reportMode === 'territory_daily') return changedDaily;
-    if (reportMode === 'territory_threeDay') return changedThreeDay;
-    if (reportMode === 'territory_weekly') return changedWeekly;
-    if (reportMode === 'territory_allTime') return changedAllTime;
-    return null;
-  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime]);
+  // Use reportHighlightedSet for territory highlighting (unified report system)
+  const changedSet = reportHighlightedSet;
 
   const overlays = useMemo(() => {
     const processed: RegionOverlay[] = [];

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, LayerGroup, Marker, useMap, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
+import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince, useActiveReportDiff } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { useMapStore } from '../state/useMapStore';
@@ -47,6 +47,22 @@ export default function MapView() {
 
   const { data: allTimeDiff } = useTerritoryDiff('allTime');
   const changedAllTime = useMemo<Set<string>>(() => new Set((allTimeDiff?.changes ?? []).map((c: { id: string }) => c.id)), [allTimeDiff]);
+
+  // New unified report system: fetch diff for active territory report
+  const { data: activeReportDiff } = useActiveReportDiff();
+  const setReportHighlightedSet = useMapStore((s) => s.setReportHighlightedSet);
+  
+  // Populate reportHighlightedSet when activeReportDiff changes
+  useEffect(() => {
+    if (activeReportDiff?.changes) {
+      const territoryIds = new Set(activeReportDiff.changes.map((c: { id: string }) => c.id));
+      setReportHighlightedSet(territoryIds);
+      DEBUG_MODE && console.log('[MapView] Updated reportHighlightedSet with', territoryIds.size, 'territories');
+    } else {
+      // Clear highlighted set when no territory report is active
+      setReportHighlightedSet(new Set());
+    }
+  }, [activeReportDiff, setReportHighlightedSet]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
   const reportMode = useMapStore((s) => s.activeReportMode);
@@ -156,10 +172,6 @@ export default function MapView() {
         />
         <TerritorySubregionLayer
           snapshot={snapshot}
-          changedDaily={changedDaily}
-          changedThreeDay={changedThreeDay}
-          changedWeekly={changedWeekly}
-          changedAllTime={changedAllTime}
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
           casualtyRates={casualtyRates}
