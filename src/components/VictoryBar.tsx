@@ -148,9 +148,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
               {TimerPiece(formatDuration(warState.warStart, "{SS}", now), "secs")}
             </div>
           )}
+          { stackComparisonMapIcon && stackComparisonMapIcon.map((mapIcon) => (
           <div className="mt-3 mb-2">
-            {StackComparison(stackComparisonMapIcon ? stackComparisonMapIcon : MapIcon.Town_Base_1)}
-          </div>
+              {StackComparison(mapIcon ? mapIcon : MapIcon.Town_Base_1)}
+            </div>
+          )) }
         </div>
         {/* <div className={`flex justify-center w-full`}>
           <img src={new URL(`../images/icn_chevron-down.png`, import.meta.url).href} className={`inline-block h-4 w-4 ${victoryBarDrawer ? "rotate-180" : ""}`} />

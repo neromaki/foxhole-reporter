@@ -59,8 +59,8 @@ interface MapState {
   setSelectedLocation: (sel: SelectedLocation | null) => void;
   victoryBarDrawer: boolean;
   setVictoryBarDrawerState: (open: boolean) => void;
-  stackComparisonMapIcon: MapIcon | null;
-  setStackComparisonMapIcon: (icon: MapIcon | null) => void;
+  stackComparisonMapIcon: Array<MapIcon> | null;
+  setStackComparisonMapIcon: (icon: Array<MapIcon> | null) => void;
 }
 
 
