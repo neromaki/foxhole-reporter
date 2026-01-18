@@ -14,6 +14,7 @@ import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { getTimeSinceLastCapture } from '../lib/time';
+import { getViewModeRules } from '../lib/viewModes';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -282,6 +283,9 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
     return null;
   }
 
+  // Get ViewModeRules for current report
+  const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
+
   return (
     <>
       {overlays.map((o) => {
@@ -311,8 +315,8 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                 let stroke = p.stroke;
                 let strokeWidth = p.strokeWidth;
 
-                // Figure out opacities and colors based on report mode and state
-                if (reportModeActive) {
+                // Figure out opacities and colors based on report mode and ViewModeRules
+                if (reportModeActive && viewModeRules) {
                   if (affected) {
                     strokeWidth = 2;
                     fill = tinycolor(p.baseColor).saturate(10).brighten(10).toString();
@@ -322,10 +326,14 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                       fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
                     } else {
                       fill = tinycolor(fill).toString();
-                      fillOpacity = TERRITORY_REPORT_AFFECTED_OPACITY;
+                      fillOpacity = viewModeRules.territory.affectedOpacity;
                     }
                   } else {
-                    fillOpacity = TERRITORY_REPORT_UNAFFECTED_OPACITY;
+                    fillOpacity = viewModeRules.territory.unaffectedOpacity;
+                    // Apply grayscale filter if viewMode requires it
+                    if (viewModeRules.territory.applyGrayscale) {
+                      fill = tinycolor(fill).greyscale().toString();
+                    }
                   }
                 } else {
                   if (zoom == MAP_MIN_ZOOM) {

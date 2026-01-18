@@ -20,7 +20,10 @@ import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THRO
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
+import { getReportMapIconFilter } from '../state/reports';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
+import { getViewModeRules } from '../lib/viewModes';
+import { computeThreatenedTerritories } from '../lib/threatsHighlighting';
 import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
@@ -50,19 +53,42 @@ export default function MapView() {
 
   // New unified report system: fetch diff for active territory report
   const { data: activeReportDiff } = useActiveReportDiff();
+  const activeReport = useMapStore((s) => s.activeReport);
   const setReportHighlightedSet = useMapStore((s) => s.setReportHighlightedSet);
+  const setStackComparisonMapIcon = useMapStore((s) => s.setStackComparisonMapIcon);
   
-  // Populate reportHighlightedSet when activeReportDiff changes
+  // Populate reportHighlightedSet based on report category (Territory or Threats)
   useEffect(() => {
-    if (activeReportDiff?.changes) {
+    if (!activeReport) {
+      // Clear highlighted set when no report is active
+      setReportHighlightedSet(new Set());
+      setStackComparisonMapIcon(null);
+      return;
+    }
+
+    // Territory reports: use diff data
+    if (activeReport.category === 'Territory' && activeReportDiff?.changes) {
       const territoryIds = new Set(activeReportDiff.changes.map((c: { id: string }) => c.id));
       setReportHighlightedSet(territoryIds);
-      DEBUG_MODE && console.log('[MapView] Updated reportHighlightedSet with', territoryIds.size, 'territories');
-    } else {
-      // Clear highlighted set when no territory report is active
-      setReportHighlightedSet(new Set());
+      setStackComparisonMapIcon(null); // Territory reports don't use stack comparison
+      DEBUG_MODE && console.log('[MapView] Territory report: highlighted', territoryIds.size, 'territories');
     }
-  }, [activeReportDiff, setReportHighlightedSet]);
+    // Threats reports: use stack comparison
+    else if (activeReport.category === 'Threats' && activeReport.metadata?.stackComparisonIcons) {
+      const threatened = computeThreatenedTerritories(
+        snapshot?.territories,
+        activeReport.metadata.stackComparisonIcons
+      );
+      setReportHighlightedSet(threatened);
+      setStackComparisonMapIcon(activeReport.metadata.stackComparisonIcons);
+      DEBUG_MODE && console.log('[MapView] Threats report: highlighted', threatened.size, 'territories');
+    }
+    // Job Views or other categories: no territory highlighting
+    else {
+      setReportHighlightedSet(new Set());
+      setStackComparisonMapIcon(null);
+    }
+  }, [activeReport, activeReportDiff, snapshot, setReportHighlightedSet, setStackComparisonMapIcon]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
   const reportMode = useMapStore((s) => s.activeReportMode);
@@ -320,6 +346,8 @@ function LocationsLayer({
 
   const { show, hide, buildTooltipContent } = useSharedTooltip();
   const reportMode = useMapStore(s => s.activeReportMode);
+  const activeReport = useMapStore(s => s.activeReport);
+  const reportHighlightedSet = useMapStore(s => s.reportHighlightedSet);
   const selectedLocation = useMapStore(s => s.selectedLocation);
 
   // Load static maps to access projected Major labels for nearest-location lookup
@@ -442,6 +470,7 @@ function LocationsLayer({
     VERBOSE_ZOOM_LOG && console.log('[Zoom][updateIconsForZoom] start', { z });
     const t0 = performance.now();
     const bucket = zoomBucket(z);
+    const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
     let setCount = 0;
     for (const [id, marker] of markerRefs.current) {
       const iconType = iconTypeById.current.get(id);
@@ -449,19 +478,28 @@ function LocationsLayer({
       if (iconType == null) continue;
       marker.setIcon(getIcon(iconType, z, owner));
       setCount++;
-      const highlighted = reportMode === 'territory_daily'
-        ? !!(changedDaily && (changedDaily as Set<string>).has(id))
-        : reportMode === 'territory_threeDay'
-        ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(id))
-        : reportMode === 'territory_weekly'
-        ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
-        : reportMode === 'territory_allTime'
-        ? !!(changedAllTime && (changedAllTime as Set<string>).has(id))
-        : false;
+      
+      // Use unified report system: check if this territory is in reportHighlightedSet
+      const highlighted = reportHighlightedSet ? reportHighlightedSet.has(id) : false;
+      
       const img = markerIconElement(marker);
       if (img) {
         img.style.transition = `opacity 120ms ease-out`;
-        img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
+        
+        if (activeReport && viewModeRules) {
+          // Apply ViewModeRules for icon opacity
+          img.style.opacity = highlighted 
+            ? `${viewModeRules.mapIcon.affectedOpacity}` 
+            : `${viewModeRules.mapIcon.unaffectedOpacity}`;
+          
+          // Apply visibility control based on zoom (icons hidden at min zoom for certain viewModes)
+          const shouldHideAtMinZoom = !viewModeRules.mapIcon.visibleAtMinZoom && z <= MAP_MARKER_MIN_ZOOM;
+          img.style.display = shouldHideAtMinZoom ? 'none' : 'block';
+        } else {
+          // No report active: full opacity, always visible
+          img.style.opacity = '1';
+          img.style.display = 'block';
+        }
       }
     }
     if (VERBOSE_ZOOM_LOG) {
@@ -513,11 +551,17 @@ function LocationsLayer({
     return excluded;
   }, [activeLayers]);
 
-  // Job view filter function
+  // Job view filter function (old system - will be deprecated)
   const jobViewFilter = useMemo(() => {
     if (!activeJobViewId) return null;
     return getJobViewFilter(activeJobViewId);
   }, [activeJobViewId]);
+
+  // Report icon filter function (new unified system)
+  const reportIconFilter = useMemo(() => {
+    if (!activeReport || !activeReport.mapIconTags || activeReport.mapIconTags.length === 0) return null;
+    return getReportMapIconFilter(activeReport);
+  }, [activeReport]);
 
   React.useEffect(() => {
     if (!map) return;
@@ -528,7 +572,15 @@ function LocationsLayer({
       const bounds = map.getBounds();
       const t0 = performance.now();
       let base = projectedTerritories;
-      if (jobViewFilter) {
+      
+      // Apply icon filtering: prioritize new report system over old jobView system
+      if (reportIconFilter) {
+        base = base.filter(({ t }) => {
+          const mi = getMapIcon(t.iconType);
+          if (!mi) return false; // exclude unknown
+          return reportIconFilter(mi.tags);
+        });
+      } else if (jobViewFilter) {
         base = base.filter(({ t }) => {
           const mi = getMapIcon(t.iconType);
           if (!mi) return false; // exclude unknown
@@ -574,7 +626,7 @@ function LocationsLayer({
       map.off('zoomend', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
-  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportMode]);
+  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportIconFilter, reportMode]);
 
   // Pre-compute all icon instances for all zoom levels when snapshot loads
   React.useEffect(() => {
