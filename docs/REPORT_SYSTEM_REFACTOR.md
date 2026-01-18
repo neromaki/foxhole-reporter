@@ -1,7 +1,7 @@
 # Report System Refactor Plan
 
-**Status:** Planning (not yet implemented)  
-**Date:** January 16, 2026  
+**Status:** Ready for Implementation  
+**Last Updated:** January 18, 2026 (all questions resolved)  
 **Scope:** Generalize report modes, merge JobViews into Reports, introduce Threats report, enable user-extensible reporting system
 
 ---
@@ -88,9 +88,12 @@ export interface ReportMetadata {
 export interface ReportSpec {
   id: string;                    // Unique identifier (e.g., 'logistics-frontline', 'threats-storm')
   name: string;                  // Display name (e.g., 'Logistics (Frontline)', 'Storm Cannons')
+  category: string;              // Primary category (e.g., 'Territory', 'Threats', 'Jobs')
+  subcategory?: string;          // Optional secondary grouping (e.g., 'Resource Mining', 'Logistics')
   mapIconTags: MapIconTag[];     // MapIcon tags to filter/show (empty = show no icons)
   viewMode: ViewMode;            // Visual presentation mode
-  defaultLayers: Partial<LayerState>;  // Layer preset applied on activation (e.g., { structures: true, casualties: false })
+  defaultLayers: LayerState;     // Complete desired layer state when report activates
+  reportContextGroup?: string;   // Group for context-aware report switching (e.g., 'territory', 'threats', 'jobs-mining')
   metadata?: ReportMetadata;     // Future: complexity hints, data sources, etc.
   source: ReportSource;          // 'builtin' (immutable) or 'user' (from localStorage)
 }
@@ -104,149 +107,199 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-daily': {
     id: 'territory-daily',
     name: '1 Day',
+    category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: false, territories: true },
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'territory',
     source: 'builtin',
   },
   'territory-three-day': {
     id: 'territory-three-day',
     name: '3 Days',
+    category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: false, territories: true },
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'territory',
     source: 'builtin',
   },
   'territory-weekly': {
     id: 'territory-weekly',
     name: '7 Days',
+    category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: false, territories: true },
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'territory',
     source: 'builtin',
   },
   'territory-all-time': {
     id: 'territory-all-time',
     name: 'All Time',
+    category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: false, territories: true },
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'territory',
     source: 'builtin',
   },
-  // Threats Report
+  // Threats Reports
   'threats-storm': {
     id: 'threats-storm',
     name: 'Storm Cannons',
+    category: 'Threats',
     mapIconTags: [MapIconTag.Storm_Cannon],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: true, territories: true },
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
     metadata: { stackComparisonIcons: [MapIcon.Storm_Cannon] },
     source: 'builtin',
   },
   'threats-rocket': {
     id: 'threats-rocket',
     name: 'Rockets',
+    category: 'Threats',
     mapIconTags: [MapIconTag.Rocket, MapIconTag.Rocket_Site],
     viewMode: 'territoryDimming',
-    defaultLayers: { structures: true, territories: true },
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
     metadata: { stackComparisonIcons: [MapIcon.Rocket] },
     source: 'builtin',
   },
-  // Converted JobViews
+  // Job Views - Resource Mining
   'job-salvage-miner': {
     id: 'job-salvage-miner',
     name: 'Salvage Miner',
+    category: 'Job Views',
+    subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Salvage, MapIconTag.Refinery],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: true, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-mining',
     source: 'builtin',
   },
   'job-component-miner': {
     id: 'job-component-miner',
     name: 'Component Miner',
+    category: 'Job Views',
+    subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Component, MapIconTag.Refinery],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: true, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-mining',
     source: 'builtin',
   },
   'job-sulfur-miner': {
     id: 'job-sulfur-miner',
     name: 'Sulfur Miner',
+    category: 'Job Views',
+    subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Sulfur, MapIconTag.Refinery],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: true, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-mining',
     source: 'builtin',
   },
   'job-coal-miner': {
     id: 'job-coal-miner',
     name: 'Coal Miner',
+    category: 'Job Views',
+    subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Coal],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: true, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-mining',
     source: 'builtin',
   },
   'job-oil-miner': {
     id: 'job-oil-miner',
     name: 'Oil Miner',
+    category: 'Job Views',
+    subcategory: 'Resource Mining',
     mapIconTags: [MapIconTag.Resource_Oil],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: true, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-mining',
     source: 'builtin',
   },
+  // Job Views - Logistics
   'job-logi-frontline': {
     id: 'job-logi-frontline',
     name: 'Logistics (Frontline)',
+    category: 'Job Views',
+    subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Storage],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-logistics',
     source: 'builtin',
   },
   'job-logi-midline': {
     id: 'job-logi-midline',
     name: 'Logistics (Midline)',
+    category: 'Job Views',
+    subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Logistics],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-logistics',
     source: 'builtin',
   },
   'job-logi-backline': {
     id: 'job-logi-backline',
     name: 'Logistics (Backline)',
+    category: 'Job Views',
+    subcategory: 'Logistics',
     mapIconTags: [MapIconTag.Logistics, MapIconTag.Production],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-logistics',
     source: 'builtin',
   },
+  // Job Views - Production
   'job-factory': {
     id: 'job-factory',
     name: 'Factory',
+    category: 'Job Views',
+    subcategory: 'Production',
     mapIconTags: [MapIconTag.Production],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-production',
     source: 'builtin',
   },
   'job-vehicles': {
     id: 'job-vehicles',
     name: 'Vehicles',
+    category: 'Job Views',
+    subcategory: 'Production',
     mapIconTags: [MapIconTag.Vehicle_Factory],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-production',
     source: 'builtin',
   },
   'job-naval': {
     id: 'job-naval',
     name: 'Naval',
+    category: 'Job Views',
+    subcategory: 'Production',
     mapIconTags: [MapIconTag.Shipyard],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-production',
     source: 'builtin',
   },
   'job-yard': {
     id: 'job-yard',
     name: 'Yard',
+    category: 'Job Views',
+    subcategory: 'Production',
     mapIconTags: [MapIconTag.Construction_Yard],
     viewMode: 'minimal',
-    defaultLayers: { structures: true, resources: false, casualties: false, territories: false },
+    defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
+    reportContextGroup: 'jobs-production',
     source: 'builtin',
   },
 };
@@ -260,11 +313,6 @@ export function getAllReports(): ReportSpec[] {
   ];
 }
 ```
-
-**Considerations:**
-- Should built-in reports be grouped by category in the registry (Territory, Threats, Jobs)? Consider a `category` field for UI organization.
-- `defaultLayers` should specify only layers that differ from defaults; how do we handle "unspecified" layers? (Suggestion: apply defaults first, then overlay `defaultLayers` to merge)
-- Should MapIconTag validation happen here (ensure tags exist), or defer to runtime?
 
 ---
 
@@ -300,12 +348,43 @@ export const useMapStore = create<MapState>((set, get) => ({
   reportLayersSnapshot: null,
   reportHighlightedSet: null,
 
-  setActiveReport: (report) => {
+  setActiveReport: (report, skipConfirm = false) => {
     const state = get();
     if (report) {
-      // Activating a report: snapshot current layers, apply report defaults
-      const snapshot = { ...state.activeLayers };
-      const nextLayers = mergeLayerStates(snapshot, report.defaultLayers);
+      const currentReport = state.activeReport;
+      const isContextSwitch =
+        currentReport &&
+        report.reportContextGroup &&
+        currentReport.reportContextGroup &&
+        currentReport.reportContextGroup !== report.reportContextGroup;
+
+      // If switching between different context groups and layers were modified, show confirmation
+      if (isContextSwitch && state.reportLayersSnapshot && !skipConfirm) {
+        // Show confirmation dialog (implementation in component layer)
+        // User can confirm to proceed, which will call setActiveReport(report, true)
+        state.showContextSwitchConfirmation(report);
+        return;
+      }
+
+      // For same-context switching: only remove previous report's defaultLayers, apply new ones
+      const isSameContext =
+        currentReport &&
+        report.reportContextGroup &&
+        currentReport.reportContextGroup === report.reportContextGroup;
+
+      let snapshot = state.reportLayersSnapshot;
+      let nextLayers: LayerState;
+
+      if (isSameContext && snapshot) {
+        // Same context: remove old report's defaults, apply new report's defaults
+        nextLayers = removeLayerDefaults(snapshot, currentReport!.defaultLayers);
+        nextLayers = applyLayerDefaults(nextLayers, report.defaultLayers);
+      } else {
+        // Different context or first activation: full snapshot and apply
+        snapshot = { ...state.activeLayers };
+        nextLayers = report.defaultLayers;
+      }
+
       set({
         activeReport: report,
         reportLayersSnapshot: snapshot,
@@ -332,10 +411,21 @@ export const useMapStore = create<MapState>((set, get) => ({
   // ... existing methods ...
 }));
 
-// Helper to merge layer states (report defaults overlay on snapshot)
-function mergeLayerStates(base: LayerState, overrides?: Partial<LayerState>): LayerState {
-  if (!overrides) return base;
-  return { ...base, ...overrides };
+// Helper to apply report defaults completely (replaces all layers with report's desired state)
+function applyLayerDefaults(base: LayerState, reportDefaults: LayerState): LayerState {
+  return { ...reportDefaults };
+}
+
+// Helper to remove a report's defaults from current state (for context-aware switching)
+function removeLayerDefaults(current: LayerState, reportDefaults: LayerState): LayerState {
+  // Remove only the layers that the report had enabled; preserve everything else
+  const result = { ...current };
+  for (const [key, wasEnabled] of Object.entries(reportDefaults)) {
+    if (wasEnabled) {
+      result[key as keyof LayerState] = false;
+    }
+  }
+  return result;
 }
 ```
 
@@ -380,10 +470,6 @@ export interface ViewModeRules {
     showMajor: boolean;
     showMinor: boolean;
   };
-  // Casualty overlay visibility (independent of layer toggle)
-  casualtyOverlay: {
-    hideWhenActive: boolean;  // Hide overlay when report active?
-  };
 }
 
 export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
@@ -410,9 +496,6 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
           showMajor: true,
           showMinor: false,
         },
-        casualtyOverlay: {
-          hideWhenActive: false,  // Casualty layer toggle controls visibility
-        },
       };
 
     case 'minimal':
@@ -436,9 +519,6 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
         labels: {
           showMajor: true,
           showMinor: false,
-        },
-        casualtyOverlay: {
-          hideWhenActive: false,
         },
       };
 
@@ -464,9 +544,6 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
         labels: {
           showMajor: true,
           showMinor: true,
-        },
-        casualtyOverlay: {
-          hideWhenActive: false,
         },
       };
   }
@@ -641,18 +718,15 @@ function LocationsLayer({
 
 **File:** `src/components/HexInfo.tsx`
 
-Casualty overlay visibility should be driven by the Casualty layer toggle, **not** by active report status:
+Casualty overlay visibility is driven solely by the Casualties layer toggle, like any other layer:
 
 ```typescript
-// Current code (to verify/fix):
-// const casualtyOverlay = activeLayers.casualties && casualtyRates ? <HexCasualties ... /> : null;
-
-// Ensure it's:
+// Casualty overlay rendering:
 const casualtyOverlay = activeLayers.casualties && casualtyRates ? <HexCasualties ... /> : null;
-// (No special handling for activeReport)
+// No special handling for activeReport needed
 ```
 
-If the Casualty overlay is currently hidden in report mode, remove that logic and rely solely on the layer toggle.
+The `activeLayers.casualties` value will be controlled by each report's `defaultLayers`, so casualties will be shown/hidden as configured per report. Verify and remove any existing special-case logic that hides casualties when a report is active.
 
 ---
 
@@ -840,27 +914,43 @@ export default function ReportModes() {
   const setActiveReport = useMapStore(s => s.setActiveReport);
   const reports = getAllReports();
 
-  // Group reports by category (if added to ReportSpec)
-  const grouped = groupBy(reports, r => r.category || 'Other');
+  // Group reports by category and subcategory
+  const grouped = reports.reduce((acc, report) => {
+    const category = report.category || 'Other';
+    if (!acc[category]) acc[category] = {};
+    const subcategory = report.subcategory || 'Default';
+    if (!acc[category][subcategory]) acc[category][subcategory] = [];
+    acc[category][subcategory].push(report);
+    return acc;
+  }, {} as Record<string, Record<string, ReportSpec[]>>);
 
   return (
     <div className="space-y-4">
-      {Object.entries(grouped).map(([category, categoryReports]) => (
+      {Object.entries(grouped).map(([category, subcategories]) => (
         <div key={category}>
-          <h3 className="text-xs font-semibold uppercase">{category}</h3>
-          <div className="space-y-2">
-            {categoryReports.map(report => (
-              <button
-                key={report.id}
-                onClick={() => setActiveReport(activeReport?.id === report.id ? null : report)}
-                className={`w-full px-3 py-2 rounded text-sm border transition ${
-                  activeReport?.id === report.id
-                    ? 'bg-indigo-700 border-indigo-600'
-                    : 'bg-gray-900 border-gray-800 hover:border-gray-700'
-                }`}
-              >
-                {report.name}
-              </button>
+          <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">{category}</h3>
+          <div className="space-y-3">
+            {Object.entries(subcategories).map(([subcategory, reports]) => (
+              <div key={`${category}-${subcategory}`}>
+                {subcategory !== 'Default' && (
+                  <h4 className="text-xs font-medium text-gray-500 ml-2 mb-1">{subcategory}</h4>
+                )}
+                <div className="space-y-1">
+                  {reports.map(report => (
+                    <button
+                      key={report.id}
+                      onClick={() => setActiveReport(activeReport?.id === report.id ? null : report)}
+                      className={`w-full px-3 py-2 rounded text-sm border transition ${
+                        activeReport?.id === report.id
+                          ? 'bg-indigo-700 border-indigo-600'
+                          : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                      }`}
+                    >
+                      {report.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -897,131 +987,66 @@ After migration, remove:
 
 ---
 
-## Further Considerations & Open Questions
+## Decisions & Resolutions
 
-### 1. **Casualty Layer Independence**
+### ✅ Resolved Questions
 
-**Decision:** Casualty overlay visibility is driven **solely** by the Casualties layer toggle in `activeLayers`, NOT by report active status.
+1. **Report Categories**: Added `category` and `subcategory` fields to `ReportSpec` for two-level grouping (scalable for future expansion)
 
-**Implementation:** Verify that HexInfo/HexCasualties respects `activeLayers.casualties` and has no special handling for `activeReport`. If casualties are currently hidden in report mode, refactor to remove that logic.
+2. **Default Layer Merging**: `defaultLayers` represents complete desired state; unspecified layers default to `false`. Ensures predictable behavior for user-created reports.
 
-**Question:** Should we keep `hideWhenActive` in `ViewModeRules`, or remove it since it's not needed? (Recommendation: Remove for simplicity, or deprecate as unused field.)
+3. **MapIconTag Validation**: Hybrid approach (Option C) - validate at save time with user-friendly errors, plus runtime safety checks for corrupted localStorage
 
----
+4. **ViewMode Restrictions**: Strict whitelist enforced: `'territoryDimming' | 'minimal' | 'none'`. New view modes require code updates.
 
-### 2. **Complex Reports (Future)**
+5. **Report Switching Behavior**: Context-aware switching with `reportContextGroup` field
+   - **Same context**: Seamlessly switch between reports, preserving user's layer toggles
+   - **Different context**: Restore original snapshot with confirmation dialog if layers were modified
+   - Prevents unexpected layer state changes and confusion
 
-**Design:** When supporting multi-source highlights (e.g., "Threat zones UNION casualties"), expand `metadata` field and add `reportHighlightedSet` sources:
+6. **Casualty Layer**: Treated like any other layer - controlled entirely by `defaultLayers`, no special handling
+   - Removed `hideWhenActive` from `ViewModeRules`
+   - Casualties visibility follows layer toggle and report settings
 
-```typescript
-// Future: multiple highlight sources
-interface ReportMetadata {
-  sources?: Array<{
-    type: 'diff' | 'threat-data' | 'casualties' | 'custom';
-    params?: Record<string, any>;
-  }>;
-  union?: boolean;  // union sources, or intersect?
-}
+7. **Complex Reports (Future)**: Single `viewMode` per report; multiple sources contribute to highlight sets only (union/intersection). ViewMode is not combined.
 
-// In store/queries:
-const reportHighlightedSets = useMemo(() => {
-  if (!activeReport?.metadata?.sources) return null;
-  const sets = activeReport.metadata.sources.map(source => {
-    if (source.type === 'diff') return diffSet;
-    if (source.type === 'threat-data') return threatSet;
-    // ...
-  });
-  return union ? new Set([...set1, ...set2]) : intersection(set1, set2);
-}, [activeReport, diffSet, threatSet, ...]);
-```
-
-**Question:** How should we handle conflicts when multiple sources suggest different highlight logic (e.g., one source wants to dim all territories, another wants to dim none)? Recommendation: Define `viewMode` per report, and union/intersection highlights, but keep single `viewMode`.
+8. **StackComparison Multi-Icon**: VictoryBar already handles multiple icons correctly (vertical stack). No changes needed.
 
 ---
 
-### 3. **Layer Snapshot/Restore Behavior**
+## Implementation Notes for Key Features
 
-**Decision:** When activating a report:
-1. Snapshot user's current `activeLayers`
-2. Apply `report.defaultLayers` on top
-3. User can manually toggle layers on/off during report
-4. When deactivating, restore snapshot
+### Context-Aware Report Switching
 
-**Open Question:** What happens if user activates one report, then another? 
-- **Option A:** Restore snapshot between, then snapshot again (layers reset to first activation point)
-- **Option B:** Chain snapshots (each report remembers what report came before)
-- **Recommendation:** Option A for simplicity; document that switching reports resets to initial state.
+When switching between reports:
 
----
+1. **Same context group** (e.g., territory_daily → territory_weekly):
+   - Remove previous report's `defaultLayers` from active state
+   - Apply new report's `defaultLayers`
+   - Preserve any manual toggles user made within the context
 
-### 4. **User Report Validation**
+2. **Different context groups** (e.g., territory → jobs-mining):
+   - Restore original snapshot that was saved before entering first report
+   - If user made changes, show confirmation dialog:
+     - "Switching to [New Report] will reset your layer changes. Continue?"
+     - Allow user to cancel or proceed
 
-**Decision:** For now, allow arbitrary `mapIconTags` in user reports, with runtime fallback to "tag not found".
+3. **First activation**:
+   - Snapshot user's current `activeLayers`
+   - Apply report's `defaultLayers` completely
 
-**Future:** Add `validateUserReport()` function that:
-- Ensures all tags exist in `MapIconTag` enum
-- Ensures required fields are present (id, name, viewMode)
-- Returns validation errors for UI feedback
+### User Report Validation
 
-**Question:** Should we restrict viewMode to a whitelist, or allow any string? Recommendation: Whitelist only `'territoryDimming' | 'minimal' | 'none'` for now.
+When saving user reports:
+- Validate `mapIconTags` exist in enum (with graceful fallback)
+- Validate `viewMode` is in whitelist
+- Ensure required fields present (id, name, category, viewMode, defaultLayers)
+- Return user-friendly validation errors via UI
 
----
-
-### 5. **Report Grouping & Organization**
-
-**Question:** Should `ReportSpec` include a `category` or `group` field for organizing in UI?
-
-**Recommendation:** Add optional `category?: string` to group Territory, Threats, and Jobs separately in ReportModes panel:
-```
-Territory Reports
-  ├ 1 Day
-  ├ 3 Days
-  ├ 7 Days
-  └ All Time
-Threats
-  ├ Storm Cannons
-  └ Rockets
-Job Views
-  ├ Resource Mining (group header, non-clickable)
-  │  ├ Salvage Miner
-  │  ├ Component Miner
-  │  └ ...
-  └ Logistics (group header)
-  │  ├ Logistics (Frontline)
-  │  └ ...
-```
-
----
-
-### 6. **Backwards Compatibility**
-
-**Action:** During transition, keep old `activeReportMode` in store (as deprecated/internal) and map new `activeReport` to it for components still using old API. Remove after full migration.
-
----
-
-### 7. **Threats Report Configuration**
-
-**Current Plan:** Two separate built-in reports (`threats-storm`, `threats-rocket`), each with a single icon type.
-
-**Future:** Allow user to create custom Threats report combining multiple icon types:
-```typescript
-// User creates: "Strategic Weapons" = Storm + Rocket + Mortars
-{
-  id: 'threats-strategic',
-  name: 'Strategic Weapons',
-  mapIconTags: [MapIconTag.Storm_Cannon, MapIconTag.Rocket, MapIconTag.Mortar_House],
-  viewMode: 'territoryDimming',
-  defaultLayers: { structures: true, territories: true },
-  metadata: {
-    stackComparisonIcons: [MapIcon.Storm_Cannon, MapIcon.Rocket, MapIcon.Mortar_House],
-  },
-  source: 'user',
-}
-```
-
-**Question:** When `stackComparisonIcons` has multiple icons, how does `StackComparison` render them? (Check VictoryBar.tsx for current behavior with multiple icons.)
-
----
+At runtime:
+- Silently filter invalid tags
+- Fallback to 'none' viewMode if invalid
+- Log warnings to console for debugging
 
 ## Implementation Order & Phases Summary
 
