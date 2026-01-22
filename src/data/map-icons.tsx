@@ -39,6 +39,11 @@ enum MapIcon {
     Rocket_Site_With_Rocket = 72,
     Rocket_Target = 70,
     Rocket_Ground_Zero = 71,
+    Aircraft_Depot = 88,
+    Aircraft_Factory = 89,
+    Aircraft_Radar = 90,
+    Aircraft_Runway_1 = 91,
+    Aircraft_Runway_2 = 92,
     World_Map_Tent = 24,
     Travel_Tent = 25,
     Training_Area = 26
@@ -123,10 +128,19 @@ enum MapIconTag {
     Observation_Tower = "Observation_Tower",
     // Rockets
     Rocket = "Rocket",
+    Rocket_Structure = "Rocket_Structure",
     Rocket_Site = "Rocket_Site",
     Rocket_Site_With_Rocket = "Rocket_Site_With_Rocket",
     Rocket_Target = "Rocket_Target",
     Rocket_Ground_Zero = "Rocket_Ground_Zero",
+    // Aircraft
+    Aircraft = "Aircraft",
+    Aircraft_Depot = "Aircraft_Depot",
+    Aircraft_Factory = "Aircraft_Factory",
+    Aircraft_Radar = "Aircraft_Radar",
+    Aircraft_Runway = "Aircraft_Runway",
+    Aircraft_Runway_1 = "Aircraft_Runway_1",
+    Aircraft_Runway_2 = "Aircraft_Runway_2",
     // Home Island
     World_Map_Tent = "World_Map_Tent",
     Travel_Tent = "Travel_Tent",
@@ -314,6 +328,31 @@ const mapTags: Array<MapTagStruct> = [
         tag: MapIconTag.Observation_Tower,
         displayName: "Observation Tower",
         mapIcon: MapIcon.Observation_Tower
+    },
+    {
+        tag: MapIconTag.Aircraft_Depot,
+        displayName: "Aircraft Depot",
+        mapIcon: MapIcon.Aircraft_Depot
+    },
+    {
+        tag: MapIconTag.Aircraft_Factory,
+        displayName: "Aircraft Factory",
+        mapIcon: MapIcon.Aircraft_Factory
+    },
+    {
+        tag: MapIconTag.Aircraft_Radar,
+        displayName: "Aircraft Radar",
+        mapIcon: MapIcon.Aircraft_Radar
+    },
+    {
+        tag: MapIconTag.Aircraft_Runway_1,
+        displayName: "Aircraft Runway 1",
+        mapIcon: MapIcon.Aircraft_Runway_1
+    },
+    {
+        tag: MapIconTag.Aircraft_Runway_2,
+        displayName: "Aircraft Runway 2",
+        mapIcon: MapIcon.Aircraft_Runway_2
     }
 ];
 
@@ -326,6 +365,7 @@ const MapTagHierarchy = {
     Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House],
     Utility: [MapIconTag.Intel_Center, MapIconTag.Weather_Station, MapIconTag.Tech_Center, MapIconTag.Observation_Tower],
     Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero],
+    Aircraft: [MapIconTag.Aircraft_Depot, MapIconTag.Aircraft_Factory, MapIconTag.Aircraft_Radar, MapIconTag.Aircraft_Runway_1, MapIconTag.Aircraft_Runway_2]
 }
 
 const mapIcons: Array<MapIconStruct> = [
@@ -819,6 +859,7 @@ const mapIcons: Array<MapIconStruct> = [
         "wikiPage": "Rocket_Site",
         "tags": [
             MapIconTag.Rocket,
+            MapIconTag.Rocket_Structure,
             MapIconTag.Rocket_Site
         ]
     },
@@ -830,6 +871,7 @@ const mapIcons: Array<MapIconStruct> = [
         "wikiPage": "Rocket_Site",
         "tags": [
             MapIconTag.Rocket,
+            MapIconTag.Rocket_Structure,
             MapIconTag.Rocket_Site_With_Rocket
         ]
     },
@@ -853,6 +895,64 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Rocket,
             MapIconTag.Rocket_Ground_Zero
+        ]
+    },
+
+    {
+        "id": MapIcon.Aircraft_Depot,
+        "apiName": "Aircraft Depot",
+        "iconFileName": "AircraftDepot",
+        "displayName": "Aircraft Depot",
+        "wikiPage": "Aircraft_Depot",
+        "tags": [
+            MapIconTag.Aircraft,
+            MapIconTag.Aircraft_Depot
+        ]
+    },
+    {
+        "id": MapIcon.Aircraft_Factory,
+        "apiName": "Aircraft Factory",
+        "iconFileName": "AircraftFactory",
+        "displayName": "Aircraft Factory",
+        "wikiPage": "Aircraft_Factory",
+        "tags": [
+            MapIconTag.Aircraft,
+            MapIconTag.Aircraft_Factory
+        ]
+    },
+    {
+        "id": MapIcon.Aircraft_Radar,
+        "apiName": "Aircraft Radar",
+        "iconFileName": "AircraftRadar",
+        "displayName": "Aircraft Radar",
+        "wikiPage": "Aircraft_Radar",
+        "tags": [
+            MapIconTag.Aircraft,
+            MapIconTag.Aircraft_Radar
+        ]
+    },
+    {
+        "id": MapIcon.Aircraft_Runway_1,
+        "apiName": "Aircraft Runway T1",
+        "iconFileName": "AircraftRunway1",
+        "displayName": "Aircraft Runway 1",
+        "wikiPage": "Aircraft_Runway",
+        "tags": [
+            MapIconTag.Aircraft,
+            MapIconTag.Aircraft_Runway_1,
+            MapIconTag.Aircraft_Runway
+        ]
+    },
+    {
+        "id": MapIcon.Aircraft_Runway_2,
+        "apiName": "Aircraft Runway T2",
+        "iconFileName": "AircraftRunway2",
+        "displayName": "Aircraft Runway 2",
+        "wikiPage": "Aircraft_Runway",
+        "tags": [
+            MapIconTag.Aircraft,
+            MapIconTag.Aircraft_Runway_2,
+            MapIconTag.Aircraft_Runway
         ]
     },
 
