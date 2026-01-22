@@ -5,6 +5,7 @@
 
 import type { LocationTile } from '../types/war';
 import type { MapIcon } from '../data/map-icons';
+import { getTown } from '../data/towns';
 
 /**
  * Computes which territories are "threatened" based on stack comparison
@@ -15,10 +16,28 @@ import type { MapIcon } from '../data/map-icons';
  * @param stackComparisonIcons - Icon types to compare (e.g., [MapIcon.Storm_Cannon])
  * @returns Set of territory IDs that should be highlighted
  */
-export function computeThreatenedTerritories(
+export function MapIconTerritories(
   territories: LocationTile[] | undefined,
+  majorLabelsByMap: Map<string, { lat: number; lng: number; text: string }[]>,
   stackComparisonIcons: MapIcon[]
 ): Set<string> {
+
+  function nearestMajorLabel(region: string, lat: number, lng: number): string | null {
+    const arr = majorLabelsByMap.get(region);
+    if (!arr || arr.length === 0) return null;
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < arr.length; i++) {
+      const lab = arr[i];
+      const dx = lab.lat - lat;
+      const dy = lab.lng - lng;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    }
+    return bestIdx >= 0 ? arr[bestIdx].text : null;
+  }
+  
+  
   const threatened = new Set<string>();
   
   if (!territories || !stackComparisonIcons || stackComparisonIcons.length === 0) {
@@ -43,22 +62,19 @@ export function computeThreatenedTerritories(
     for (const t of regionTerritories) {
       // Check if this territory has one of the comparison icons
       if (stackComparisonIcons.includes(t.iconType as MapIcon)) {
+        // Find the nearest major label (for territory ID)
+        const nearestLabel = nearestMajorLabel(region, t.x, t.y);
+        // Get the major town by that label
+        const territory = nearestLabel ? getTown(nearestLabel, true) : null;
+        // If we haven't already added this territory for highlighting, do so
+        if(territory && territory.id && !threatened.has(territory.id)) {
+          threatened.add(territory.id);
+        }
+
         if (t.owner === 'Warden') {
           wardenCount++;
         } else if (t.owner === 'Colonial') {
           colonialCount++;
-        }
-      }
-    }
-
-    // If there's an imbalance (one team has more), highlight all territories with those icons
-    if (wardenCount > 0 || colonialCount > 0) {
-      if (wardenCount !== colonialCount) {
-        // Highlight all territories in this region that have the comparison icons
-        for (const t of regionTerritories) {
-          if (stackComparisonIcons.includes(t.iconType as MapIcon)) {
-            threatened.add(t.id);
-          }
         }
       }
     }

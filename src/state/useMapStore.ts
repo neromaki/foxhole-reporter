@@ -33,6 +33,11 @@ export type TerritoryHistory = {
   currentOwner: LocationTile['owner'];
   events: TerritoryHistoryEntry[];
 };
+export type MapMajorLabel = {
+    lat: number;
+    lng: number;
+    text: string;
+};
 
 interface MapState {
   activeLayers: LayerState;
@@ -52,6 +57,7 @@ interface MapState {
   pendingReportForConfirmation: ReportSpec | null;
   setActiveReport: (report: ReportSpec | null, skipConfirm?: boolean) => void;
   setReportHighlightedSet: (set: Set<string> | null) => void;
+  setPendingReportForConfirmation: (report: ReportSpec | null) => void;
   disabledHexes: Set<string>;
   setDisabledHexes: (hexes: Set<string>) => void;
   realtimeStatus: RealtimeConnectionStatus;
@@ -69,7 +75,9 @@ interface MapState {
   setVictoryBarDrawerState: (open: boolean) => void;
   stackComparisonMapIcon: Array<MapIcon> | null;
   setStackComparisonMapIcon: (icon: Array<MapIcon> | null) => void;
-}
+  majorLabelsByMap: Map<string, MapMajorLabel[]>;
+  setMajorLabelsByMap: (map: Map<string, MapMajorLabel[]>) => void;
+};
 
 
 const defaultLayers: LayerState = getDefaultLayerState();
@@ -236,6 +244,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     }
   },
   setReportHighlightedSet: (set_) => set({ reportHighlightedSet: set_ }),
+  setPendingReportForConfirmation: (report) => set({ pendingReportForConfirmation: report }),
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
   panelState: { layer: 'off', report: 'off', info: 'off' },
@@ -274,4 +283,6 @@ export const useMapStore = create<MapState>((set, get) => ({
   setStackComparisonMapIcon: (icon) => {
     set({ stackComparisonMapIcon: icon });
   },
+  majorLabelsByMap: new Map<string, MapMajorLabel[]>(),
+  setMajorLabelsByMap: (map) => set({ majorLabelsByMap: map }),
 }));

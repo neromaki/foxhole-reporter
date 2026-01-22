@@ -172,7 +172,7 @@ export function OwnershipTimelineGraph({ data }: OwnershipTimelineGraphProps) {
   console.log("Bar count to render:", rangeKeys.length, "across", teamData.length, "teams");
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={150}>
       <BarChart data={teamData} layout="vertical">
         <XAxis
           type="number"
@@ -208,6 +208,7 @@ export function OwnershipTimelineGraph({ data }: OwnershipTimelineGraphProps) {
             shape={CustomFillRectangle}
             activeBar={ActiveRectangle}
             isAnimationActive={false}
+            barSize={30}
           />
         ))}
       </BarChart>

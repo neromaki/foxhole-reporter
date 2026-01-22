@@ -23,7 +23,7 @@ import { getJobViewFilter } from '../state/jobViews';
 import { getReportMapIconFilter } from '../state/reports';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
 import { getViewModeRules } from '../lib/viewModes';
-import { computeThreatenedTerritories } from '../lib/threatsHighlighting';
+import { MapIconTerritories } from '../lib/mapIconTerritories';
 import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
@@ -56,6 +56,9 @@ export default function MapView() {
   const activeReport = useMapStore((s) => s.activeReport);
   const setReportHighlightedSet = useMapStore((s) => s.setReportHighlightedSet);
   const setStackComparisonMapIcon = useMapStore((s) => s.setStackComparisonMapIcon);
+  const setVictoryBarDrawerState = useMapStore(s => s.setVictoryBarDrawerState);
+
+  const majorLabelsByMap = useMapStore(s => s.majorLabelsByMap);
   
   // Populate reportHighlightedSet based on report category (Territory or Threats)
   useEffect(() => {
@@ -75,23 +78,26 @@ export default function MapView() {
     }
     // Threats reports: use stack comparison
     else if (activeReport.category === 'Threats' && activeReport.metadata?.stackComparisonIcons) {
-      const threatened = computeThreatenedTerritories(
+      const threatening = MapIconTerritories(
         snapshot?.territories,
+        majorLabelsByMap,
         activeReport.metadata.stackComparisonIcons
       );
-      setReportHighlightedSet(threatened);
+      setReportHighlightedSet(threatening);
       setStackComparisonMapIcon(activeReport.metadata.stackComparisonIcons);
-      DEBUG_MODE && console.log('[MapView] Threats report: highlighted', threatened.size, 'territories');
+      setVictoryBarDrawerState(true);
+      DEBUG_MODE && console.log('[MapView] Threats report: highlighted', threatening.size, 'territories');
     }
     // Job Views or other categories: no territory highlighting
     else {
       setReportHighlightedSet(new Set());
       setStackComparisonMapIcon(null);
+      setVictoryBarDrawerState(false);
     }
   }, [activeReport, activeReportDiff, snapshot, setReportHighlightedSet, setStackComparisonMapIcon]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
-  const reportMode = useMapStore((s) => s.activeReportMode);
+  const reportMode = useMapStore((s) => s.activeReport);
   const activeJobViewId = useMapStore(s => s.activeJobViewId);
 
   const { data: recentSnapshots } = useSnapshotsSince(24, { enabled: DATA_SOURCE === 'supabase' });
@@ -109,8 +115,8 @@ export default function MapView() {
   const effectiveLayers = useMemo(() => {
     if (!reportMode) return activeLayers;
     // In report mode: hide structures (icons), only show territories (SVG)
-    return { ...activeLayers, structures: false, territories: true } as typeof activeLayers;
-  }, [activeLayers, reportMode]);
+    return { ...activeLayers, ...(activeReport && activeReport.defaultLayers), structures: true } as typeof activeLayers;
+  }, [activeLayers, reportMode, activeReport]);
 
   // Track previous WarAPI reports for rate computation in live mode
   const lastWarApiRef = useRef<{ reports: WarReport[]; fetchedAt: number } | null>(null);
@@ -349,11 +355,13 @@ function LocationsLayer({
   const activeReport = useMapStore(s => s.activeReport);
   const reportHighlightedSet = useMapStore(s => s.reportHighlightedSet);
   const selectedLocation = useMapStore(s => s.selectedLocation);
+  const majorLabelsByMap = useMapStore(s => s.majorLabelsByMap);
+  const setMajorLabelsByMap = useMapStore(s => s.setMajorLabelsByMap);
 
   // Load static maps to access projected Major labels for nearest-location lookup
   const { data: staticMaps } = useStaticMaps(true);
 
-  const majorLabelsByMap = useMemo(() => {
+  useEffect(() => {
     const m = new Map<string, Array<{ lat: number; lng: number; text: string }>>();
     (staticMaps ?? []).forEach(entry => {
       const arr: Array<{ lat: number; lng: number; text: string }> = [];
@@ -368,7 +376,7 @@ function LocationsLayer({
       });
       m.set(entry.mapName, arr);
     });
-    return m;
+    setMajorLabelsByMap(m);
   }, [staticMaps]);
 
   function nearestMajorLabel(region: string, lat: number, lng: number): string | null {

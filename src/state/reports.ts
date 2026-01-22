@@ -77,11 +77,11 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     id: 'threats-storm',
     name: 'Storm Cannons',
     category: 'Threats',
-    mapIconTags: [MapIconTag.Storm_Cannon],
+    mapIconTags: [MapIconTag.Coastal_Gun],
     viewMode: 'territoryDimming',
     defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'threats',
-    metadata: { stackComparisonIcons: [MapIcon.Storm_Cannon] },
+    metadata: { stackComparisonIcons: [MapIcon.Coastal_Gun] },
     source: 'builtin',
   },
   'threats-rocket': {

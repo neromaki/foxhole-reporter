@@ -149,7 +149,7 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
             </div>
           )}
           { stackComparisonMapIcon && stackComparisonMapIcon.map((mapIcon) => (
-          <div className="mt-3 mb-2">
+          <div key={mapIcon} className="mt-3 mb-2">
               {StackComparison(mapIcon ? mapIcon : MapIcon.Town_Base_1)}
             </div>
           )) }
@@ -248,12 +248,13 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
   }
 
   function Comparison({ team, sprite, x, y, count, iconCount, bw, bh, bgWidth, bgHeight }: { team: TeamStruct; sprite: { spritePath: string } | null; x: number; y: number; count: number; iconCount: number; bw: number; bh: number; bgWidth: number; bgHeight: number }): JSX.Element {
+    const keyBase = `${team.name}-${count}-${iconCount}`;
     return (
         <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse' : ''} items-start flex-1 ${team.name === Teams.Warden ? 'ml-4' : 'mr-4'}`}>
           <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse' : ''} justify-start flex-wrap items-start`}>
           { sprite && (
             Array.from({ length: iconCount }).map((_, i) => (
-              <div key={i} className={``} style={{ 
+              <div key={`${keyBase}-${Math.random()}`} className={``} style={{ 
                     width: bw, 
                     height: bh, 
                     backgroundImage: `url(${new URL(sprite.spritePath, import.meta.url).toString()})`, 

@@ -121,6 +121,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
 
   // Use reportHighlightedSet for territory highlighting (unified report system)
   const changedSet = reportHighlightedSet;
+  //console.log("[TerritorySubregion] changedSet:", changedSet);
 
   const overlays = useMemo(() => {
     const processed: RegionOverlay[] = [];

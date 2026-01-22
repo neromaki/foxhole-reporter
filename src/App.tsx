@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MapView from './components/MapView';
 import LayerTogglePanel from './components/LayerTogglePanel';
-import JobViewPanel from './components/JobViewPanel';
 import ReportModes from './components/ReportModes';
 import VictoryBar, { VictoryCounts } from './components/VictoryBar';
 import { useLatestSnapshot, useWarState } from './lib/queries';
@@ -12,6 +11,7 @@ import { useMapStore, PanelType } from './state/useMapStore';
 import { BottomSheet } from './components/BottomSheet';
 import InfoSheet from './components/InfoSheet';
 import { ContextPopover } from './components/ContextPopover';
+import { ContextSwitchConfirmationDialog } from './components/ContextSwitchConfirmationDialog';
 import { getTeams } from './data/teams';
 import { MapIconTag, checkMapIconHasTag } from './data/map-icons';
 import { getIconLabel } from './lib/icons';
@@ -80,6 +80,9 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
+      {/* Context switch confirmation dialog */}
+      <ContextSwitchConfirmationDialog />
+      
       <aside>
 
         <div className="">
@@ -90,7 +93,7 @@ export default function App() {
         </div>
 
         
-        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-center z-[430] pointer-events-none`}>
+        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-center z-[430] pointer-events-none  ${panelsOpen ? 'md:translate-x-[12rem]' : ''}`}>
           <VictoryBar
             counts={victoryCounts}
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
@@ -108,7 +111,7 @@ export default function App() {
           
         </div>
 
-        <div className={`panel-buttons fixed top-24 right-2 flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:top-4 md:bottom-auto ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
+        <div className={`panel-buttons fixed top-24 right-2 flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:bottom-4 md:top-auto ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
           <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} onClick={() => {
             //if (reportModeActive) return;
             const active = panelState['layer'] !== 'off';
@@ -178,8 +181,6 @@ export default function App() {
               })()}>
             <InfoSheet />
           </BottomSheet>
-        
-
       </aside>
 
       <main className="flex-1">
@@ -198,12 +199,12 @@ function PanelButton({label, targetPanel, icon, disabled, onClick}: {label: stri
   return (
   <div className={`flex justify-stretch border-2 ${active ? 'border-gray-100' : 'border-transparent'} rounded-2xl p-1 pointer-events-auto`}>
     <button
-      className={`flex flex-1 flex-col p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800 md:bg-gray-700'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`flex flex-1 flex-col p-2 md:p-3 justify-center items-center text-sm rounded-xl ${active ? 'bg-gray-100' : 'bg-gray-800 md:bg-gray-700'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={() => !disabled && onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
       disabled={disabled}
     >
-      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-7 h-7 ${active ? 'invert' : ''}`} />
-      <span className={`mt-1 ${active ? 'invert' : ''}`}>{label}</span>
+      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-6 h-6 ${active ? 'invert' : ''}`} />
+      <span className={`text-xs mt-1 ${active ? 'invert' : ''}`}>{label}</span>
     </button>
   </div>
   );

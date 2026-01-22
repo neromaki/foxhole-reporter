@@ -1825,4 +1825,8 @@ export function getTownByApiName(name: string): TownStruct | undefined {
   return towns.find((town) => town.apiName === name);
 }
 
+export function getTown(id: string, major?: boolean): TownStruct | undefined {
+  return towns.find((town) => (town.id === id || town.apiName === id || town.displayName === id) && (major === undefined || town.major === major));
+}
+
 export default towns;
