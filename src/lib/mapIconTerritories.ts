@@ -6,6 +6,7 @@
 import type { LocationTile } from '../types/war';
 import type { MapIcon } from '../data/map-icons';
 import { getTown } from '../data/towns';
+import { projectRegionPoint } from './projection';
 
 /**
  * Computes which territories are "threatened" based on stack comparison
@@ -62,8 +63,13 @@ export function MapIconTerritories(
     for (const t of regionTerritories) {
       // Check if this territory has one of the comparison icons
       if (stackComparisonIcons.includes(t.iconType as MapIcon)) {
+        // Project territory coordinates to match majorLabelsByMap coordinate system
+        const projected = projectRegionPoint(region, t.x, t.y);
+        if (!projected) continue; // Skip if projection fails
+        
+        const [lat, lng] = projected;
         // Find the nearest major label (for territory ID)
-        const nearestLabel = nearestMajorLabel(region, t.x, t.y);
+        const nearestLabel = nearestMajorLabel(region, lat, lng);
         // Get the major town by that label
         const territory = nearestLabel ? getTown(nearestLabel, true) : null;
         // If we haven't already added this territory for highlighting, do so

@@ -20,8 +20,7 @@ export default function HexInfo({
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
   const disabledHexes = useMapStore((s) => s.disabledHexes);
-  const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
-  const reportMode = useMapStore((s) => s.activeReportMode);
+  const reportModeActive = useMapStore((s) => s.activeReport !== null);
 
   React.useEffect(() => {
     const handler = () => setZoom(map.getZoom());

@@ -80,9 +80,6 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
   const reportHighlightedSet = useMapStore((s) => s.reportHighlightedSet);
   const reportModeActive = activeReport !== null;
   
-  // Keep old reportMode for backward compatibility during transition
-  const reportMode = useMapStore((s) => s.activeReportMode);
-  
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const setPanelState = useMapStore((s) => s.setPanelState);
   const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
@@ -104,13 +101,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
 
   useEffect(() => {
     return;
-    console.log(`[TerritorySubregion] reportMode changed: now ${reportMode ?? 'null'}`);
-    if (!reportMode) {
-      setHoveredId(null);
-      console.log('[TerritorySubregion] Exiting report mode - hiding tooltip');
-      hide('hover', 0);
-    }
-  }, [reportMode, hide]);
+  }, [activeReport, hide]);
 
   // Build territory maps
   const territoryById = useMemo(() => {
@@ -168,7 +159,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
     });
 
     return processed;
-  }, [territoryById, changedSet, reportMode]);
+  }, [territoryById, changedSet, activeReport]);
 
   // Update disabled hexes in store
   useEffect(() => {
@@ -228,7 +219,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
         action: 'hover',
         source: 'territory',
         location: locationData,
-        reportMode: reportMode,
+        reportMode: activeReport?.id ?? null,
       });
       show('hover', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0 });
     }
@@ -268,7 +259,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
       action: 'selected',
       source: 'territory',
       location: locationData,
-      reportMode: reportMode,
+      reportMode: activeReport?.id ?? null,
     });
     show('selected', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0, sticky: true });
 

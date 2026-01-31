@@ -11,7 +11,6 @@ import {
 import { MapIcon } from '../data/map-icons';
 import { ReportSpec } from './reports';
 
-export type ReportMode = 'territory_daily' | 'territory_threeDay' | 'territory_weekly' | 'territory_allTime' | 'threats' |null;
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PanelType = 'layer' | 'report' | 'info';
 export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
@@ -48,8 +47,6 @@ interface MapState {
   activeJobViewId: string | null;
   previousLayersSnapshot: LayerState | null;
   setActiveJobView: (viewId: string | null) => void;
-  activeReportMode: ReportMode;
-  setActiveReportMode: (mode: ReportMode) => void;
   // New report system fields
   activeReport: ReportSpec | null;
   reportLayersSnapshot: LayerState | null;
@@ -168,13 +165,6 @@ export const useMapStore = create<MapState>((set, get) => ({
       set({ activeJobViewId: viewId });
     }
   },
-  activeReportMode: null,
-  setActiveReportMode: (mode) => {
-    const state = get();
-    const next = mode === state.activeReportMode ? null : mode;
-    set({ activeReportMode: next });
-    state.setPanelState('report', next !== null ? 'half' : 'off');
-  },
   // New report system implementation
   activeReport: null,
   reportLayersSnapshot: null,
@@ -256,7 +246,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     const s = get();
     const nextPanelState: Record<PanelType, PanelState> = {
       layer: 'off',
-      report: s.activeReportMode != null ? 'half' : 'off',
+      report: s.activeReport != null ? 'half' : 'off',
       info: 'off',
       [panel]: state,
     };
