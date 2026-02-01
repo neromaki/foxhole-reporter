@@ -1,6 +1,13 @@
 // Shared WarAPI helpers used by both client and Supabase Edge Functions.
 // Keep this lightweight (only fetch + typing) so it can be imported in Deno runtime.
-export const WAR_API_BASE = 'https://war-service-live.foxholeservices.com/api';
+enum WarAPIEndpoint {
+  Live1 = 'https://war-service-live.foxholeservices.com/api',
+  Live2 = 'https://war-service-live2.foxholeservices.com/api',
+  Live3 = 'https://war-service-live3.foxholeservices.com/api',
+  Dev = 'https://war-service-dev.foxholeservices.com/api'
+}
+
+export const WAR_API_BASE = WarAPIEndpoint.Live1;
 
 // Simple in-memory cache with ETag support and request de-duplication
 type CacheEntry<T> = { etag?: string; expiresAt?: number; data?: T };
