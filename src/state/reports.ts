@@ -12,6 +12,7 @@ export type FilterMode = 'ANY' | 'ALL';
 export interface ReportSpec {
   id: string;                    // Unique identifier (e.g., 'logistics-frontline', 'threats-storm')
   name: string;                  // Display name (e.g., 'Logistics (Frontline)', 'Storm Cannons')
+  tooltip?: string;              // Optional tooltip/description for UI
   category: string;              // Primary category (e.g., 'Territory', 'Threats', 'Job Views')
   subcategory?: string;          // Optional secondary grouping (e.g., 'Resource Mining', 'Logistics')
   mapIconTags: MapIconTag[];     // MapIcon tags to filter/show (empty = show no icons)
@@ -35,6 +36,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-daily': {
     id: 'territory-daily',
     name: '1 Day',
+    tooltip: 'Showing changes since 24 hours ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
@@ -45,6 +47,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-three-day': {
     id: 'territory-three-day',
     name: '3 Days',
+    tooltip: 'Showing changes since 3 days ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
@@ -55,6 +58,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-weekly': {
     id: 'territory-weekly',
     name: '7 Days',
+    tooltip: 'Showing changes since 7 days ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
@@ -65,6 +69,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-all-time': {
     id: 'territory-all-time',
     name: 'All Time',
+    tooltip: 'Showing changes since the start of the war',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
@@ -76,17 +81,19 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'threats-storm': {
     id: 'threats-storm',
     name: 'Storm Cannons',
+    tooltip: 'Showing major threats',
     category: 'Threats',
-    mapIconTags: [MapIconTag.Coastal_Gun],
+    mapIconTags: [MapIconTag.Coastal_Gun, MapIconTag.Storm_Cannon],
     viewMode: 'territoryDimming',
     defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'threats',
-    metadata: { stackComparisonIcons: [MapIcon.Coastal_Gun] },
+    metadata: { stackComparisonIcons: [MapIcon.Coastal_Gun, MapIcon.Storm_Cannon] },
     source: 'builtin',
   },
   'threats-rocket': {
     id: 'threats-rocket',
     name: 'Rockets',
+    tooltip: 'Showing major threats',
     category: 'Threats',
     mapIconTags: [MapIconTag.Rocket_Structure],  // Matches Rocket_Site and Rocket_Site_With_Rocket
     viewMode: 'territoryDimming',

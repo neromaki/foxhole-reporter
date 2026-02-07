@@ -11,6 +11,7 @@ import { ICON_SPRITE_METADATA, SPRITE_HEIGHT, SPRITE_WIDTH } from '../data/icon-
 import { DATA_SOURCE } from '../lib/mapConfig';
 import { Teams, TeamStruct, getTeamData } from '../data/teams';
 import { useMapStore } from '../state/useMapStore';
+import tinycolor from 'tinycolor2';
 
 dayjs.extend(relativeTime);
 
@@ -44,11 +45,8 @@ function clamp01(v: number) {
 
 export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, warState, className }: VictoryBarProps & { mapIconCounts: MapIconTypeCounts }) {
   
-  const reportMode = useMapStore(s => s.activeReportMode);
   const stackComparisonMapIcon = useMapStore(s => s.stackComparisonMapIcon);
-  const setStackComparisonMapIcon = useMapStore(s => s.setStackComparisonMapIcon);
   const victoryBarDrawer = useMapStore(s => s.victoryBarDrawer);
-  const setVictoryBarDrawerState = useMapStore(s => s.setVictoryBarDrawerState);
 
 
     const [now, setNow] = useState<Date>(() => new Date());
@@ -139,13 +137,15 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
           )}
         </div>
 
-        <div className={`${victoryBarDrawer ? "h-auto" : "h-0 overflow-hidden"} transition-all duration-300 ease-in-out`}>
+        <div className={`${victoryBarDrawer ? "h-auto" : "h-0 overflow-hidden"} w-full transition-all duration-300 ease-in-out`}>
           {warState?.warStart && (
-            <div className="flex gap-x-2 mt-2 bg-gray-700/50 p-1 rounded">
-              {TimerPiece(formatDuration(warState.warStart, "{DD}", now), "days")}
-              {TimerPiece(formatDuration(warState.warStart, "{HH}", now), "hours")}
-              {TimerPiece(formatDuration(warState.warStart, "{MM}", now), "mins")}
-              {TimerPiece(formatDuration(warState.warStart, "{SS}", now), "secs")}
+            <div className={`flex justify-center`}>
+              <div className="flex gap-x-2 mt-2 bg-gray-700/50 p-1 rounded">
+                {TimerPiece(formatDuration(warState.warStart, "{DD}", now), "days")}
+                {TimerPiece(formatDuration(warState.warStart, "{HH}", now), "hours")}
+                {TimerPiece(formatDuration(warState.warStart, "{MM}", now), "mins")}
+                {TimerPiece(formatDuration(warState.warStart, "{SS}", now), "secs")}
+              </div>
             </div>
           )}
           { stackComparisonMapIcon && stackComparisonMapIcon.map((mapIcon) => (
@@ -177,11 +177,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
     const iconCounts = getCountForIcon(mapIconType) as { colonial: number, warden: number, neutral: number };
     let iconScaleFactor = 1;
 
-    if(iconCounts.colonial > 15 || iconCounts.warden > 15) iconScaleFactor = 2;
-    if(iconCounts.colonial > 30 || iconCounts.warden > 30) iconScaleFactor = 3;
-    if(iconCounts.colonial > 45 || iconCounts.warden > 45) iconScaleFactor = 4;
-    if(iconCounts.colonial > 60 || iconCounts.warden > 60) iconScaleFactor = 5;
-    if(iconCounts.colonial > 75 || iconCounts.warden > 75) iconScaleFactor = 6;
+    if(iconCounts.colonial > 15 || iconCounts.warden > 15) iconScaleFactor = 3;
+    if(iconCounts.colonial > 30 || iconCounts.warden > 30) iconScaleFactor = 4;
+    if(iconCounts.colonial > 45 || iconCounts.warden > 45) iconScaleFactor = 5;
+    if(iconCounts.colonial > 60 || iconCounts.warden > 60) iconScaleFactor = 6;
+    if(iconCounts.colonial > 75 || iconCounts.warden > 75) iconScaleFactor = 7;
 
     const scaledIconCounts = {
       colonial: Math.ceil(iconCounts.colonial / iconScaleFactor),
@@ -191,7 +191,7 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
 
     // Icon setup
     let [bw, bh] = getIconSize(mapIconType);
-    const iconScale = 0.75;
+    const iconScale = 0.65;
     bw = bw * iconScale;
     bh = bh * iconScale;
 
@@ -217,32 +217,36 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
     const bgHeight = SPRITE_HEIGHT * iconScale;
     
     return (
-      <div className="h-full flex justify-between items-stretch px-2 py-1 pb-3 bg-gray-900 rounded">
+      <div className="flex flex-col w-full items-center px-2 py-1 pb-3 bg-gray-900 rounded">
+        <span className="text-sm font-medium mb-2">{getIconLabel(mapIconType)}</span>
 
-        <Comparison 
-          team={Colonials}
-          count={iconCounts.colonial}
-          iconCount={scaledIconCounts.colonial}
-          sprite={spriteColonial}
-          x={xColonial}
-          y={yColonial}
-          bw={bw}
-          bh={bh}
-          bgWidth={bgWidth}
-          bgHeight={bgHeight} />
+        <div className="w-full h-full flex justify-between items-stretch">
 
-        <Comparison 
-          team={Wardens}
-          count={iconCounts.warden}
-          iconCount={scaledIconCounts.warden}
-          sprite={spriteWarden}
-          x={xWarden}
-          y={yWarden}
-          bw={bw}
-          bh={bh}
-          bgWidth={bgWidth}
-          bgHeight={bgHeight} />
+          <Comparison 
+            team={Colonials}
+            count={iconCounts.colonial}
+            iconCount={scaledIconCounts.colonial}
+            sprite={spriteColonial}
+            x={xColonial}
+            y={yColonial}
+            bw={bw}
+            bh={bh}
+            bgWidth={bgWidth}
+            bgHeight={bgHeight} />
 
+          <Comparison 
+            team={Wardens}
+            count={iconCounts.warden}
+            iconCount={scaledIconCounts.warden}
+            sprite={spriteWarden}
+            x={xWarden}
+            y={yWarden}
+            bw={bw}
+            bh={bh}
+            bgWidth={bgWidth}
+            bgHeight={bgHeight} />
+
+        </div>
       </div>
     );
   }
@@ -250,11 +254,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
   function Comparison({ team, sprite, x, y, count, iconCount, bw, bh, bgWidth, bgHeight }: { team: TeamStruct; sprite: { spritePath: string } | null; x: number; y: number; count: number; iconCount: number; bw: number; bh: number; bgWidth: number; bgHeight: number }): JSX.Element {
     const keyBase = `${team.name}-${count}-${iconCount}`;
     return (
-        <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse' : ''} items-start flex-1 ${team.name === Teams.Warden ? 'ml-4' : 'mr-4'}`}>
-          <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse' : ''} justify-start flex-wrap items-start`}>
+        <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse' : ''} items-start flex-1 ${team.name === Teams.Warden ? 'ml-4' : 'mr-4'}`} style={{ backgroundColor: tinycolor(team.colors.base).saturate(20).setAlpha(0.15).toRgbString(), padding: '4px', borderRadius: '4px' }}>
+          <div className={`flex ${team.name === Teams.Warden ? 'flex-row-reverse pl-2' : 'pr-2'} flex-grow justify-start flex-wrap items-start`}>
           { sprite && (
             Array.from({ length: iconCount }).map((_, i) => (
-              <div key={`${keyBase}-${Math.random()}`} className={``} style={{ 
+              <div key={`${keyBase}-${Math.random()}`} className={`${team.name === Teams.Warden ? 'transform -scale-x-100' : ''}`} style={{ 
                     width: bw, 
                     height: bh, 
                     backgroundImage: `url(${new URL(sprite.spritePath, import.meta.url).toString()})`, 
@@ -264,7 +268,7 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
             ))
           )}
           </div>
-          <div className={`h-full flex flex-1 items-center`}>
+          <div className={`h-full flex items-center`}>
             <span className={`text-xl font-bold`} style={{ color: team.colors.saturated }}>{count}</span>
           </div>
         </div>
@@ -273,14 +277,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
 
   function getCountForIcon(icon: number | MapIcon): object {
     const iconType = icon as number;
-    // console.log('[COUNT] Getting counts for icon type:', iconType);
     if(iconType === MapIcon.Town_Base_1) {
-      // console.log('[COUNT] Special case for Town Base: aggregating counts for all tiers.');
       // Special case: iconType 56, 57 and 58 represents different tiers of the same Town Base
       // Sum counts for all relevant iconTypes
       return [MapIcon.Town_Base_1, MapIcon.Town_Base_2, MapIcon.Town_Base_3].reduce((sum, it) => {
         const count = mapIconCounts.get(it) ?? { colonial: 0, warden: 0, neutral: 0 };
-        // console.log(`[COUNT] Adding counts for iconType ${it}:`, sum, count);
         return {
           colonial: sum.colonial + count.colonial,
           warden: sum.warden + count.warden,
@@ -288,7 +289,6 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
         };
       }, { colonial: 0, warden: 0, neutral: 0 });
     }
-    // console.log('[COUNT] Standard case for icon type:', iconType);
     return mapIconCounts.get(iconType) ?? { colonial: 0, warden: 0, neutral: 0 };
   }
 

@@ -34,14 +34,14 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
       return {
         territory: {
           normalOpacity: 0.3,
-          unaffectedOpacity: 0.25,
+          unaffectedOpacity: 0.3,
           affectedOpacity: 0.7,
           applyGrayscale: true,
         },
         mapIcon: {
           visibleAtMinZoom: true,
           affectedOpacity: 1,
-          unaffectedOpacity: 0.35,
+          unaffectedOpacity: 1,
         },
         interaction: {
           restrictHoverToAffected: true,

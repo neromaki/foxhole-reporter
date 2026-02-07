@@ -302,7 +302,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                 
                 const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
-                let fill = p.baseColor;
+                let fill = '#000000';
                 let fillOpacity = p.baseOpacity;
                 let stroke = p.stroke;
                 let strokeWidth = p.strokeWidth;
@@ -343,11 +343,11 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   } else {
                     if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
                       fill = tinycolor(fill).saturate(50).darken(20).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
                     }
                     else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
                       fill = tinycolor(fill).saturate(10).darken(10).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
                     }
                   }
 
