@@ -1,3 +1,10 @@
+/**
+ * @deprecated This module is deprecated and replaced by the unified Report system.
+ * Job View definitions have been migrated to BUILTIN_REPORTS in src/state/reports.ts.
+ * Icon filtering logic is now handled by getReportMapIconFilter() in reports.ts.
+ * This file is kept for reference during the transition period but should not be used in new code.
+ */
+
 import { MapIconTag } from '../data/map-icons';
 
 export type JobViewMatchMode = 'ALL' | 'ANY';

@@ -1,3 +1,9 @@
+/**
+ * @deprecated This component is deprecated and replaced by the unified Report system.
+ * Job Views are now part of BUILTIN_REPORTS in src/state/reports.ts and rendered via ReportModes.tsx.
+ * This file is kept for reference during the transition period but should not be used in new code.
+ */
+
 import React from 'react';
 import { useMapStore } from '../state/useMapStore';
 import { jobViewGroups, getGroup } from '../state/jobViews';

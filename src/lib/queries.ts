@@ -7,6 +7,7 @@ import { quantizeSnapshot, logPayloadAnalysis } from './snapshotOptimization';
 import { snapshotCache, logCacheStatus } from './snapshotCache';
 import { useRealtimeSnapshot } from './hooks/useRealtimeSnapshot';
 import { useMapStore } from '../state/useMapStore';
+import { getTerritoryDiffPeriod } from './territoryDiffMapping';
 
 export const REALTIME_SNAPSHOTS_ENABLED = true; // Feature flag for realtime snapshots
 
@@ -325,6 +326,50 @@ export function useLatestSnapshots(count: number, options?: { enabled?: boolean 
         throw error;
       }
       return ((data ?? []) as unknown as Snapshot[]).map(snapshot => quantizeSnapshot(snapshot));
+    },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Fetches the appropriate territory diff for the active report (Option A query pattern).
+ * Returns null if no territory report is active.
+ * 
+ * @returns Query result with data, isLoading, error, etc.
+ */
+export function useActiveReportDiff() {
+  const activeReport = useMapStore((s) => s.activeReport);
+  
+  // Map activeReport to the backend period using the mapping function
+  const period = activeReport ? getTerritoryDiffPeriod(activeReport.id) : null;
+  
+  // Only fetch if we have a valid period (territory reports only)
+  return useQuery<TerritoryDiff | null>({
+    queryKey: ['activeReportDiff', period],
+    enabled: !!period,
+    queryFn: async () => {
+      if (!supabase || !period) return null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('territory_diffs')
+          .select('*')
+          .eq('period', period)
+          .order('generated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[Queries] Active report diff fetch error:', error);
+          throw error;
+        }
+        
+        DEBUG_MODE ?? console.log('[Queries] Active report diff fetched for period', period, ':', data);
+        return data as unknown as TerritoryDiff | null;
+      } catch (e) {
+        console.error('[Queries] Exception during active report diff fetch:', e);
+        return null;
+      }
     },
     staleTime: 60_000,
   });

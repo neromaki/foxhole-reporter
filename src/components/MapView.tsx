@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, LayerGroup, Marker, useMap, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince } from '../lib/queries';
+import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince, useActiveReportDiff } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { useMapStore } from '../state/useMapStore';
@@ -20,7 +20,10 @@ import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THRO
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
+import { getReportMapIconFilter } from '../state/reports';
 import { useStaticMaps } from '../lib/hooks/useStaticMaps';
+import { getViewModeRules } from '../lib/viewModes';
+import { MapIconTerritories } from '../lib/mapIconTerritories';
 import { getTownById } from '../data/towns';
 import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
@@ -48,9 +51,52 @@ export default function MapView() {
   const { data: allTimeDiff } = useTerritoryDiff('allTime');
   const changedAllTime = useMemo<Set<string>>(() => new Set((allTimeDiff?.changes ?? []).map((c: { id: string }) => c.id)), [allTimeDiff]);
 
+  // New unified report system: fetch diff for active territory report
+  const { data: activeReportDiff } = useActiveReportDiff();
+  const activeReport = useMapStore((s) => s.activeReport);
+  const setReportHighlightedSet = useMapStore((s) => s.setReportHighlightedSet);
+  const setStackComparisonMapIcon = useMapStore((s) => s.setStackComparisonMapIcon);
+  const setVictoryBarDrawerState = useMapStore(s => s.setVictoryBarDrawerState);
+
+  const majorLabelsByMap = useMapStore(s => s.majorLabelsByMap);
+  
+  // Populate reportHighlightedSet based on report category (Territory or Threats)
+  useEffect(() => {
+    if (!activeReport) {
+      // Clear highlighted set when no report is active
+      setReportHighlightedSet(new Set());
+      setStackComparisonMapIcon(null);
+      return;
+    }
+
+    // Territory reports: use diff data
+    if (activeReport.category === 'Territory' && activeReportDiff?.changes) {
+      const territoryIds = new Set(activeReportDiff.changes.map((c: { id: string }) => c.id));
+      setReportHighlightedSet(territoryIds);
+      setStackComparisonMapIcon(null); // Territory reports don't use stack comparison
+      DEBUG_MODE && console.log('[MapView] Territory report: highlighted', territoryIds.size, 'territories');
+    }
+    // Threats reports: use stack comparison
+    else if (activeReport.category === 'Threats' && activeReport.metadata?.stackComparisonIcons) {
+      const threatening = MapIconTerritories(
+        snapshot?.territories,
+        majorLabelsByMap,
+        activeReport.metadata.stackComparisonIcons
+      );
+      setReportHighlightedSet(threatening);
+      setStackComparisonMapIcon(activeReport.metadata.stackComparisonIcons);
+      setVictoryBarDrawerState(true);
+      DEBUG_MODE && console.log('[MapView] Threats report: highlighted', threatening.size, 'territories');
+    }
+    // Job Views or other categories: no territory highlighting
+    else {
+      setReportHighlightedSet(new Set());
+      setStackComparisonMapIcon(null);
+      setVictoryBarDrawerState(false);
+    }
+  }, [activeReport, activeReportDiff, snapshot, setReportHighlightedSet, setStackComparisonMapIcon]);
+
   const activeLayers = useMapStore((s) => s.activeLayers);
-  const reportMode = useMapStore((s) => s.activeReportMode);
-  const activeJobViewId = useMapStore(s => s.activeJobViewId);
 
   const { data: recentSnapshots } = useSnapshotsSince(24, { enabled: DATA_SOURCE === 'supabase' });
 
@@ -65,11 +111,9 @@ export default function MapView() {
   }, [recentSnapshots]);
 
   const effectiveLayers = useMemo(() => {
-    if (!reportMode) return activeLayers;
-    // In report mode: hide structures (icons), only show territories (SVG)
-    return { ...activeLayers, structures: false, territories: true } as typeof activeLayers;
-  }, [activeLayers, reportMode]);
-
+    if (!activeReport) return activeLayers;
+    return { ...activeLayers, ...(activeReport && activeReport.defaultLayers), structures: true } as typeof activeLayers;
+  }, [activeLayers, activeReport, activeReport])
   // Track previous WarAPI reports for rate computation in live mode
   const lastWarApiRef = useRef<{ reports: WarReport[]; fetchedAt: number } | null>(null);
   const prevWarApiRef = useRef<{ reports: WarReport[]; fetchedAt: number } | null>(null);
@@ -156,10 +200,6 @@ export default function MapView() {
         />
         <TerritorySubregionLayer
           snapshot={snapshot}
-          changedDaily={changedDaily}
-          changedThreeDay={changedThreeDay}
-          changedWeekly={changedWeekly}
-          changedAllTime={changedAllTime}
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
           casualtyRates={casualtyRates}
@@ -171,7 +211,7 @@ export default function MapView() {
         />
         <StaticLabelLayer 
           majorVisible={activeLayers.majorLocations}
-          minorVisible={activeLayers.minorLocations && !activeJobViewId}
+          minorVisible={activeLayers.minorLocations}
         />
       </SharedTooltipProvider>
       {/* Additional layers (logistics/mining/etc.) would be added similarly */}
@@ -256,6 +296,7 @@ function LocationsLayer({
       const z = map.getZoom();
       if (VERBOSE_ZOOM_LOG) console.log('[Zoom][state] zoomend', { z });
       setZoom(z);
+      updateIcons(z);
     };
     map.on('zoomend', handler);
     return () => { map.off('zoomend', handler); };
@@ -307,13 +348,16 @@ function LocationsLayer({
   const mouseDownPositionRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const { show, hide, buildTooltipContent } = useSharedTooltip();
-  const reportMode = useMapStore(s => s.activeReportMode);
+  const activeReport = useMapStore(s => s.activeReport);
+  const reportHighlightedSet = useMapStore(s => s.reportHighlightedSet);
   const selectedLocation = useMapStore(s => s.selectedLocation);
+  const majorLabelsByMap = useMapStore(s => s.majorLabelsByMap);
+  const setMajorLabelsByMap = useMapStore(s => s.setMajorLabelsByMap);
 
   // Load static maps to access projected Major labels for nearest-location lookup
   const { data: staticMaps } = useStaticMaps(true);
 
-  const majorLabelsByMap = useMemo(() => {
+  useEffect(() => {
     const m = new Map<string, Array<{ lat: number; lng: number; text: string }>>();
     (staticMaps ?? []).forEach(entry => {
       const arr: Array<{ lat: number; lng: number; text: string }> = [];
@@ -328,7 +372,7 @@ function LocationsLayer({
       });
       m.set(entry.mapName, arr);
     });
-    return m;
+    setMajorLabelsByMap(m);
   }, [staticMaps]);
 
   function nearestMajorLabel(region: string, lat: number, lng: number): string | null {
@@ -430,6 +474,7 @@ function LocationsLayer({
     VERBOSE_ZOOM_LOG && console.log('[Zoom][updateIconsForZoom] start', { z });
     const t0 = performance.now();
     const bucket = zoomBucket(z);
+    const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
     let setCount = 0;
     for (const [id, marker] of markerRefs.current) {
       const iconType = iconTypeById.current.get(id);
@@ -437,24 +482,29 @@ function LocationsLayer({
       if (iconType == null) continue;
       marker.setIcon(getIcon(iconType, z, owner));
       setCount++;
-      const highlighted = reportMode === 'territory_daily'
-        ? !!(changedDaily && (changedDaily as Set<string>).has(id))
-        : reportMode === 'territory_threeDay'
-        ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(id))
-        : reportMode === 'territory_weekly'
-        ? !!(changedWeekly && (changedWeekly as Set<string>).has(id))
-        : reportMode === 'territory_allTime'
-        ? !!(changedAllTime && (changedAllTime as Set<string>).has(id))
-        : false;
+      
+      // Use unified report system: check if this territory is in reportHighlightedSet
+      const highlighted = reportHighlightedSet ? reportHighlightedSet.has(id) : false;
+      
       const img = markerIconElement(marker);
       if (img) {
         img.style.transition = `opacity 120ms ease-out`;
-        img.style.opacity = reportMode ? (highlighted ? '1' : `${TERRITORY_REPORT_UNAFFECTED_OPACITY}`) : '1';
+        
+        if (activeReport && viewModeRules) {
+          // Apply ViewModeRules for icon opacity
+          img.style.opacity = highlighted 
+            ? `${viewModeRules.mapIcon.affectedOpacity}` 
+            : `${viewModeRules.mapIcon.unaffectedOpacity}`;
+          
+          // Apply visibility control based on zoom (icons hidden at min zoom for certain viewModes)
+          const shouldHideAtMinZoom = !viewModeRules.mapIcon.visibleAtMinZoom && z <= MAP_MARKER_MIN_ZOOM;
+          img.style.display = shouldHideAtMinZoom ? 'none' : 'block';
+        } else {
+          // No report active: full opacity, always visible
+          img.style.opacity = '1';
+          img.style.display = 'block';
+        }
       }
-    }
-    if (VERBOSE_ZOOM_LOG) {
-      const dt = (performance.now() - t0).toFixed(2);
-      console.log('[Zoom][updateIconsForZoom]', { z, bucket, setCount, totalMarkers: markerRefs.current.size, cacheSize: iconInstanceCache.current.size, ms: dt });
     }
   }
 
@@ -501,11 +551,17 @@ function LocationsLayer({
     return excluded;
   }, [activeLayers]);
 
-  // Job view filter function
+  // Job view filter function (old system - will be deprecated)
   const jobViewFilter = useMemo(() => {
     if (!activeJobViewId) return null;
     return getJobViewFilter(activeJobViewId);
   }, [activeJobViewId]);
+
+  // Report icon filter function (new unified system)
+  const reportIconFilter = useMemo(() => {
+    if (!activeReport || !activeReport.mapIconTags || activeReport.mapIconTags.length === 0) return null;
+    return getReportMapIconFilter(activeReport);
+  }, [activeReport]);
 
   React.useEffect(() => {
     if (!map) return;
@@ -516,7 +572,15 @@ function LocationsLayer({
       const bounds = map.getBounds();
       const t0 = performance.now();
       let base = projectedTerritories;
-      if (jobViewFilter) {
+      
+      // Apply icon filtering: prioritize new report system over old jobView system
+      if (reportIconFilter) {
+        base = base.filter(({ t }) => {
+          const mi = getMapIcon(t.iconType);
+          if (!mi) return false; // exclude unknown
+          return reportIconFilter(mi.tags);
+        });
+      } else if (jobViewFilter) {
         base = base.filter(({ t }) => {
           const mi = getMapIcon(t.iconType);
           if (!mi) return false; // exclude unknown
@@ -562,8 +626,7 @@ function LocationsLayer({
       map.off('zoomend', onZoom);
       if (rafId != null) (window.cancelAnimationFrame as any)(rafId);
     };
-  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportMode]);
-
+  }, [map, projectedTerritories, excludedIconTypes, jobViewFilter, reportIconFilter, activeReport])
   // Pre-compute all icon instances for all zoom levels when snapshot loads
   React.useEffect(() => {
     if (!snapshot?.territories || snapshot.territories.length === 0) return;
@@ -643,12 +706,11 @@ function LocationsLayer({
       action: 'hover',
       source: 'mapIcon',
       location: locationData,
-      reportMode: reportMode,
-      nearbyMajorLabel: locationData.name,
+      reportMode: activeReport?.id ?? null,
       hexName: locationData.hexName,
     });
     show('hover', { html, lat, lng, openDelay: 100 });
-  }, [show, buildTooltipContent, buildLocationData, selectedLocation, reportMode, isTouch]);
+  }, [show, buildTooltipContent, buildLocationData, selectedLocation, activeReport, isTouch]);
 
   const handleMouseOut = React.useCallback((t: LocationTile) => {
     hide('hover', 200);    
@@ -677,8 +739,7 @@ function LocationsLayer({
       action: 'selected',
       source: 'mapIcon',
       location: locationData,
-      reportMode: reportMode,
-      nearbyMajorLabel: locationData.name,
+      reportMode: activeReport?.id ?? null,
       hexName: locationData.hexName,
     });
     show('selected', { html, lat, lng, openDelay: 0, sticky: true });
@@ -688,17 +749,15 @@ function LocationsLayer({
       return;
     }
     handleMouseOver(t, lat, lng);
-  }, [buildLocationData, buildTooltipContent, handleMouseOver, isTouch, map, setPanelState, setSelectedLocation, show, reportMode]);
-
-  // Re-apply styles when report mode or diff sets change
+  }, [buildLocationData, buildTooltipContent, handleMouseOver, isTouch, map, setPanelState, setSelectedLocation, show, activeReport])
+  // Re-apply icon styles when report changes or highlighted set changes
   React.useEffect(() => {
-    if (VERBOSE_ZOOM_LOG) console.log('[Zoom][effect] reapply due to report/diff change', { reportMode, daily: changedDaily.size, weekly: changedWeekly.size, z: map.getZoom() });
     updateIcons(map.getZoom());
-  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime, map]);
-
-  const activeJobViewIdTop = useMapStore(s => s.activeJobViewId); // local subscription for render condition
+  }, [activeReport, reportHighlightedSet, map]);
   // Hide when zoomed out to -1 or lower, or in report mode
-  if ((zoom < MAP_MARKER_MIN_ZOOM || reportMode)) return null;
+  const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
+  if ((!activeReport && zoom <= MAP_MARKER_MIN_ZOOM) 
+    || (activeReport != null && viewModeRules && !viewModeRules.mapIcon.visibleAtMinZoom && zoom <= MAP_MARKER_MIN_ZOOM)) return null;  
 
   return (
     <LayerGroup>
@@ -734,22 +793,7 @@ function LocationsLayer({
             }}
             ref={(ref: any) => {
               if (ref) markerRefs.current.set(t.id, ref);
-              if (ref) {
-                const img = markerIconElement(ref as unknown as L.Marker);
-                if (img) {
-                  const highlighted = reportMode === 'territory_daily'
-                    ? !!(changedDaily && (changedDaily as Set<string>).has(t.id))
-                    : reportMode === 'territory_threeDay'
-                    ? !!(changedThreeDay && (changedThreeDay as Set<string>).has(t.id))
-                    : reportMode === 'territory_weekly'
-                    ? !!(changedWeekly && (changedWeekly as Set<string>).has(t.id))
-                    : reportMode === 'territory_allTime'
-                    ? !!(changedAllTime && (changedAllTime as Set<string>).has(t.id))
-                    : false;
-                  img.style.opacity = reportMode ? (highlighted ? '1' : '0.35') : '1';
-                  img.style.filter = selectedLocation && selectedLocation.id === t.id && selectedLocation.source === 'mapIcon' ? 'brightness(2)' : 'none';
-                }
-              }
+              // updateIcons will be called separately via useEffect to update opacity/visibility
             }}
             pane="location-markers"
           />

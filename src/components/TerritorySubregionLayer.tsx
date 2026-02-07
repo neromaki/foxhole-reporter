@@ -14,6 +14,7 @@ import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { getTimeSinceLastCapture } from '../lib/time';
+import { getViewModeRules } from '../lib/viewModes';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -25,10 +26,6 @@ dayjs.extend(relativeTime);
 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
-  changedDaily: Set<string>;
-  changedThreeDay: Set<string>;
-  changedWeekly: Set<string>;
-  changedAllTime: Set<string>;
   visible: boolean;
   historyById: Map<string, TerritoryHistory>;
   casualtyRates: ReturnType<typeof useCasualtyRates>;
@@ -57,7 +54,7 @@ interface RegionOverlay {
   hasAnyTerritory?: boolean;
 }
 
-export default function TerritorySubregionLayer({ snapshot, changedDaily, changedThreeDay, changedWeekly, changedAllTime, visible, historyById, casualtyRates }: Props) {
+export default function TerritorySubregionLayer({ snapshot, visible, historyById, casualtyRates }: Props) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
   const [isTouch, setIsTouch] = React.useState(false);
@@ -77,8 +74,12 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     );
     setIsTouch(touch);
   }, []);
-  const reportModeActive = useMapStore((s) => s.activeReportMode !== null);
-  const reportMode = useMapStore((s) => s.activeReportMode);
+  
+  // New unified report system
+  const activeReport = useMapStore((s) => s.activeReport);
+  const reportHighlightedSet = useMapStore((s) => s.reportHighlightedSet);
+  const reportModeActive = activeReport !== null;
+  
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const setPanelState = useMapStore((s) => s.setPanelState);
   const setSelectedLocation = useMapStore((s) => s.setSelectedLocation);
@@ -100,13 +101,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
 
   useEffect(() => {
     return;
-    console.log(`[TerritorySubregion] reportMode changed: now ${reportMode ?? 'null'}`);
-    if (!reportMode) {
-      setHoveredId(null);
-      console.log('[TerritorySubregion] Exiting report mode - hiding tooltip');
-      hide('hover', 0);
-    }
-  }, [reportMode, hide]);
+  }, [activeReport, hide]);
 
   // Build territory maps
   const territoryById = useMemo(() => {
@@ -115,13 +110,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     return map;
   }, [snapshot]);
 
-  const changedSet = useMemo(() => {
-    if (reportMode === 'territory_daily') return changedDaily;
-    if (reportMode === 'territory_threeDay') return changedThreeDay;
-    if (reportMode === 'territory_weekly') return changedWeekly;
-    if (reportMode === 'territory_allTime') return changedAllTime;
-    return null;
-  }, [reportMode, changedDaily, changedThreeDay, changedWeekly, changedAllTime]);
+  // Use reportHighlightedSet for territory highlighting (unified report system)
+  const changedSet = reportHighlightedSet;
+  //console.log("[TerritorySubregion] changedSet:", changedSet);
 
   const overlays = useMemo(() => {
     const processed: RegionOverlay[] = [];
@@ -168,7 +159,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
     });
 
     return processed;
-  }, [territoryById, changedSet, reportMode]);
+  }, [territoryById, changedSet, activeReport]);
 
   // Update disabled hexes in store
   useEffect(() => {
@@ -228,7 +219,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
         action: 'hover',
         source: 'territory',
         location: locationData,
-        reportMode: reportMode,
+        reportMode: activeReport?.id ?? null,
       });
       show('hover', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0 });
     }
@@ -268,7 +259,7 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
       action: 'selected',
       source: 'territory',
       location: locationData,
-      reportMode: reportMode,
+      reportMode: activeReport?.id ?? null,
     });
     show('selected', { html, lat: locationData.lat, lng: locationData.lng, openDelay: 0, sticky: true });
 
@@ -283,6 +274,9 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
   if (!visible || !snapshot?.territories?.length) {
     return null;
   }
+
+  // Get ViewModeRules for current report
+  const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
 
   return (
     <>
@@ -308,13 +302,13 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                 
                 const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
-                let fill = p.baseColor;
+                let fill = '#000000';
                 let fillOpacity = p.baseOpacity;
                 let stroke = p.stroke;
                 let strokeWidth = p.strokeWidth;
 
-                // Figure out opacities and colors based on report mode and state
-                if (reportModeActive) {
+                // Figure out opacities and colors based on report mode and ViewModeRules
+                if (reportModeActive && viewModeRules) {
                   if (affected) {
                     strokeWidth = 2;
                     fill = tinycolor(p.baseColor).saturate(10).brighten(10).toString();
@@ -324,10 +318,14 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                       fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
                     } else {
                       fill = tinycolor(fill).toString();
-                      fillOpacity = TERRITORY_REPORT_AFFECTED_OPACITY;
+                      fillOpacity = viewModeRules.territory.affectedOpacity;
                     }
                   } else {
-                    fillOpacity = TERRITORY_REPORT_UNAFFECTED_OPACITY;
+                    fillOpacity = viewModeRules.territory.unaffectedOpacity;
+                    // Apply grayscale filter if viewMode requires it
+                    if (viewModeRules.territory.applyGrayscale) {
+                      fill = tinycolor(fill).greyscale().toString();
+                    }
                   }
                 } else {
                   if (zoom == MAP_MIN_ZOOM) {
@@ -345,11 +343,11 @@ export default function TerritorySubregionLayer({ snapshot, changedDaily, change
                   } else {
                     if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
                       fill = tinycolor(fill).saturate(50).darken(20).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
                     }
                     else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
                       fill = tinycolor(fill).saturate(10).darken(10).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : 0.05);
+                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
                     }
                   }
 

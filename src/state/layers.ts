@@ -178,6 +178,13 @@ export function getDefaultLayerState(): LayerState {
     state[k] = false;
   });
 
+  // Default layers
+  const defaultOnLayers = {
+    structures: {
+      bases: ['Base_Town', 'Base_Relic', 'Base_Keep'],
+    },
+  };
+  
   state['structures'] = true;
   state['structures.bases'] = true;
   state['structures.bases.Base_Town'] = true;
