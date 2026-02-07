@@ -1812,7 +1812,82 @@ const towns: Array<TownStruct> = [
     { "apiName": "TheRobinsNest", "displayName": "The Robin's Nest", "region": Region.Sableport, "major": true, "x": -44.3347668, "y": -33.17677874253007, "id": "SableportHex-0.7693-0.5829" },
     { "apiName": "TheWhetstone", "displayName": "The Whetstone", "region": Region.Sableport, "major": true, "x": -60.3860904, "y": -29.46890798496592, "id": "SableportHex-0.3241-0.4642" },
     { "apiName": "Waspwood", "displayName": "Waspwood", "region": Region.Sableport, "major": false, "x": -58.89998268, "y": -25.541956737186474 },
-    { "apiName": "Wormskive", "displayName": "Wormskive", "region": Region.Sableport, "major": false, "x": -42.559331400000005, "y": -28.804522324354032 }
+    { "apiName": "Wormskive", "displayName": "Wormskive", "region": Region.Sableport, "major": false, "x": -42.559331400000005, "y": -28.804522324354032 },
+    
+    { "apiName": "FadenPoint", "displayName": "Faden Point", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Lumia", "displayName": "Lumia", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Martti", "displayName": "Martti", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Menneen", "displayName": "Menneen", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Suosalo", "displayName": "Suosalo", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Talven", "displayName": "Talven", "region": Region.KuuraStrand, "major": true, "x": 0, "y": 0, "id": "" },
+    
+    { "apiName": "Kuoppa", "displayName": "Kuoppa", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "LostKaivo", "displayName": "Lost Kaivo", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "RikkiSarana", "displayName": "Rikki Sarana", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "RotkoCamp", "displayName": "Rotko Camp", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "SalaojaRoad", "displayName": "Salaoja Road", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "SumunKotiSpillway", "displayName": "Sumun Koti Spillway", "region": Region.Gutter, "major": false, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Suojus", "displayName": "Suojus", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheParras", "displayName": "The Parras", "region": Region.Gutter, "major": true, "x": 0, "y": 0, "id": "" },
+    
+    { "apiName": "Adripio", "displayName": "Adripio", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "ArganIsle", "displayName": "Argan Isle", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "GarionSlip", "displayName": "Garion Slip", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "LatroManor", "displayName": "Latro Manor", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Ratchet", "displayName": "Ratchet", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Scallyhold", "displayName": "Scallyhold", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "ToadsPlinth", "displayName": "Toad's Plinth", "region": Region.Wresta, "major": true, "x": 0, "y": 0, "id": "" },
+    
+    { "apiName": "Azmar", "displayName": "Azmar", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "BandolierBase", "displayName": "Bandolier Base", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "DuelistsScarp", "displayName": "Duelist's Scarp", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Lugria", "displayName": "Lugria", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "NorthernSkyHold", "displayName": "Northern Sky Hold", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Onioncap", "displayName": "Onioncap", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Scrapegrace", "displayName": "Scrapegrace", "region": Region.TyrantFoothills, "major": true, "x": 0, "y": 0, "id": "" },
+
+    { "apiName": "AegocerusFortress", "displayName": "Aegocerus Fortress", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "HouseOfLyterius", "displayName": "House of Lyterius", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "MaenaliusCove", "displayName": "Maenalius Cove", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "PansVilla", "displayName": "Pan's Villa", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Reedhurst", "displayName": "Reedhurst", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "SyrinxPass","displayName": "Syrinx Pass", "region": Region.PipersEnclave, "major": true, "x": 0, "y": 0, "id": ""  },
+
+    { "apiName": "Aetherwood", "displayName": "Aetherwood", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Astutia", "displayName": "Astutia", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Cyrus", "displayName": "Cyrus", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "ErebusIslet", "displayName": "Erebus Islet", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "FortGuile", "displayName": "Fort Guile", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "MountLynel", "displayName": "Mount Lynel", "region": Region.LykosIsle, "major": false, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Marudia", "displayName": "Mārudia", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheSquall", "displayName": "The Squall", "region": Region.LykosIsle, "major": true, "x": 0, "y": 0, "id": "" },
+
+    { "apiName": "CampSurista", "displayName": "Camp Surista", "region": Region.PariPeak, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Itaan", "displayName": "Itään", "region": Region.PariPeak, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "KohinaBase", "displayName": "Kohina Base", "region": Region.PariPeak, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "LittleRaakkua", "displayName": "Little Raakkua", "region": Region.PariPeak, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Pariah", "displayName": "Pariah", "region": Region.PariPeak, "major": true, "x": 0, "y": 0, "id": "" },
+
+    { "apiName": "IlmariBridge", "displayName": "Ilmari Bridge", "region": Region.OlavisWake, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Koskinla", "displayName": "Koskinla", "region": Region.OlavisWake, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Kulkue", "displayName": "Kulkue", "region": Region.OlavisWake, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheCorpseRoad", "displayName": "The Corpse Road", "region": Region.OlavisWake, "major": false, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Yoohja","displayName": "Yöohja", "region": Region.OlavisWake, "major": true, "x": 0, "y": 0, "id": ""  },
+    
+    { "apiName": "Dryfeld", "displayName": "Dryfeld", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "LeiriHermanni", "displayName": "Leiri Hermanni", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheDroll", "displayName": "The Droll", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "ThePippeliStones", "displayName": "The Pippeli Stones", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Underlook", "displayName": "Underlook", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Vendett", "displayName": "Vendett", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "WindburnLanding", "displayName": "Windburn Landing", "region": Region.PalantineBerm, "major": true, "x": 0, "y": 0, "id": "" },
+
+    { "apiName": "BeholdersSpan", "displayName": "Beholder's Span", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "CisternaRun", "displayName": "Cisterna Run", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Dexam", "displayName": "Dexam", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "Garland", "displayName": "Garland", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheBrink", "displayName": "The Brink", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": "" },
+    { "apiName": "TheWaif","displayName": "The Waif", "region": Region.Onyx, "major": true, "x": 0, "y": 0, "id": ""  }
 ];
 
 export { Town };
