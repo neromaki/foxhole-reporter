@@ -7,10 +7,13 @@ import { ViewMode } from '../state/reports';
 export interface ViewModeRules {
   // Territory opacity/visibility
   territory: {
-    normalOpacity: number;
     unaffectedOpacity: number;
+    unaffectedSaturation: number;
+    unaffectedBrightness: number;
+
     affectedOpacity: number;
-    applyGrayscale: boolean;  // For unaffected territories in territoryDimming mode
+    affectedSaturation: number;
+    affectedBrightness: number;
   };
   // MapIcon visibility
   mapIcon: {
@@ -33,10 +36,12 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
     case 'territoryDimming':
       return {
         territory: {
-          normalOpacity: 0.3,
-          unaffectedOpacity: 0.3,
+          unaffectedOpacity: 0.25,
+          unaffectedSaturation: 0,
+          unaffectedBrightness: -50,
           affectedOpacity: 0.7,
-          applyGrayscale: true,
+          affectedSaturation: 20,
+          affectedBrightness: 10,
         },
         mapIcon: {
           visibleAtMinZoom: true,
@@ -52,10 +57,12 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
     case 'minimal':
       return {
         territory: {
-          normalOpacity: 0.3,
           unaffectedOpacity: 0.3,
+          unaffectedSaturation: 10,
+          unaffectedBrightness: 0,
           affectedOpacity: 0.3,
-          applyGrayscale: false,
+          affectedSaturation: 10,
+          affectedBrightness: 10,
         },
         mapIcon: {
           visibleAtMinZoom: true,
@@ -72,10 +79,12 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
     default:
       return {
         territory: {
-          normalOpacity: 0.3,
           unaffectedOpacity: 0.3,
+          unaffectedSaturation: 10,
+          unaffectedBrightness: 0,
           affectedOpacity: 0.3,
-          applyGrayscale: false,
+          affectedSaturation: 10,
+          affectedBrightness: 10,
         },
         mapIcon: {
           visibleAtMinZoom: false,

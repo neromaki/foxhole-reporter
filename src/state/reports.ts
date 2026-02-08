@@ -2,7 +2,7 @@ import { MapIcon, MapIconTag } from '../data/map-icons';
 import { LayerState } from './layers';
 
 // Type definitions
-export type ViewMode = 'territoryDimming' | 'minimal' | 'none';
+export type ViewMode = 'normal' | 'overview' | 'territoryDimming' | 'minimal' | 'none';
 export type ReportSource = 'builtin' | 'user';
 export type FilterMode = 'ANY' | 'ALL';
 

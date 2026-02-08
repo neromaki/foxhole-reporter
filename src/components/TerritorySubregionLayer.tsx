@@ -3,7 +3,7 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OPACITY_OVERVIEW, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
+import { MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, CLICK_DISTANCE_THRESHOLD, TERRITORY_OPACITY_OVERVIEW, TERRITORY_SATURATION_OVERVIEW, TERRITORY_BRIGHTNESS_OVERVIEW, TERRITORY_OPACITY_NORMAL, TERRITORY_SATURATION_NORMAL, TERRITORY_BRIGHTNESS_NORMAL, TERRITORY_OPACITY_REPORT_UNAFFECTED, TERRITORY_SATURATION_REPORT_UNAFFECTED, TERRITORY_BRIGHTNESS_REPORT_UNAFFECTED, TERRITORY_OPACITY_REPORT_AFFECTED, TERRITORY_SATURATION_REPORT_AFFECTED, TERRITORY_BRIGHTNESS_REPORT_AFFECTED, TERRITORY_OPACITY_REPORT_HIGHLIGHTED, TERRITORY_SATURATION_REPORT_HIGHLIGHTED, TERRITORY_BRIGHTNESS_REPORT_HIGHLIGHTED, TERRITORY_SATURATION_ACTIVE_MODIFIER, TERRITORY_BRIGHTNESS_ACTIVE_MODIFIER, TERRITORY_OPACITY_ACTIVE_MODIFIER, TERRITORY_SATURATION_HIGHLIGHT_1, TERRITORY_BRIGHTNESS_HIGHLIGHT_1, TERRITORY_SATURATION_HIGHLIGHT_2, TERRITORY_BRIGHTNESS_HIGHLIGHT_2 } from '../lib/mapConfig';
 import { useMapStore, TerritoryHistory, SelectedLocation } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
@@ -20,10 +20,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 
 dayjs.extend(relativeTime);
 
-// Remove dynamic SVG loading - now using pre-bundled paths
-
-
-
+// Remove dynamic SVG loading - now using pre-bundled paths 
 interface Props {
   snapshot: { territories?: LocationTile[] } | undefined | null;
   visible: boolean;
@@ -176,7 +173,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
         hasAnyTerritory = true;
         const highlighted = !!(changedSet && changedSet.has(territory.id));
         const baseColor = getTeamColors(territory.owner)?.saturated ?? Colors.Neutral;
-        const baseOpacity = TERRITORY_NORMAL_OPACITY;
+        const baseOpacity = TERRITORY_OPACITY_NORMAL;
         const projected = projectRegionPoint(territory.region, territory.x, territory.y);
 
         paths.push({
@@ -342,61 +339,76 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                 
                 const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
-                let fill = '#000000';
-                let fillOpacity = p.baseOpacity;
+                const strokeZoomModifier = () => {
+                  if (zoom == MAP_MIN_ZOOM) return 2;
+                  else if (zoom < 0) return 1.5;
+                  else if (zoom > 1.5) return 0.5;
+                  return 1;
+                }
+
+                // Normal
+                let fill = p.owner ? teamColors?.base : '#000000';
+                let fillSaturation = TERRITORY_SATURATION_NORMAL;
+                let fillBrightness = TERRITORY_BRIGHTNESS_NORMAL;
+                let fillOpacity = TERRITORY_OPACITY_NORMAL;
                 let stroke = p.stroke;
                 let strokeWidth = p.strokeWidth;
 
-                // Figure out opacities and colors based on report mode and ViewModeRules
-                if (reportModeActive && viewModeRules) {
-                  if (affected) {
-                    strokeWidth = 2;
-                    fill = tinycolor(p.baseColor).saturate(10).brighten(10).toString();
 
-                    if (active) {
-                      fill = tinycolor(fill).brighten(15).toString();
-                      fillOpacity = TERRITORY_REPORT_HIGHLIGHTED_OPACITY;
-                    } else {
-                      fill = tinycolor(fill).toString();
+                // Overview
+                if (zoom === MAP_MIN_ZOOM && (!reportModeActive && !viewModeRules)) {
+                  fillSaturation = TERRITORY_SATURATION_OVERVIEW;
+                  fillBrightness = TERRITORY_BRIGHTNESS_OVERVIEW;
+                  fillOpacity = TERRITORY_OPACITY_OVERVIEW;
+                }
+
+                // Report mode
+                if (reportModeActive) {
+
+                  // If the report mode has specific rules for territory display
+                  if (viewModeRules) {
+                    fillSaturation = viewModeRules.territory.unaffectedSaturation;
+                    fillBrightness = viewModeRules.territory.unaffectedBrightness;
+                    fillOpacity = viewModeRules.territory.unaffectedOpacity;
+
+                    // If the territory is affected in the report
+                    if (affected) {
+                      fillSaturation = viewModeRules.territory.affectedSaturation;
+                      fillBrightness = viewModeRules.territory.affectedBrightness;
                       fillOpacity = viewModeRules.territory.affectedOpacity;
                     }
-                  } else {
-                    fillOpacity = viewModeRules.territory.unaffectedOpacity;
-                    // Apply grayscale filter if viewMode requires it
-                    if (viewModeRules.territory.applyGrayscale) {
-                      fill = tinycolor(fill).greyscale().toString();
+                  } 
+                  // No view mode rules for this report
+                  else {
+                    // If the territory is affected in the report
+                    if (affected) {                    
+                        fillSaturation = TERRITORY_SATURATION_REPORT_AFFECTED;
+                        fillBrightness = TERRITORY_BRIGHTNESS_REPORT_AFFECTED;
+                        fillOpacity = TERRITORY_OPACITY_REPORT_AFFECTED;
                     }
-                  }
-                } else {
-                  if (zoom == MAP_MIN_ZOOM) {
-                    fillOpacity = TERRITORY_OPACITY_OVERVIEW;
-                  } else {
-                    fillOpacity = TERRITORY_NORMAL_OPACITY;
-                  }
-                  
-                  fill = tinycolor(p.baseColor).toString();
-                  if (active) {
-                    if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
-                      fill = tinycolor(fill).saturate(50).toString();
-                    } 
-                    fill = tinycolor(fill).brighten(30).toString();
-                  } else {
-                    if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
-                      fill = tinycolor(fill).saturate(50).darken(20).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
-                    }
-                    else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
-                      fill = tinycolor(fill).saturate(10).darken(10).toString();
-                      fillOpacity = fillOpacity + (zoom == MAP_MIN_ZOOM ? 0.15 : viewModeRules?.territory.affectedOpacity || 0.05);
-                    }
-                  }
-
-                  if (selectedLocation && selectedLocation.id === p.territoryId && selectedLocation.source === 'territory') {
-                    strokeWidth = 2;
-                    stroke = teamColors ? teamColors.saturated : stroke;
-                    fillOpacity = TERRITORY_OPACITY_OVERVIEW;
                   }
                 }
+
+                // Capture highlighting
+                if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
+                    fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_1;
+                    fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_1;
+                }
+                else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
+                    fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_2;
+                    fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_2;
+                }
+
+                if (active) {
+                  fillSaturation = fillSaturation * TERRITORY_SATURATION_ACTIVE_MODIFIER;
+                  fillBrightness = fillBrightness * TERRITORY_BRIGHTNESS_ACTIVE_MODIFIER;
+                  fillOpacity = fillOpacity * TERRITORY_OPACITY_ACTIVE_MODIFIER;
+                  strokeWidth = strokeWidth * 2;
+                }
+
+                fill = tinycolor(fill).saturate(fillSaturation).brighten(fillBrightness).toString();
+
+                strokeWidth = strokeWidth * strokeZoomModifier();
                 
                 const interactive = reportModeActive ? p.highlighted ? true : false : true; 
                 
