@@ -2,7 +2,8 @@ import { MapIcon, MapIconTag } from '../data/map-icons';
 import { LayerState } from './layers';
 
 // Type definitions
-export type ViewMode = 'normal' | 'overview' | 'territoryDimming' | 'minimal' | 'none';
+export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'minimal' | 'none';
+export type TerritoryHighlight = 'territory' | 'mapIconTags' | 'stackComparisonIcons' | 'none';
 export type ReportSource = 'builtin' | 'user';
 export type FilterMode = 'ANY' | 'ALL';
 
@@ -12,12 +13,14 @@ export type FilterMode = 'ANY' | 'ALL';
 export interface ReportSpec {
   id: string;                    // Unique identifier (e.g., 'logistics-frontline', 'threats-storm')
   name: string;                  // Display name (e.g., 'Logistics (Frontline)', 'Storm Cannons')
+  image?: string;                // Optional image/icon URL for UI display
   tooltip?: string;              // Optional tooltip/description for UI
   category: string;              // Primary category (e.g., 'Territory', 'Threats', 'Job Views')
   subcategory?: string;          // Optional secondary grouping (e.g., 'Resource Mining', 'Logistics')
   mapIconTags: MapIconTag[];     // MapIcon tags to filter/show (empty = show no icons)
   filterMode?: FilterMode;       // 'ANY' (default): any tag matches; 'ALL': all tags must match
   viewMode: ViewMode;            // Visual presentation mode
+  highlightType: TerritoryHighlight; // How to highlight affected territories (if applicable)
   defaultLayers: LayerState;     // Complete desired layer state when report activates
   reportContextGroup?: string;   // Group for context-aware report switching (e.g., 'territory', 'threats', 'jobs-mining')
   metadata?: {                   // Optional extensible metadata for future features
@@ -36,10 +39,12 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-daily': {
     id: 'territory-daily',
     name: '1 Day',
+    image: 'Tile_Report_1',
     tooltip: 'Showing changes since 24 hours ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
+    highlightType: 'territory',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'territory',
     source: 'builtin',
@@ -47,10 +52,12 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-three-day': {
     id: 'territory-three-day',
     name: '3 Days',
+    image: 'Tile_Report_3',
     tooltip: 'Showing changes since 3 days ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
+    highlightType: 'territory',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'territory',
     source: 'builtin',
@@ -58,10 +65,12 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-weekly': {
     id: 'territory-weekly',
     name: '7 Days',
+    image: 'Tile_Report_7',
     tooltip: 'Showing changes since 7 days ago',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
+    highlightType: 'territory',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'territory',
     source: 'builtin',
@@ -69,39 +78,125 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   'territory-all-time': {
     id: 'territory-all-time',
     name: 'All Time',
+    image: 'Tile_Report_All',
     tooltip: 'Showing changes since the start of the war',
     category: 'Territory',
     mapIconTags: [],
     viewMode: 'territoryDimming',
+    highlightType: 'territory',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'territory',
     source: 'builtin',
   },
+  'capabilities-naval': {
+    id: 'capabilities-naval',
+    name: 'Naval Capabilities',
+    tooltip: 'Showing naval-related structures',
+    category: 'Threats',
+    mapIconTags: [MapIconTag.Naval],
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Shipyard] },
+    source: 'builtin',
+  },
+  'capabilities-aircraft': {
+    id: 'capabilities-aircraft',
+    name: 'Aircraft Capabilities',
+    tooltip: 'Showing aircraft-related structures',
+    category: 'Threats',
+    mapIconTags: [MapIconTag.Aircraft],
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Aircraft_Factory] },
+    source: 'builtin',
+  },
   // Threats Reports
-  'threats-storm': {
-    id: 'threats-storm',
-    name: 'Storm Cannons',
+  'threats-major': {
+    id: 'threats-major',
+    name: 'Major threats',
+    image: 'Tile_Threats',
     tooltip: 'Showing major threats',
     category: 'Threats',
-    mapIconTags: [MapIconTag.Coastal_Gun, MapIconTag.Storm_Cannon],
+    mapIconTags: [MapIconTag.Storm_Cannon, MapIconTag.Rocket_Structure],
     viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'threats',
-    metadata: { stackComparisonIcons: [MapIcon.Coastal_Gun, MapIcon.Storm_Cannon] },
+    metadata: { stackComparisonIcons: [MapIcon.Storm_Cannon, MapIcon.Rocket_Site] },
     source: 'builtin',
   },
-  'threats-rocket': {
-    id: 'threats-rocket',
-    name: 'Rockets',
+  // Threats Reports
+  'threats-defenses': {
+    id: 'threats-defenses',
+    name: 'Defenses',
+    image: 'Tile_Threats',
     tooltip: 'Showing major threats',
     category: 'Threats',
-    mapIconTags: [MapIconTag.Rocket_Structure],  // Matches Rocket_Site and Rocket_Site_With_Rocket
+    mapIconTags: [MapIconTag.Defense],
     viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
     reportContextGroup: 'threats',
-    metadata: { stackComparisonIcons: [MapIcon.Rocket_Site] },
     source: 'builtin',
   },
+  'threats-intel': {
+    id: 'threats-intel',
+    name: 'Intel',
+    tooltip: 'Showing intel-related structures (e.g., radar, comms)',
+    category: 'Threats',
+    mapIconTags: [MapIconTag.Intel_Center, MapIconTag.Observation_Tower, MapIconTag.Aircraft_Radar], 
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Observation_Tower] },
+    source: 'builtin',
+  },
+
+  'capabilities-production': {
+    id: 'capabilities-production',
+    name: 'Production',
+    tooltip: 'Showing production-related structures',
+    category: 'Economy',
+    mapIconTags: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory],
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Factory] },
+    source: 'builtin',
+  },
+  'capabilities-refinement': {
+    id: 'capabilities-refinement',
+    name: 'Refinement',
+    tooltip: 'Showing refinement-related structures',
+    category: 'Economy',
+    mapIconTags: [MapIconTag.Refinery],
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Refinery] },
+    source: 'builtin',
+  },
+  'capabilities-construction': {
+    id: 'capabilities-construction',
+    name: 'Construction',
+    tooltip: 'Showing construction-related structures',
+    category: 'Economy',
+    mapIconTags: [MapIconTag.Construction],
+    viewMode: 'territoryDimming',
+    highlightType: 'mapIconTags',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: { stackComparisonIcons: [MapIcon.Vehicle_Factory, MapIcon.Construction_Yard] },
+    source: 'builtin',
+  },
+
   // Job Views - Resource Mining
   'job-salvage-miner': {
     id: 'job-salvage-miner',
@@ -111,6 +206,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Resource_Salvage, MapIconTag.Refinery],
     filterMode: 'ANY',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
     source: 'builtin',
@@ -123,6 +219,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Resource_Component, MapIconTag.Refinery],
     filterMode: 'ANY',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
     source: 'builtin',
@@ -135,6 +232,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Resource_Sulfur, MapIconTag.Refinery],
     filterMode: 'ANY',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
     source: 'builtin',
@@ -147,6 +245,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Resource_Coal],
     filterMode: 'ANY',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
     source: 'builtin',
@@ -159,6 +258,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Resource_Oil],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: true, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-mining',
     source: 'builtin',
@@ -172,6 +272,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Storage],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
     source: 'builtin',
@@ -184,6 +285,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Logistics],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
     source: 'builtin',
@@ -196,6 +298,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Logistics, MapIconTag.Production],
     filterMode: 'ANY',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-logistics',
     source: 'builtin',
@@ -209,6 +312,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Production],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
     source: 'builtin',
@@ -221,6 +325,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Vehicle_Factory],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
     source: 'builtin',
@@ -233,6 +338,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Shipyard],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
     source: 'builtin',
@@ -245,6 +351,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     mapIconTags: [MapIconTag.Construction_Yard],
     filterMode: 'ALL',
     viewMode: 'minimal',
+    highlightType: 'mapIconTags',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
     source: 'builtin',

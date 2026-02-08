@@ -37,9 +37,9 @@ export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
       return {
         territory: {
           unaffectedOpacity: 0.25,
-          unaffectedSaturation: 0,
+          unaffectedSaturation: 20,
           unaffectedBrightness: -50,
-          affectedOpacity: 0.7,
+          affectedOpacity: 0.5,
           affectedSaturation: 20,
           affectedBrightness: 10,
         },

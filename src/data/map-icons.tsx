@@ -133,6 +133,8 @@ enum MapIconTag {
     Rocket_Site_With_Rocket = "Rocket_Site_With_Rocket",
     Rocket_Target = "Rocket_Target",
     Rocket_Ground_Zero = "Rocket_Ground_Zero",
+    // Naval
+    Naval = "Naval",
     // Aircraft
     Aircraft = "Aircraft",
     Aircraft_Depot = "Aircraft_Depot",
@@ -361,11 +363,11 @@ const MapTagHierarchy = {
     Storage: [MapIconTag.Storage_Facility, MapIconTag.Seaport],
     Production: [MapIconTag.Factory, MapIconTag.Mass_Production_Factory, MapIconTag.Refinery],
     Construction: [MapIconTag.Vehicle_Factory, MapIconTag.Shipyard, MapIconTag.Construction_Yard],
-    Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
+    Aircraft: [MapIconTag.Aircraft_Depot, MapIconTag.Aircraft_Factory, MapIconTag.Aircraft_Radar, MapIconTag.Aircraft_Runway_1, MapIconTag.Aircraft_Runway_2],
     Defensive: [MapIconTag.Storm_Cannon, MapIconTag.Coastal_Gun, MapIconTag.Mortar_House],
     Utility: [MapIconTag.Intel_Center, MapIconTag.Weather_Station, MapIconTag.Tech_Center, MapIconTag.Observation_Tower],
     Rocket: [MapIconTag.Rocket_Site, MapIconTag.Rocket_Site_With_Rocket, MapIconTag.Rocket_Target, MapIconTag.Rocket_Ground_Zero],
-    Aircraft: [MapIconTag.Aircraft_Depot, MapIconTag.Aircraft_Factory, MapIconTag.Aircraft_Radar, MapIconTag.Aircraft_Runway_1, MapIconTag.Aircraft_Runway_2]
+    Resources: [MapIconTag.Resource_Salvage, MapIconTag.Resource_Component, MapIconTag.Resource_Sulfur, MapIconTag.Resource_Coal, MapIconTag.Resource_Oil],
 }
 
 const mapIcons: Array<MapIconStruct> = [
@@ -505,7 +507,8 @@ const mapIcons: Array<MapIconStruct> = [
             MapIconTag.Spawn,
             MapIconTag.Storage,
             MapIconTag.Base_Ship,
-            MapIconTag.Troop_Ship
+            MapIconTag.Troop_Ship,
+            MapIconTag.Naval
         ]
     },
 
@@ -532,7 +535,8 @@ const mapIcons: Array<MapIconStruct> = [
             MapIconTag.Economy,
             MapIconTag.Construction,
             MapIconTag.Static,
-            MapIconTag.Shipyard
+            MapIconTag.Shipyard,
+            MapIconTag.Naval
         ]
     },
     {
@@ -599,7 +603,8 @@ const mapIcons: Array<MapIconStruct> = [
             MapIconTag.Logistics,
             MapIconTag.Storage,
             MapIconTag.Static,
-            MapIconTag.Seaport
+            MapIconTag.Seaport,
+            MapIconTag.Naval
         ]
     },
     {
@@ -779,7 +784,8 @@ const mapIcons: Array<MapIconStruct> = [
             MapIconTag.Utility,
             MapIconTag.Static,
             MapIconTag.Defense,
-            MapIconTag.Coastal_Gun
+            MapIconTag.Coastal_Gun,
+            MapIconTag.Naval
         ]
     },
     {

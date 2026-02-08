@@ -78,6 +78,15 @@ export function getMapIconsByTag(tag: MapIconTag) {
   return taggedMapIcons;
 }
 
+export function getMapIconsByTags(tags: MapIconTag[], filter: string = 'ANY') {
+  const taggedMapIcons = filter === 'ALL' ? mapIcons.filter(icon => tags.every(tag => icon.tags.includes(tag))) : mapIcons.filter(icon => tags.some(tag => icon.tags.includes(tag)));
+  let icons = [];
+  for (const mi of taggedMapIcons) {
+    icons.push(mi.id);
+  }
+  return icons;
+}
+
 // Build a wiki URL for an icon type. If a specific wikiPage is provided in data, use it.
 // Otherwise, fall back to heuristics based on displayName.
 export function getIconWikiUrl(iconType: number): string | null {

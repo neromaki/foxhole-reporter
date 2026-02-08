@@ -10,17 +10,17 @@ import { projectRegionPoint } from './projection';
 
 /**
  * Computes which territories are "threatened" based on stack comparison
- * A territory is threatened if it contains icons from stackComparisonIcons
+ * A territory is threatened if it contains icons from mapIcons
  * and one team has more of those icons than the other in that territory.
  * 
  * @param territories - All territory tiles from snapshot
- * @param stackComparisonIcons - Icon types to compare (e.g., [MapIcon.Storm_Cannon])
+ * @param mapIcons - Icon types to compare (e.g., [MapIcon.Storm_Cannon])
  * @returns Set of territory IDs that should be highlighted
  */
 export function MapIconTerritories(
   territories: LocationTile[] | undefined,
   majorLabelsByMap: Map<string, { lat: number; lng: number; text: string }[]>,
-  stackComparisonIcons: MapIcon[]
+  mapIcons: MapIcon[]
 ): Set<string> {
 
   function nearestMajorLabel(region: string, lat: number, lng: number): string | null {
@@ -39,10 +39,11 @@ export function MapIconTerritories(
   }
   
   
-  const threatened = new Set<string>();
+  const highlightTerritories = new Set<string>();
   
-  if (!territories || !stackComparisonIcons || stackComparisonIcons.length === 0) {
-    return threatened;
+  if (!territories || !mapIcons || mapIcons.length === 0) {
+    console.log(`[MapIconTerritories] No territories or map icons provided. territories: ${territories ? territories.length : 'undefined'}, mapIcons: ${mapIcons ? mapIcons.length : 'undefined'}`);
+    return highlightTerritories;
   }
 
   // Group territories by hex region to analyze stacks
@@ -62,7 +63,7 @@ export function MapIconTerritories(
     
     for (const t of regionTerritories) {
       // Check if this territory has one of the comparison icons
-      if (stackComparisonIcons.includes(t.iconType as MapIcon)) {
+      if (mapIcons.includes(t.iconType as MapIcon)) {
         // Project territory coordinates to match majorLabelsByMap coordinate system
         const projected = projectRegionPoint(region, t.x, t.y);
         if (!projected) continue; // Skip if projection fails
@@ -73,8 +74,8 @@ export function MapIconTerritories(
         // Get the major town by that label
         const territory = nearestLabel ? getTown(nearestLabel, true) : null;
         // If we haven't already added this territory for highlighting, do so
-        if(territory && territory.id && !threatened.has(territory.id)) {
-          threatened.add(territory.id);
+        if(territory && territory.id && !highlightTerritories.has(territory.id)) {
+          highlightTerritories.add(territory.id);
         }
 
         if (t.owner === 'Warden') {
@@ -86,5 +87,5 @@ export function MapIconTerritories(
     }
   }
 
-  return threatened;
+  return highlightTerritories;
 }

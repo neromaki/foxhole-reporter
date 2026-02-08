@@ -21,19 +21,6 @@ export default function ReportModes() {
     return grouped;
   }, [allReports]);
 
-  // Icon mapping for reports (can be expanded to use report metadata in the future)
-  const getReportIcon = (reportId: string): string => {
-    const iconMap: Record<string, string> = {
-      'territory-daily': 'Tile_Report_1',
-      'territory-three-day': 'Tile_Report_3',
-      'territory-weekly': 'Tile_Report_7',
-      'territory-all-time': 'Tile_Report_All',
-      'threats-storm': 'Tile_Threats',
-      'threats-rocket': 'Tile_Threats',
-    };
-    return iconMap[reportId] || 'Tile_Report_1';
-  };
-
   return (
     <div>
       {/* Render Territory reports */}
@@ -45,7 +32,7 @@ export default function ReportModes() {
               <Tile
                 key={report.id}
                 label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${getReportIcon(report.id)}.png`, import.meta.url) }}
+                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
                 active={activeReport?.id === report.id}
                 callBack={() => {
                   // Toggle: if already active, deactivate; otherwise activate
@@ -70,7 +57,31 @@ export default function ReportModes() {
               <Tile
                 key={report.id}
                 label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${getReportIcon(report.id)}.png`, import.meta.url) }}
+                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
+                active={activeReport?.id === report.id}
+                callBack={() => {
+                  if (activeReport?.id === report.id) {
+                    setActiveReport(null);
+                  } else {
+                    setActiveReport(report);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Render Economic reports */}
+      {reportsByCategory.has('Economy') && (
+        <div className="mb-5">
+          <span className="text-gray-300 mb-2 inline-block">Economy</span>
+          <div className="grid grid-cols-4 gap-2">
+            {reportsByCategory.get('Economy')!.map((report) => (
+              <Tile
+                key={report.id}
+                label={report.name}
+                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
                 active={activeReport?.id === report.id}
                 callBack={() => {
                   if (activeReport?.id === report.id) {
@@ -94,7 +105,7 @@ export default function ReportModes() {
               <Tile
                 key={report.id}
                 label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/Tile_Report_1.png`, import.meta.url) }}
+                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
                 active={activeReport?.id === report.id}
                 callBack={() => {
                   if (activeReport?.id === report.id) {

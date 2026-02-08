@@ -43,6 +43,7 @@ function buildStructuresTree(): LayerNode {
   const groups: Array<{ key: string; label: string; tags: MapIconTag[] }> = [
     { key: 'bases', label: 'Bases', tags: MapTagHierarchy.Bases },
     { key: 'storage', label: 'Storage', tags: MapTagHierarchy.Storage },
+    { key: 'aircraft', label: 'Aircraft', tags: MapTagHierarchy.Aircraft },
     { key: 'production', label: 'Production', tags: MapTagHierarchy.Production },
     { key: 'construction', label: 'Construction', tags: MapTagHierarchy.Construction },
     { key: 'defensive', label: 'Defensive', tags: MapTagHierarchy.Defensive },

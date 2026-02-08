@@ -12,7 +12,7 @@ import HexNameLabels from './HexNameLabels';
 import { StaticIconLayer, StaticLabelLayer } from './StaticMapLayer';
 import TerritorySubregionLayer from './TerritorySubregionLayer';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
+import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, getMapIconsByTags, getIconWikiUrl, getIconSprite, iconTypeToFilename } from '../lib/icons';
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
@@ -62,37 +62,39 @@ export default function MapView() {
   
   // Populate reportHighlightedSet based on report category (Territory or Threats)
   useEffect(() => {
-    if (!activeReport) {
-      // Clear highlighted set when no report is active
-      setReportHighlightedSet(new Set());
-      setStackComparisonMapIcon(null);
-      return;
-    }
 
+    // Set default
+    setReportHighlightedSet(new Set());
+    setStackComparisonMapIcon(null);
+
+    if (!activeReport) return;
+    
     // Territory reports: use diff data
-    if (activeReport.category === 'Territory' && activeReportDiff?.changes) {
+    if (activeReport.highlightType === 'territory' && activeReportDiff?.changes) {
       const territoryIds = new Set(activeReportDiff.changes.map((c: { id: string }) => c.id));
       setReportHighlightedSet(territoryIds);
-      setStackComparisonMapIcon(null); // Territory reports don't use stack comparison
-      DEBUG_MODE && console.log('[MapView] Territory report: highlighted', territoryIds.size, 'territories');
     }
-    // Threats reports: use stack comparison
-    else if (activeReport.category === 'Threats' && activeReport.metadata?.stackComparisonIcons) {
-      const threatening = MapIconTerritories(
+    else if (activeReport.highlightType == 'mapIconTags' && activeReport.mapIconTags) {
+      console.log("[MapView] Highlighting territories using `mapIconTags`:", activeReport.mapIconTags);
+      const mapIcons = getMapIconsByTags(activeReport.mapIconTags, activeReport.filterMode);
+      const mapIconTerritories = MapIconTerritories(
+        snapshot?.territories,
+        majorLabelsByMap,
+        mapIcons
+      );
+      setReportHighlightedSet(mapIconTerritories);
+    }
+    else if (activeReport.highlightType == 'stackComparisonIcons' && activeReport.metadata?.stackComparisonIcons) {
+      setReportHighlightedSet(MapIconTerritories(
         snapshot?.territories,
         majorLabelsByMap,
         activeReport.metadata.stackComparisonIcons
-      );
-      setReportHighlightedSet(threatening);
+      ));
+    }
+    
+    if(activeReport.metadata && activeReport.metadata.stackComparisonIcons) {
       setStackComparisonMapIcon(activeReport.metadata.stackComparisonIcons);
       setVictoryBarDrawerState(true);
-      DEBUG_MODE && console.log('[MapView] Threats report: highlighted', threatening.size, 'territories');
-    }
-    // Job Views or other categories: no territory highlighting
-    else {
-      setReportHighlightedSet(new Set());
-      setStackComparisonMapIcon(null);
-      setVictoryBarDrawerState(false);
     }
   }, [activeReport, activeReportDiff, snapshot, setReportHighlightedSet, setStackComparisonMapIcon]);
 
