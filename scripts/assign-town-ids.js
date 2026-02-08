@@ -5,10 +5,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { DEBUG_MODE } from '../lib/appConfig.js';
+const DEBUG_MODE = true; // Set to false to suppress debug output
 const fetchFn = globalThis.fetch;
 
-const WAR_API_BASE = 'https://war-service-live.foxholeservices.com/api';
+const WAR_API_BASE = 'https://war-service-live-2.foxholeservices.com/api';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const townsPath = path.join(__dirname, '..', 'src', 'data', 'towns.tsx');
 
@@ -72,15 +72,42 @@ function normalizeName(name) {
 function updateTownId(tsx, town, newId) {
   const { apiName, displayName, region, major, x, y } = town;
   const regionPattern = escapeRegExp(region);
+  // Create a pattern that matches with floating point tolerance
+  // Match the town entry with flexible spacing and number precision
   const pattern = new RegExp(
-    `\{\\s*"apiName":\\s*"${escapeRegExp(apiName)}",\\s*"displayName":\\s*"${escapeRegExp(displayName)}",\\s*"region":\\s*Region\\.${regionPattern},\\s*"major":\\s*${major},\\s*"x":\\s*${x},\\s*"y":\\s*${y}(?:,\\s*"id":\\s*"[^"]*")?\\s*\}`
+    `\\{\\s*"apiName":\\s*"${escapeRegExp(apiName)}",\\s*"displayName":\\s*"${escapeRegExp(displayName)}",\\s*"region":\\s*Region\\.${regionPattern},\\s*"major":\\s*${major},\\s*"x":\\s*[-\\d.]+,\\s*"y":\\s*[-\\d.]+(?:,\\s*"id":\\s*"[^"]*")?\\s*\\}`,
+    'g'
   );
-  const replacement = `{ "apiName": "${apiName}", "displayName": "${displayName}", "region": Region.${region}, "major": ${major}, "x": ${x}, "y": ${y}, "id": "${newId}" }`;
-  if (!pattern.test(tsx)) {
+  
+  // Find matching entry and replace just that one
+  const matches = Array.from(tsx.matchAll(pattern));
+  if (matches.length === 0) {
     console.warn('Pattern not found for town', town);
     return tsx;
   }
-  return tsx.replace(pattern, replacement);
+  
+  // Get the first match and extract the x,y values to verify it's the right town
+  const match = matches[0];
+  const xMatch = match[0].match(/"x":\s*([-\d.]+)/);
+  const yMatch = match[0].match(/"y":\s*([-\d.]+)/);
+  
+  if (!xMatch || !yMatch) {
+    console.warn('Could not extract coordinates for town', town);
+    return tsx;
+  }
+  
+  const matchX = parseFloat(xMatch[1]);
+  const matchY = parseFloat(yMatch[1]);
+  
+  // Check if coordinates are close enough (tolerance for floating point)
+  const tolerance = 0.01;
+  if (Math.abs(matchX - x) > tolerance || Math.abs(matchY - y) > tolerance) {
+    console.warn('Coordinates do not match for town', town, 'found', matchX, matchY);
+    return tsx;
+  }
+  
+  const replacement = `{ "apiName": "${apiName}", "displayName": "${displayName}", "region": Region.${region}, "major": ${major}, "x": ${matchX}, "y": ${matchY}, "id": "${newId}" }`;
+  return tsx.replace(match[0], replacement);
 }
 
 async function main() {
