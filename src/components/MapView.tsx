@@ -182,14 +182,13 @@ export default function MapView() {
       zoomControl={false}
       zoomSnap={0.1}
       zoomDelta={0.5}
-      attributionControl={false}
-      
+      attributionControl={false}      
       className="h-full w-full bg-gray-900"
     >
       <ZoomControls />
       {DEBUG_PERF_OVERLAY && <PerfOverlay />}
       <SharedTooltipProvider>
-        {/* <StaticIconLayer visible={true} />
+        <StaticIconLayer visible={true} />
         <LocationsLayer 
           snapshot={snapshot}
           activeLayers={effectiveLayers} // hide location layer at zooms < 0
@@ -203,11 +202,11 @@ export default function MapView() {
           visible={effectiveLayers.territories}
           historyById={historyByTerritoryId}
           casualtyRates={casualtyRates}
-        /> */}
+        />
         <HexTileLayer />
         <HexInfoLayer 
           casualtyRates={casualtyRates}
-          casualtiesVisible={false}//!!effectiveLayers.casualties}
+          casualtiesVisible={!!effectiveLayers.casualties}
         />
         <StaticLabelLayer 
           majorVisible={activeLayers.majorLocations}

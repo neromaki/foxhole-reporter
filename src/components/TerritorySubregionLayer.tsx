@@ -3,7 +3,7 @@ import tinycolor from "tinycolor2";
 import { SVGOverlay, useMap } from 'react-leaflet';
 import type { LocationTile } from '../types/war';
 import { getHexByApiName, hexToLeafletBounds } from '../lib/hexLayout';
-import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OVERVIEW_OPACITY, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
+import { TERRITORY_NORMAL_OPACITY, TERRITORY_REPORT_AFFECTED_OPACITY, TERRITORY_REPORT_UNAFFECTED_OPACITY, TERRITORY_REPORT_HIGHLIGHTED_OPACITY, MAJOR_LABEL_MIN_ZOOM, MINOR_LABEL_MIN_ZOOM, MAP_MIN_ZOOM, TERRITORY_OPACITY_OVERVIEW, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
 import { useMapStore, TerritoryHistory, SelectedLocation } from '../state/useMapStore';
 import { getTownByApiName, getTownById } from '../data/towns';
 import { useSharedTooltip } from '../lib/sharedTooltip';
@@ -128,9 +128,49 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
 
       for (const pathData of regionData.paths) {
         const matchedTown = getTownByApiName(pathData.id);
-        const territory = matchedTown?.id ? territoryById.get(matchedTown.id) : undefined;
+        if (!matchedTown) {
+          if (DEBUG_MODE) {
+            console.warn(`[TerritorySubregion] No town found for path id "${pathData.id}" in region ${region}`);
+          }
+          continue;
+        }
+        
+        // Try exact ID match first
+        let territory = matchedTown.id ? territoryById.get(matchedTown.id) : undefined;
+        
+        // If no exact match, try fuzzy match by region + approximate coordinates
+        if (!territory && matchedTown.id) {
+          const townIdParts = matchedTown.id.split('-');
+          if (townIdParts.length === 3) {
+            const expectedRegion = townIdParts[0];
+            const expectedX = parseFloat(townIdParts[1]);
+            const expectedY = parseFloat(townIdParts[2]);
+            
+            // Search for territories in the same region with similar coordinates
+            for (const [id, t] of territoryById.entries()) {
+              if (t.region === expectedRegion) {
+                const idParts = id.split('-');
+                if (idParts.length === 3) {
+                  const dx = Math.abs(parseFloat(idParts[1]) - expectedX);
+                  const dy = Math.abs(parseFloat(idParts[2]) - expectedY);
+                  // Allow 0.05 tolerance for coordinate drift
+                  if (dx < 0.05 && dy < 0.05) {
+                    territory = t;
+                    if (DEBUG_MODE) {
+                      console.log(`[TerritorySubregion] Fuzzy matched "${pathData.id}": expected ${matchedTown.id} -> found ${id}`);
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        
         if (!territory) {
-          DEBUG_MODE ?? console.log(`[TerritorySubregion] No territory data for path ${pathData.id} in region ${region}`);
+          if (DEBUG_MODE) {
+            console.warn(`[TerritorySubregion] No territory data for path "${pathData.id}" (expected id: ${matchedTown.id}) in region ${region}`);
+          }
           continue;
         }
         hasAnyTerritory = true;
@@ -329,7 +369,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   }
                 } else {
                   if (zoom == MAP_MIN_ZOOM) {
-                    fillOpacity = TERRITORY_OVERVIEW_OPACITY;
+                    fillOpacity = TERRITORY_OPACITY_OVERVIEW;
                   } else {
                     fillOpacity = TERRITORY_NORMAL_OPACITY;
                   }
@@ -354,7 +394,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   if (selectedLocation && selectedLocation.id === p.territoryId && selectedLocation.source === 'territory') {
                     strokeWidth = 2;
                     stroke = teamColors ? teamColors.saturated : stroke;
-                    fillOpacity = TERRITORY_OVERVIEW_OPACITY;
+                    fillOpacity = TERRITORY_OPACITY_OVERVIEW;
                   }
                 }
                 
