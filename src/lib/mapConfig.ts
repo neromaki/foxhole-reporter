@@ -1,5 +1,5 @@
 // Map display configuration constants
-export const MAP_MIN_ZOOM = -2;           // Minimum zoom level for the map (allow farther zoom-out)
+export const MAP_MIN_ZOOM = -1.5;           // Minimum zoom level for the map (allow farther zoom-out)
 export const MAP_MAX_ZOOM = 3;              // Maximum zoom level for the map
 
 // Auto-show/hide overlays at zoom levels

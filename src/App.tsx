@@ -16,7 +16,6 @@ import { ContextSwitchConfirmationDialog } from './components/ContextSwitchConfi
 import { getTeams } from './data/teams';
 import { MapIconTag, checkMapIconHasTag } from './data/map-icons';
 import { getIconLabel } from './lib/icons';
-import HeaderBar from './components/HeaderBar';
 import { REPORT_SWITCH_DIALOG } from './lib/appConfig';
 
 export default function App() {

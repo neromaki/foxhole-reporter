@@ -78,7 +78,7 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
       <div className={`flex flex-col items-center w-full md:w-[28rem] visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 text-sm text-gray-200 ${className ?? ''} pointer-events-auto`}>
         
         
-        <h1 className={`${reportModeActive ? 'h-auto' : 'h-auto'} transition-all duration-1000 overflow-hidden text-sm md:text-lg`}>Foxhole Reporter</h1>
+        <h1 className={`${reportModeActive ? 'h-auto' : 'h-auto'} transition-all duration-1000 overflow-hidden text-sm md:text-lg`}>Foxhole Report</h1>
         
         <div className="w-full flex flex-row items-start justify-between mt-2 space-x-2">
           <div className="flex items-center flex-col gap-1">
