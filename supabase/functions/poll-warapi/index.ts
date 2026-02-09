@@ -1,13 +1,127 @@
 // Supabase Edge Function: poll-warapi
 // Fetches Foxhole WarAPI snapshot and stores territories in snapshots table.
-import { getServiceClient } from '../_shared/supabaseClient.ts';
+
 // Workspace TypeScript may not have Deno types; declare to satisfy editor.
 declare const Deno: any;
 
-// Import shared WarAPI helpers to avoid duplication.
-import { fetchWarState, fetchMapList, fetchDynamicMap, fetchWarReport, DynamicMapItem, WarReport } from '../../../src/lib/warApi.ts';
+// ============================================================================
+// Supabase Client
+// ============================================================================
 
-// Owner mapping from WarAPI teamId to string.
+function getServiceClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+  return {
+    from: (table: string) => ({
+      insert: async (data: any) => {
+        const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          return { error: new Error(`Insert failed: ${response.status} ${text}`) };
+        }
+        return { error: null, data: await response.json() };
+      },
+    }),
+  };
+}
+
+// ============================================================================
+// WarAPI Types
+// ============================================================================
+
+export interface WarState {
+  warId: string;
+  warNumber: number;
+  winner: string;
+  conquestStartTime: number;
+  conquestEndTime: number | null;
+  requiredVictoryTowns: number;
+  shortRequiredVictoryTowns: number;
+}
+
+export interface DynamicMapItem {
+  teamId: 'NONE' | 'WARDENS' | 'COLONIALS';
+  iconType: number;
+  x: number; // normalized [0-1]
+  y: number; // normalized [0-1]
+  flags: number;
+}
+
+export interface DynamicMapData {
+  regionId: number;
+  scorchedVictoryTowns: number;
+  mapItems: DynamicMapItem[];
+  mapTextItems: any[];
+  lastUpdated: number;
+  version: number;
+}
+
+export interface WarReport {
+  region: string;
+  totalEnlistments: number;
+  colonialCasualties: number;
+  wardenCasualties: number;
+  dayOfWar: number;
+  version: number;
+}
+
+// ============================================================================
+// WarAPI Fetch Functions
+// ============================================================================
+
+enum WarAPIEndpoint {
+  Live1 = 'https://war-service-live.foxholeservices.com/api',
+  Live2 = 'https://war-service-live-2.foxholeservices.com/api',
+  Live3 = 'https://war-service-live-3.foxholeservices.com/api',
+  Dev = 'https://war-service-dev.foxholeservices.com/api'
+}
+
+export const WAR_API_BASE = WarAPIEndpoint.Live1;
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed ${res.status} ${url}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function fetchWarState(): Promise<WarState> {
+  const url = `${WAR_API_BASE}/worldconquest/war`;
+  return fetchJson<WarState>(url);
+}
+
+export async function fetchMapList(): Promise<string[]> {
+  const url = `${WAR_API_BASE}/worldconquest/maps`;
+  return fetchJson<string[]>(url);
+}
+
+export async function fetchDynamicMap(mapName: string): Promise<DynamicMapData> {
+  const url = `${WAR_API_BASE}/worldconquest/maps/${mapName}/dynamic/public`;
+  return fetchJson<DynamicMapData>(url);
+}
+
+export async function fetchWarReport(mapName: string): Promise<WarReport> {
+  const url = `${WAR_API_BASE}/worldconquest/warReport/${mapName}`;
+  return fetchJson<WarReport>(url);
+}
+
+// ============================================================================
+// Owner Mapping
+// ============================================================================
+
 function ownerMap(teamId: string): 'Colonial' | 'Warden' | 'Neutral' {
   switch (teamId) {
     case 'COLONIALS': return 'Colonial';
@@ -16,6 +130,9 @@ function ownerMap(teamId: string): 'Colonial' | 'Warden' | 'Neutral' {
   }
 }
 
+// ============================================================================
+// Main Edge Function
+// ============================================================================
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
@@ -26,7 +143,10 @@ Deno.serve(async (req: Request) => {
     // If the current war has ended and we're in Resistance Mode, don't get data.
     if(war.conquestEndTime != null) {
       console.log(`Current war (${war.warNumber}) ended at ${war.conquestEndTime} and is in Resistance Mode.`);
-      return;
+      return new Response(JSON.stringify({ message: 'War in Resistance Mode' }), { 
+        status: 200, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
 
     const mapList = await fetchMapList();

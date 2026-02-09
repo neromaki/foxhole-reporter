@@ -1,9 +1,12 @@
 // Shared WarAPI helpers used by both client and Supabase Edge Functions.
+
+import { DATA_SOURCE } from "./mapConfig";
+
 // Keep this lightweight (only fetch + typing) so it can be imported in Deno runtime.
 enum WarAPIEndpoint {
   Live1 = 'https://war-service-live.foxholeservices.com/api',
-  Live2 = 'https://war-service-live2.foxholeservices.com/api',
-  Live3 = 'https://war-service-live3.foxholeservices.com/api',
+  Live2 = 'https://war-service-live-2.foxholeservices.com/api',
+  Live3 = 'https://war-service-live-3.foxholeservices.com/api',
   Dev = 'https://war-service-dev.foxholeservices.com/api'
 }
 
