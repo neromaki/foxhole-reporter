@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, TERRITORY_OPACITY_NORMAL, TERRITORY_OPACITY_REPORT_AFFECTED, TERRITORY_OPACITY_REPORT_UNAFFECTED, TERRITORY_OPACITY_REPORT_HIGHLIGHTED, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, DEBUG_ZOOM, TERRITORY_OPACITY_NORMAL, TERRITORY_OPACITY_REPORT_AFFECTED, TERRITORY_OPACITY_REPORT_UNAFFECTED, TERRITORY_OPACITY_REPORT_HIGHLIGHTED, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -189,11 +189,12 @@ export default function MapView() {
     >
       <ZoomControls />
       {DEBUG_PERF_OVERLAY && <PerfOverlay />}
+      { DEBUG_ZOOM && <ZoomOverlay />}
       <SharedTooltipProvider>
         <StaticIconLayer visible={true} />
         <LocationsLayer 
           snapshot={snapshot}
-          activeLayers={effectiveLayers} // hide location layer at zooms < 0
+          activeLayers={effectiveLayers}
           changedDaily={changedDaily}
           changedThreeDay={changedThreeDay}
           changedWeekly={changedWeekly}
@@ -757,7 +758,7 @@ function LocationsLayer({
   }, [activeReport, reportHighlightedSet, map]);
   // Hide when zoomed out to -1 or lower, or in report mode
   const viewModeRules = activeReport ? getViewModeRules(activeReport.viewMode) : null;
-  if ((!activeReport && zoom <= MAP_MARKER_MIN_ZOOM) 
+  if ((!activeReport && zoom <= MAP_MARKER_MIN_ZOOM && activeLayers.territories) 
     || (activeReport != null && viewModeRules && !viewModeRules.mapIcon.visibleAtMinZoom && zoom <= MAP_MARKER_MIN_ZOOM)) return null;  
 
   return (
@@ -804,6 +805,31 @@ function LocationsLayer({
   );
 }
 
+
+function ZoomOverlay() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  useEffect(() => {
+    const handler = () => setZoom(map.getZoom());
+    map.on('zoomend', handler);
+    return () => { map.off('zoomend', handler); };
+  }, [map]);
+  return (
+    <div className="grid grid-cols-2 grid-rows-4 absolute bottom-2 right-2 z-[1000] rounded bg-white text-xs text-black px-2 py-1">
+        <span className="col-span-1">Zoom:</span>
+        <span className="col-span-1 text-base font-semibold">{zoom.toFixed(2)}</span>
+      
+        <span className="col-span-1">MIN:</span>
+        <span className="col-span-1 text-base font-semibold">{MAP_MIN_ZOOM}</span>
+      
+        <span className="col-span-1">MAX:</span>
+        <span className="col-span-1 text-base font-semibold">{MAP_MAX_ZOOM}</span>
+      
+        <span className="col-span-1">MARKER_MIN:</span>
+        <span className="col-span-1 text-base font-semibold">{MAP_MARKER_MIN_ZOOM}</span>
+    </div>
+  );
+}
 
 // Simple performance overlay to inspect marker counts and memory usage
 function PerfOverlay() {

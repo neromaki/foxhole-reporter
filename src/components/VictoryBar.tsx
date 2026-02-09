@@ -47,14 +47,15 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
   
   const stackComparisonMapIcon = useMapStore(s => s.stackComparisonMapIcon);
   const victoryBarDrawer = useMapStore(s => s.victoryBarDrawer);
+  const activeReport = useMapStore((s) => s.activeReport);
+  const reportModeActive = useMapStore((s) => s.activeReport !== null);
 
+  const [now, setNow] = useState<Date>(() => new Date());
 
-    const [now, setNow] = useState<Date>(() => new Date());
-  
-  // useEffect(() => {
-  //   const id = setInterval(() => setNow(new Date()), 1000);
-  //   return () => clearInterval(id);
-  // }, []);
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   if (!counts || warState?.requiredVictoryTowns == null || warState?.shortRequiredVictoryTowns == null) return null;
 
@@ -74,8 +75,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
 
   return (
     <div className={`w-full md:flex md:justify-center`}>
-      <div className={`flex flex-col items-center w-full md:w-[28rem] visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 pb-0 text-sm text-gray-200 ${className ?? ''} pointer-events-auto`}>
-
+      <div className={`flex flex-col items-center w-full md:w-[28rem] visible z-[449] rounded-lg border border-gray-700 bg-gray-800 px-3 py-1 text-sm text-gray-200 ${className ?? ''} pointer-events-auto`}>
+        
+        
+        <h1 className={`${reportModeActive ? 'h-auto' : 'h-auto'} transition-all duration-1000 overflow-hidden text-sm md:text-lg`}>Foxhole Reporter</h1>
+        
         <div className="w-full flex flex-row items-start justify-between mt-2 space-x-2">
           <div className="flex items-center flex-col gap-1">
             <img src={Colonials?.icon} alt="Colonial" className="h-6 w-6" />
@@ -83,11 +87,11 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
           </div>
 
           <div className={`flex flex-grow flex-col relative`}>
-            <div className="flex-grow relative h-7 overflow-hidden rounded bg-gray-700">
+            <div className="flex-grow relative h-6 md:h-7 overflow-hidden rounded bg-gray-700">
               <div className="flex h-full w-full justify-between">
                 {counts.colonial > 0 && (
                   <div className="h-full flex justify-start items-center" style={{ width: pct(counts.colonial), backgroundColor: Colonials?.colors.saturated }}>
-                      <span className="text-lg font-semibold text-gray-200 text-left ml-2 victory-count">{counts.colonial}</span>
+                      <span className="text-base md:text-lg font-semibold text-gray-200 text-left ml-2 victory-count">{counts.colonial}</span>
                   </div>
                 )}
                 {scorchedVal > 0 && (
@@ -98,7 +102,7 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
                 )}
                 {counts.warden > 0 && (
                   <div className="h-full flex justify-end items-center" style={{ width: pct(counts.warden), backgroundColor: Wardens?.colors.saturated }}>
-                      <span className="text-gray-200 text-right text-lg font-semibold mr-2 victory-count">{counts.warden}</span>
+                      <span className="text-gray-200 text-right text-base md:text-lg font-semibold mr-2 victory-count">{counts.warden}</span>
                   </div>
                 )}
               </div>
@@ -137,23 +141,34 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
           )}
         </div>
 
-        <div className={`${victoryBarDrawer ? "h-auto" : "h-0 overflow-hidden"} w-full transition-all duration-300 ease-in-out`}>
-          {warState?.warStart && (
-            <div className={`flex justify-center`}>
-              <div className="flex gap-x-2 mt-2 bg-gray-700/50 p-1 rounded">
-                {TimerPiece(formatDuration(warState.warStart, "{DD}", now), "days")}
-                {TimerPiece(formatDuration(warState.warStart, "{HH}", now), "hours")}
-                {TimerPiece(formatDuration(warState.warStart, "{MM}", now), "mins")}
-                {TimerPiece(formatDuration(warState.warStart, "{SS}", now), "secs")}
+        {warState && warState.warStart && (
+          <div className={`col-span-2 flex justify-center items-center gap-2 md:gap-3 flex-grow ${reportModeActive ? 'h-0' : 'h-auto'} transition-all duration-1000 overflow-hidden`}>
+            <div className={`flex gap-x-2`}>
+              <div className={`flex items-center gap-x-1 bg-red-500 px-1.5 py-0.5 rounded`}>
+                <span className={`bg-gray-100 w-1 h-1 rounded-full animate-pulse`}></span>
+                <span className={`text-white text-xs`}>Live</span>
+              </div>
+              <div className={`flex justify-start items-center gap-1 text-xs md:text-sm`}>
+                <span className={`text-gray-400`}>War</span>
+                <span className={`font-semibold`}>{warState.warNumber}</span>
               </div>
             </div>
-          )}
+            <div className="flex gap-x-2 bg-gray-700/50 p-1 rounded">
+              {TimerPiece(formatDuration(warState.warStart, "{DD}", now), "days")}
+              {TimerPiece(formatDuration(warState.warStart, "{HH}", now), "hours")}
+              {TimerPiece(formatDuration(warState.warStart, "{MM}", now), "mins")}
+              {TimerPiece(formatDuration(warState.warStart, "{SS}", now), "secs")}
+            </div>
+          </div>
+        )}
+
+        {/* <div className={`${victoryBarDrawer ? "h-auto" : "h-0 overflow-hidden"} w-full transition-all duration-300 ease-in-out`}>
           { stackComparisonMapIcon && stackComparisonMapIcon.map((mapIcon) => (
           <div key={mapIcon} className="mt-3 mb-2">
               {StackComparison(mapIcon ? mapIcon : MapIcon.Town_Base_1)}
             </div>
           )) }
-        </div>
+        </div> */}
         {/* <div className={`flex justify-center w-full`}>
           <img src={new URL(`../images/icn_chevron-down.png`, import.meta.url).href} className={`inline-block h-4 w-4 ${victoryBarDrawer ? "rotate-180" : ""}`} />
         </div> */}
@@ -164,12 +179,12 @@ export function VictoryBar({ counts, mapIconCounts, showNeutral, showScorched, w
   function TimerPiece(time: string, label: string) {
     return (
       <div className="flex items-center gap-x-1 text-gray-300 bg-gray-900 px-2 py-1 rounded">
-        <span className={`text-sm ${label == "days" && "font-bold"}`}>{time}</span>
-        <span className="text-xs text-gray-400">{label}</span>
+        <span className={`text-xs md:text-sm ${label == "days" && "font-bold"}`}>{time}</span>
+        <span className="hidden md:flex text-xs text-gray-400">{label}</span>
+        <span className="visible md:hidden text-xs text-gray-400">{label.substring(0, 1)}</span>
       </div>
     );
   }
-
 
   function StackComparison(mapIcon: MapIcon) {
 

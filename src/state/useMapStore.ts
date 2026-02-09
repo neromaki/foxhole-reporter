@@ -12,8 +12,8 @@ import { MapIcon } from '../data/map-icons';
 import { ReportSpec } from './reports';
 
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-export type PanelType = 'layer' | 'report' | 'info';
-export type PanelState = 'off' | 'half' | 'threequarters' | 'full';
+export type PanelType = 'layer' | 'report' | 'reportInfo' | 'info';
+export type PanelState = 'off' | 'third' | 'half' | 'threequarters' | 'full';
 export type ClickOutsideBehavior = 'off' | 'half' | null;
 export type SelectedLocation = {
   tile: LocationTile;
@@ -36,6 +36,11 @@ export type MapMajorLabel = {
     lat: number;
     lng: number;
     text: string;
+};
+export type StackComparison = {
+  mapIcon: MapIcon;
+  colonialCount: number;
+  wardenCount: number;
 };
 
 interface MapState {
@@ -74,6 +79,9 @@ interface MapState {
   setStackComparisonMapIcon: (icon: Array<MapIcon> | null) => void;
   majorLabelsByMap: Map<string, MapMajorLabel[]>;
   setMajorLabelsByMap: (map: Map<string, MapMajorLabel[]>) => void;
+  mapIconCounts: Map<number, { colonial: number; warden: number; neutral: number }>
+  setMapIconCounts: (counts: Map<number, { colonial: number; warden: number; neutral: number }>) => void;
+  getCountForMapIcon: (iconType: number | MapIcon) => { colonial: number; warden: number; neutral: number };
 };
 
 
@@ -237,7 +245,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setPendingReportForConfirmation: (report) => set({ pendingReportForConfirmation: report }),
   contextPopoverContent: null,
   setContextPopoverContent: (html) => set({ contextPopoverContent: html }),
-  panelState: { layer: 'off', report: 'off', info: 'off' },
+  panelState: { layer: 'off', report: 'off', reportInfo: 'off', info: 'off' },
   panelsOpen: () => {
     const s = get();
     return Object.values(s.panelState).some((state) => state !== 'off');
@@ -247,6 +255,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     const nextPanelState: Record<PanelType, PanelState> = {
       layer: 'off',
       report: s.activeReport != null ? 'half' : 'off',
+      reportInfo: 'off',
       info: 'off',
       [panel]: state,
     };
@@ -256,7 +265,7 @@ export const useMapStore = create<MapState>((set, get) => ({
       set({selectedLocation: shouldClearSelection ? null : s.selectedLocation});
     }, 250);
   },
-  panelClickOutsideBehavior: { layer: 'half', report: 'off', info: 'off' },
+  panelClickOutsideBehavior: { layer: 'half', report: 'off', reportInfo: 'off', info: 'off' },
   setPanelClickOutsideBehavior: (panel, behavior) => {
     const s = get();
     set({ panelClickOutsideBehavior: { ...s.panelClickOutsideBehavior, [panel]: behavior } });
@@ -275,4 +284,23 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
   majorLabelsByMap: new Map<string, MapMajorLabel[]>(),
   setMajorLabelsByMap: (map) => set({ majorLabelsByMap: map }),
+  mapIconCounts: new Map<number, { colonial: number; warden: number; neutral: number }>(),
+  setMapIconCounts: (counts) => set({ mapIconCounts: counts }),
+  getCountForMapIcon: (iconType: number | MapIcon) => {
+    const s = get();
+    const icon = iconType as number;
+    if(iconType === MapIcon.Town_Base_1) {
+      // Special case: iconType 56, 57 and 58 represents different tiers of the same Town Base
+      // Sum counts for all relevant iconTypes
+      return [MapIcon.Town_Base_1, MapIcon.Town_Base_2, MapIcon.Town_Base_3].reduce((sum, it) => {
+        const count = s.mapIconCounts.get(it) ?? { colonial: 0, warden: 0, neutral: 0 };
+        return {
+          colonial: sum.colonial + count.colonial,
+          warden: sum.warden + count.warden,
+          neutral: sum.neutral + count.neutral,
+        };
+      }, { colonial: 0, warden: 0, neutral: 0 });
+    }
+    return s.mapIconCounts.get(iconType) ?? { colonial: 0, warden: 0, neutral: 0 };
+  },
 }));

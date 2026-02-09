@@ -10,11 +10,14 @@ import type { LocationTile } from './types/war';
 import { useMapStore, PanelType } from './state/useMapStore';
 import { BottomSheet } from './components/BottomSheet';
 import InfoSheet from './components/InfoSheet';
+import { ReportInfoSheet } from './components/ReportInfoSheet';
 import { ContextPopover } from './components/ContextPopover';
 import { ContextSwitchConfirmationDialog } from './components/ContextSwitchConfirmationDialog';
 import { getTeams } from './data/teams';
 import { MapIconTag, checkMapIconHasTag } from './data/map-icons';
 import { getIconLabel } from './lib/icons';
+import HeaderBar from './components/HeaderBar';
+import { REPORT_SWITCH_DIALOG } from './lib/appConfig';
 
 export default function App() {
   const [isTouch, setIsTouch] = useState(false);
@@ -32,6 +35,7 @@ export default function App() {
   const panelState = useMapStore((s) => s.panelState);
   const panelsOpen = useMapStore((s) => s.panelsOpen());
   const setPanelState = useMapStore((s) => s.setPanelState);
+  const setMapIconCounts = useMapStore((s) => s.setMapIconCounts);
 
   const selectedLocation = useMapStore((s) => s.selectedLocation);
 
@@ -60,6 +64,7 @@ export default function App() {
       }
       m.set(t.iconType, current);
     }
+    setMapIconCounts(m);
     return m;
   }, [snapshot]);
 
@@ -81,32 +86,33 @@ export default function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       {/* Context switch confirmation dialog */}
-      <ContextSwitchConfirmationDialog />
+      { REPORT_SWITCH_DIALOG && <ContextSwitchConfirmationDialog /> }
       
       <aside>
 
-        <div className="">
-          <div className="hidden md:visible">
-            <h1 className="text-xl font-semibold">Foxhole Report</h1>
-            <p className="text-xs text-gray-400">Live territory states & capture reports from the frontlines</p>
-          </div>
-        </div>
-
+        {/* <HeaderBar 
+            counts={victoryCounts}
+            showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
+            showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
+            warState={warState !== undefined ? warState : { warNumber: 0, warStart: new Date(), requiredVictoryTowns: 0, shortRequiredVictoryTowns: 0, source: 'supabase' }} 
+            mapIconCounts={countsByIconType}
+            className={`md:mt-14`}
+          /> */}
         
-        <div className={`fixed top-2 inset-x-2 flex flex-col justify-start items-center z-[430] pointer-events-none  ${panelsOpen ? 'md:translate-x-[12rem]' : ''}`}>
+        <div className={`fixed top-2 md:top-4 inset-x-2 flex flex-col justify-start items-center z-[430] pointer-events-none  ${panelsOpen ? 'md:translate-x-[12rem]' : ''}`}>
           <VictoryBar
             counts={victoryCounts}
             showNeutral={WARSTATE_GRAPH_SHOW_NEUTRAL}
             showScorched={WARSTATE_GRAPH_SHOW_SCORCHED}
             warState={warState !== undefined ? warState : { warNumber: 0, warStart: new Date(), requiredVictoryTowns: 0, shortRequiredVictoryTowns: 0, source: 'supabase' }} 
             mapIconCounts={countsByIconType}
-            className={`md:mt-2`}
+            className={``}
           />
-          <div className={`md:hidden flex w-full justify-end`}>
-            <div className={`flex`}>
+          <div className={`flex w-full justify-end`}>
+            <div className={`hidden md:flex mt-2 mr-2 w-full`}>
               <ContextPopover />
             </div>
-            <div className={`panel-buttons flex flex-col z-[430] transition-transform duration-[250ms]`}>
+            <div className={`md:hidden flex panel-buttons flex flex-col z-[430] transition-transform duration-[250ms]`}>
               <PanelButton label="Layers" targetPanel="layer" icon={'icn_layers'} onClick={() => {
                 const active = panelState['layer'] !== 'off';
                 setPanelState('layer', active ? 'off' : 'threequarters');
@@ -118,9 +124,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className={`hidden md:visible fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:relative md:top-auto md:left-auto md:right-auto md:z-[440] md:pointer-events-auto`}>
+          {/* <div className={`hidden md:visible fixed top-24 left-2 right-24 justify-center z-[430] md:mt-2 md:relative  md:left-auto md:right-auto md:z-[440] md:pointer-events-auto`}>
             <ContextPopover />
-          </div>
+          </div> */}
         </div>
 
         <div className={`panel-buttons hidden md:visible fixed top-24 right-2 md:flex flex-col z-[430] transition-transform duration-[250ms] md:left-2 md:right-auto md:bottom-4 md:top-auto ${panelsOpen ? 'md:translate-x-[28rem]' : ''}`}>
@@ -153,7 +159,12 @@ export default function App() {
           <LayerTogglePanel />
         </BottomSheet>
 
-        <BottomSheet type={'report'} allowedStates={['half']} clickOutsideBehavior={null} title={'Reports'} headerContent={
+        <BottomSheet 
+          type={'report'} 
+          allowedStates={['third']} 
+          clickOutsideBehavior={null} 
+          title={'Reports'} 
+          headerContent={
           activeReport && (
             <button
               className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
@@ -165,25 +176,42 @@ export default function App() {
         }>
           <ReportModes />
         </BottomSheet>
-
         
-          <BottomSheet 
-            type={'info'} 
-            allowedStates={['half']} 
-            clickOutsideBehavior={'off'} 
-            icon={selectedTeam && selectedTeam.icon} 
-            title={
-              (() => {
-                if (selectedLocation) {
-                  const isBase = checkMapIconHasTag(selectedLocation.tile.iconType, MapIconTag.Base);
-                  const iconLabel = getIconLabel(selectedLocation.tile.iconType);
-                  if (isBase && selectedLocation.name) return selectedLocation.name as string;
-                  if (!isBase && iconLabel) return iconLabel as string;
-                }
-                return 'Info'; // fallback ensures a string
-              })()}>
-            <InfoSheet />
-          </BottomSheet>
+        <BottomSheet 
+          type={'reportInfo'} 
+          allowedStates={['third']} 
+          clickOutsideBehavior={'off'} 
+          icon={new URL(`./images/icn_reports.png`, import.meta.url).href} 
+          title={activeReport ? activeReport.name : 'Report Info'}
+          headerContent={
+          activeReport && (
+            <button
+              className="px-2 py-1 text-sm rounded border border-gray-700 bg-gray-800 hover:border-gray-600"
+              onClick={() => setActiveReport(null)}
+            >
+              Close Report
+            </button>
+          )}>
+          <ReportInfoSheet mapIconCounts={countsByIconType} />
+        </BottomSheet>
+
+        <BottomSheet 
+          type={'info'} 
+          allowedStates={['half']} 
+          clickOutsideBehavior={'off'} 
+          icon={selectedTeam && selectedTeam.icon} 
+          title={
+            (() => {
+              if (selectedLocation) {
+                const isBase = checkMapIconHasTag(selectedLocation.tile.iconType, MapIconTag.Base);
+                const iconLabel = getIconLabel(selectedLocation.tile.iconType);
+                if (isBase && selectedLocation.name) return selectedLocation.name as string;
+                if (!isBase && iconLabel) return iconLabel as string;
+              }
+              return 'Info'; // fallback ensures a string
+            })()}>
+          <InfoSheet />
+        </BottomSheet>
       </aside>
 
       <main className="flex-1">
@@ -207,7 +235,7 @@ function PanelButton({label, targetPanel, icon, disabled, onClick}: {label: stri
       onClick={() => !disabled && onClick ? onClick() : setPanelState(targetPanel, active ? 'off' : targetPanel == 'layer' ? 'threequarters' : 'half')}
       disabled={disabled}
     >
-      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-6 h-6 ${active ? 'invert' : ''}`} />
+      <img src={new URL(`./images/${icon}.png`, import.meta.url).href} className={`w-5 h-5 md:w-6 md:h-6 ${active ? 'invert' : ''}`} />
       <span className={`text-xs mt-1 ${active ? 'invert' : ''}`}>{label}</span>
     </button>
   </div>

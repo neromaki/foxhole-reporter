@@ -4,6 +4,7 @@ import { isTouchDevice } from '../lib/devices';
 
 export const SHEET_HEIGHTS = {
   off: 0,
+  third: 170,
   half: 250,
   threequarters: 380,
   full: 600,
@@ -182,7 +183,7 @@ export function BottomSheet({
         style={{
           transform: `${isTouch ? `translateY(${transformY}px)` : ``}`,
           //transitionTimingFunction: easing,
-          maxHeight: `${isTouch ? `${SHEET_HEIGHTS[panelState]}px` : ''}`,
+          height: `${isTouch ? `${SHEET_HEIGHTS[panelState]}px` : ''}`,
           
         }}
       >

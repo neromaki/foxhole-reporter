@@ -380,7 +380,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_1
         ]
@@ -394,7 +393,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_2
         ]
@@ -408,7 +406,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Town,
             MapIconTag.Town_Base_3,
             MapIconTag.Victory_Point
@@ -424,7 +421,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Relic,
             MapIconTag.Relic_Base_1
         ]
@@ -438,7 +434,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Keep
         ]
     },
@@ -451,7 +446,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Fort
         ]
     },
@@ -464,7 +458,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Forward,
             MapIconTag.Forward_Base_1
         ]
@@ -478,7 +471,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Garrison,
             MapIconTag.Garrison_Station,
         ]
@@ -505,7 +497,6 @@ const mapIcons: Array<MapIconStruct> = [
         "tags": [
             MapIconTag.Base,
             MapIconTag.Spawn,
-            MapIconTag.Storage,
             MapIconTag.Base_Ship,
             MapIconTag.Troop_Ship,
             MapIconTag.Naval
@@ -940,7 +931,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Aircraft_Runway_1,
         "apiName": "Aircraft Runway T1",
-        "iconFileName": "AircraftRunway1",
+        "iconFileName": "AircraftRunwayT1",
         "displayName": "Aircraft Runway 1",
         "wikiPage": "Aircraft_Runway",
         "tags": [
@@ -952,7 +943,7 @@ const mapIcons: Array<MapIconStruct> = [
     {
         "id": MapIcon.Aircraft_Runway_2,
         "apiName": "Aircraft Runway T2",
-        "iconFileName": "AircraftRunway2",
+        "iconFileName": "AircraftRunwayT2",
         "displayName": "Aircraft Runway 2",
         "wikiPage": "Aircraft_Runway",
         "tags": [

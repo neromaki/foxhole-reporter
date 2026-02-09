@@ -2,11 +2,13 @@ import React from 'react';
 import { useMapStore } from '../state/useMapStore';
 import { Tile } from './Tile';
 import { getAllReports } from '../state/reports';
+import { REPORT_SWITCH_DIALOG } from '../lib/appConfig';
 
 export default function ReportModes() {
   const activeReport = useMapStore(s => s.activeReport);
   const setActiveReport = useMapStore(s => s.setActiveReport);
-  
+  const setPanelState = useMapStore((s) => s.setPanelState);
+
   const allReports = getAllReports();
   
   // Group reports by category
@@ -27,7 +29,7 @@ export default function ReportModes() {
       {reportsByCategory.has('Territory') && (
         <div className="mb-5">
           <span className="text-gray-300 mb-2 inline-block">Territory</span>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
             {reportsByCategory.get('Territory')!.map((report) => (
               <Tile
                 key={report.id}
@@ -37,9 +39,10 @@ export default function ReportModes() {
                 callBack={() => {
                   // Toggle: if already active, deactivate; otherwise activate
                   if (activeReport?.id === report.id) {
-                    setActiveReport(null);
+                    setPanelState('reportInfo', 'half');
                   } else {
-                    setActiveReport(report);
+                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
+                    setPanelState('reportInfo', 'half');
                   }
                 }}
               />
@@ -52,7 +55,7 @@ export default function ReportModes() {
       {reportsByCategory.has('Threats') && (
         <div className="mb-5">
           <span className="text-gray-300 mb-2 inline-block">Intel</span>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
             {reportsByCategory.get('Threats')!.map((report) => (
               <Tile
                 key={report.id}
@@ -61,9 +64,10 @@ export default function ReportModes() {
                 active={activeReport?.id === report.id}
                 callBack={() => {
                   if (activeReport?.id === report.id) {
-                    setActiveReport(null);
+                    setPanelState('reportInfo', 'half');
                   } else {
-                    setActiveReport(report);
+                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
+                    setPanelState('reportInfo', 'half');
                   }
                 }}
               />
@@ -76,7 +80,7 @@ export default function ReportModes() {
       {reportsByCategory.has('Economy') && (
         <div className="mb-5">
           <span className="text-gray-300 mb-2 inline-block">Economy</span>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
             {reportsByCategory.get('Economy')!.map((report) => (
               <Tile
                 key={report.id}
@@ -85,9 +89,11 @@ export default function ReportModes() {
                 active={activeReport?.id === report.id}
                 callBack={() => {
                   if (activeReport?.id === report.id) {
-                    setActiveReport(null);
+                    //setActiveReport(null);
+                    setPanelState('reportInfo', 'half');
                   } else {
-                    setActiveReport(report);
+                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
+                    setPanelState('reportInfo', 'half');
                   }
                 }}
               />
@@ -100,7 +106,7 @@ export default function ReportModes() {
       {reportsByCategory.has('Job Views') && (
         <div className="mb-5">
           <span className="text-gray-300 mb-2 inline-block">Job Views</span>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
             {reportsByCategory.get('Job Views')!.map((report) => (
               <Tile
                 key={report.id}
@@ -110,8 +116,10 @@ export default function ReportModes() {
                 callBack={() => {
                   if (activeReport?.id === report.id) {
                     setActiveReport(null);
+                    setPanelState('reportInfo', 'half');
                   } else {
-                    setActiveReport(report);
+                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
+                    setPanelState('reportInfo', 'half');
                   }
                 }}
               />
