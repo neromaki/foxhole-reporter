@@ -23,110 +23,39 @@ export default function ReportModes() {
     return grouped;
   }, [allReports]);
 
+
   return (
     <div>
-      {/* Render Territory reports */}
-      {reportsByCategory.has('Territory') && (
-        <div className="mb-5">
-          <span className="text-gray-300 mb-2 inline-block">Territory</span>
-          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
-            {reportsByCategory.get('Territory')!.map((report) => (
-              <Tile
-                key={report.id}
-                label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
-                active={activeReport?.id === report.id}
-                callBack={() => {
-                  // Toggle: if already active, deactivate; otherwise activate
-                  if (activeReport?.id === report.id) {
-                    setPanelState('reportInfo', 'half');
-                  } else {
-                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
-                    setPanelState('reportInfo', 'half');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {Array.from(reportsByCategory.entries()).map(([category, reports]) => {
 
-      {/* Render Threats reports */}
-      {reportsByCategory.has('Threats') && (
-        <div className="mb-5">
-          <span className="text-gray-300 mb-2 inline-block">Intel</span>
-          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
-            {reportsByCategory.get('Threats')!.map((report) => (
-              <Tile
-                key={report.id}
-                label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
-                active={activeReport?.id === report.id}
-                callBack={() => {
-                  if (activeReport?.id === report.id) {
-                    setPanelState('reportInfo', 'half');
-                  } else {
-                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
-                    setPanelState('reportInfo', 'half');
-                  }
-                }}
-              />
-            ))}
+        return (
+          <div key={category} className="mb-5">
+            <span className="text-gray-300 mb-2 inline-block">{category}</span>
+            <div className={`grid grid-cols-4 gap-2`}>
+              {reports.map((report) => (
+                <Tile
+                  key={report.id}
+                  label={report.name}
+                  icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
+                  active={activeReport?.id === report.id}
+                  callBack={() => {
+                    if (activeReport?.id === report.id) {
+                      // Job Views deactivates, others just close panel
+                      if (category === 'Job Views') {
+                        setActiveReport(null);
+                      }
+                      setPanelState('reportInfo', 'half');
+                    } else {
+                      setActiveReport(report, !REPORT_SWITCH_DIALOG);
+                      setPanelState('reportInfo', 'half');
+                    }
+                  }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Render Economic reports */}
-      {reportsByCategory.has('Economy') && (
-        <div className="mb-5">
-          <span className="text-gray-300 mb-2 inline-block">Economy</span>
-          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
-            {reportsByCategory.get('Economy')!.map((report) => (
-              <Tile
-                key={report.id}
-                label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
-                active={activeReport?.id === report.id}
-                callBack={() => {
-                  if (activeReport?.id === report.id) {
-                    //setActiveReport(null);
-                    setPanelState('reportInfo', 'half');
-                  } else {
-                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
-                    setPanelState('reportInfo', 'half');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Render Job Views category */}
-      {reportsByCategory.has('Job Views') && (
-        <div className="mb-5">
-          <span className="text-gray-300 mb-2 inline-block">Job Views</span>
-          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
-            {reportsByCategory.get('Job Views')!.map((report) => (
-              <Tile
-                key={report.id}
-                label={report.name}
-                icon={{ type: 'image', url: new URL(`../images/${report.image ? report.image : 'Tile_Report_1'}.png`, import.meta.url) }}
-                active={activeReport?.id === report.id}
-                callBack={() => {
-                  if (activeReport?.id === report.id) {
-                    setActiveReport(null);
-                    setPanelState('reportInfo', 'half');
-                  } else {
-                    setActiveReport(report, !REPORT_SWITCH_DIALOG);
-                    setPanelState('reportInfo', 'half');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }
