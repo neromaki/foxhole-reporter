@@ -13,9 +13,11 @@ import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 export default function HexInfo({
   casualtyRates,
   casualtiesVisible,
+  labelsVisible
 }: {
   casualtyRates: ReturnType<typeof useCasualtyRates>;
   casualtiesVisible: boolean;
+  labelsVisible: boolean;
 }) {
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
@@ -101,7 +103,7 @@ export default function HexInfo({
 
         const icon = L.divIcon({
           className: `${nameLabelClassName}`,
-          html: `<div style="display:inline-block;">${nameLabelHtml}${casualtyLabelHtml}</div>`,
+          html: `<div style="display:inline-block;">${labelsVisible ? nameLabelHtml : ''}${casualtyLabelHtml}</div>`,
           iconSize: [east - west, 30]
         });
 

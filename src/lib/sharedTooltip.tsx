@@ -261,9 +261,9 @@ export const SharedTooltipProvider: React.FC<{ children: React.ReactNode }> = ({
       if (tile.owner !== 'Neutral') {
         lines.push(`<div class="flex"><img src="${getTeamIcon(tile.owner)}" alt="${tile.owner}" class="inline-block w-4 h-4 mr-1"/>${tile.owner}</div>`);
       }
-      if (isVictoryBase) lines.push('<div class="text-amber-400">Victory Base</div>');
-      if (isScorched) lines.push('<div class="text-red-400">Scorched</div>');
-      if (isBuildSite) lines.push('<div class="text-blue-400">Build Site</div>');
+      if (isVictoryBase) lines.push('<div class="text-amber-500">Victory Base</div>');
+      if (isScorched) lines.push('<div class="text-red-500">Scorched</div>');
+      if (isBuildSite) lines.push('<div class="text-blue-500">Build Site</div>');
 
       return `<div class="text-xs">${lines.join('')}</div>`;
     } else {

@@ -1892,6 +1892,8 @@ const towns: Array<TownStruct> = [
 
 export { Town };
 
+export type { TownStruct };
+
 export function getTownById(locationId: string): TownStruct | undefined {
   return towns.find((town) => town.id === locationId);
 }
@@ -1902,6 +1904,10 @@ export function getTownByApiName(name: string): TownStruct | undefined {
 
 export function getTown(id: string, major?: boolean): TownStruct | undefined {
   return towns.find((town) => (town.id === id || town.apiName === id || town.displayName === id) && (major === undefined || town.major === major));
+}
+
+export function getAllMajorTowns(): TownStruct[] {
+  return towns.filter((town) => town.major === true);
 }
 
 export default towns;

@@ -24,8 +24,8 @@ export const HEX_CONFIG = {
   
   // Leaflet bounds for the entire world
   worldBounds: {
-    north: 3500,
-    south: -3500,
+    north: 3000,
+    south: -3000,
     east: 3000,
     west: -3000
   },

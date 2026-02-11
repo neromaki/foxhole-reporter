@@ -991,6 +991,15 @@ const mapIcons: Array<MapIconStruct> = [
     }
 ]
 
+export const VALID_TERRITORY_OWNING_MAPICONS = [
+    MapIcon.Town_Base_1,
+    MapIcon.Town_Base_2,
+    MapIcon.Town_Base_3,
+    MapIcon.Relic_Base_1,
+    MapIcon.Keep,
+    MapIcon.Fort
+];
+
 export function getMapIcon(mapIconType: number | MapIcon): MapIconStruct | undefined {
     return mapIcons.find(icon => icon.id === mapIconType);
 }

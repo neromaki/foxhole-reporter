@@ -210,6 +210,7 @@ export default function MapView() {
         <HexInfoLayer 
           casualtyRates={casualtyRates}
           casualtiesVisible={!!effectiveLayers.casualties}
+          labelsVisible={activeLayers.majorLocations}
         />
         <StaticLabelLayer 
           majorVisible={activeLayers.majorLocations}
@@ -415,18 +416,18 @@ function LocationsLayer({
     return Math.pow(1.25, z - 1);
   }
 
-  function getIcon(iconType: number, z: number, owner?: LocationTile['owner']): L.Icon | L.DivIcon {
+  function getIcon(iconType: number, z: number, owner?: LocationTile['owner'], isVictoryBase?: boolean, isScorched?: boolean, isBuildSite?: boolean): L.Icon | L.DivIcon {
     const bucket = zoomBucket(z);
     const key = `${iconType}|${bucket}|${owner ?? 'none'}`;
     const cached = iconInstanceCache.current.get(key);
-    if (cached) {
-      if (VERBOSE_ZOOM_LOG) console.log('[Zoom][getIcon] use cache', { iconType, owner, bucket });
-      return cached;
-    }
+    // if (cached) {
+    //   if (VERBOSE_ZOOM_LOG) console.log('[Zoom][getIcon] use cache', { iconType, owner, bucket });
+    //   return cached;
+    // }
     const [bw, bh] = getBaseSize(iconType);
     const s = scaleForZoom(z);
-    const w = Math.max(8, Math.round(bw * s));
-    const h = Math.max(8, Math.round(bh * s));
+    let w = Math.max(8, Math.round(bw * s));
+    let h = Math.max(8, Math.round(bh * s));
     
     // Try to use sprite first, fallback to individual icon
     const sprite = getIconSprite(iconType, owner);
@@ -440,12 +441,19 @@ function LocationsLayer({
       const scaledY = coords ? coords.y * s : 0;
       const scaledBgSize = SPRITE_WIDTH * s;
       const scaledBgHeight = SPRITE_HEIGHT * s;
-      
+
+      let iconHTML = `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:-${scaledX}px -${scaledY}px;background-size:${scaledBgSize}px ${scaledBgHeight}px;background-repeat:no-repeat"></div>`
+      if (isVictoryBase) {
+        w = w * 2;
+        h = h * 2;
+        iconHTML = `<div style="width:${w}px;height:${h}px;background-size:${w}px,${h}px;background-repeat:no-repeat;background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGHSURBVHgB5VRdUsIwEN5NHcdHfCvMQJuT0BuIJwBO4HiDegK5gXoCewPrCcQT9IcZYPSlbzw162ZGGMCmTfVNvoduk+zut0k2H8BJIUm6oyRxgzYxZ22chYB7REz5N7aOsXXkyidsfCIIsswd28ahrWOWdRNN8D0slNpIKYuiKc5qB1nWC/eSa3SEuLixiW3cAR+NL4R4A6DO0ZLVLtCUlE2AKIaIMKpIvkVKhDGiipUq36X8nBsJ9CU6Dl5xQFCTsAFYINK8LOlJyvWjnhGH1dRWawHq6C4DULtj2xEwY8zmFv4MCqX8iH4QaHjeasZmBr8GhZ63vtufqbzkPO89E9EIWoCbIRoMVtfH85XvoCzPp2xSsEdalptp1UIlgZSpvqQIrKEi03swvmQWNR8swa1t7LwaqWjVrj60Jair6hh1u60TO/+QkGL+TpSiqgYwFmMUO5Zn2iZ2HAj7/fXr/rqWFm7NMVcf6DEL36WNfG+D/TR1XxYLd9jkq33y3H1YLrse/Et8AZXMmGcjC4ucAAAAAElFTkSuQmCC);border-radius:50%;display:flex;justify-content:center;align-items:center;">${iconHTML}</div>`;
+      }
+
       const icon = L.divIcon({
-        html: `<div style="width:${w}px;height:${h}px;background-image:url(${sprite.spritePath});background-position:-${scaledX}px -${scaledY}px;background-size:${scaledBgSize}px ${scaledBgHeight}px;background-repeat:no-repeat"></div>`,
+        html: iconHTML,
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
-        className: 'drop-shadow-sm icon-sprite-marker',
+        className: 'icon-sprite-marker',
       });
       VERBOSE_ZOOM_LOG && console.log('[Zoom][getIcon] create sprite', { iconType, owner, bucket, w, h, scaledX, scaledY, scaledBgSize, scaledBgHeight });
       iconInstanceCache.current.set(key, icon);
@@ -455,7 +463,7 @@ function LocationsLayer({
         iconUrl: getUrl(iconType, owner),
         iconSize: [w, h],
         iconAnchor: [w / 2, h / 2],
-        className: 'drop-shadow-sm',
+        className: '',
       });
       VERBOSE_ZOOM_LOG && console.log('[Zoom][getIcon] create img', { iconType, owner, bucket, w, h });
       iconInstanceCache.current.set(key, icon);
@@ -769,11 +777,14 @@ function LocationsLayer({
         const isVictoryBase = (t.flags & 0x01) !== 0;
         const isScorched = (t.flags & 0x10) !== 0;
         const isBuildSite = (t.flags & 0x04) !== 0;
+        if(isVictoryBase) {
+          console.log('Victory base at', t.id);
+        }
 
         // Cache iconType by id; icon is pre-computed in cache from load phase
         iconTypeById.current.set(t.id, t.iconType);
         ownerById.current.set(t.id, t.owner);
-        const initialIcon = getIcon(t.iconType, map.getZoom(), t.owner);
+        const initialIcon = getIcon(t.iconType, map.getZoom(), t.owner, isVictoryBase, isScorched, isBuildSite);
 
         return (
           <Marker

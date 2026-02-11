@@ -12,6 +12,7 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { Colors, getTeamColors, getTeamIcon, Teams } from '../data/teams';
 import disabledHexOverlay from '../images/disabledHexOverlay.svg';
 import { TERRITORY_PATHS } from '../data/territory-paths';
+import { VALID_TERRITORY_OWNING_MAPICONS } from '../data/map-icons';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { getTimeSinceLastCapture } from '../lib/time';
 import { getViewModeRules } from '../lib/viewModes';
@@ -132,8 +133,11 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
           continue;
         }
         
-        // Try exact ID match first
+        // Try exact ID match first, but only if it's a valid territory-owning icon
         let territory = matchedTown.id ? territoryById.get(matchedTown.id) : undefined;
+        if (territory && !VALID_TERRITORY_OWNING_MAPICONS.includes(territory.iconType)) {
+          territory = undefined;
+        }
         
         // If no exact match, try fuzzy match by region + approximate coordinates
         if (!territory && matchedTown.id) {
@@ -144,8 +148,9 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
             const expectedY = parseFloat(townIdParts[2]);
             
             // Search for territories in the same region with similar coordinates
+            // Only consider territories with valid territory-owning icon types
             for (const [id, t] of territoryById.entries()) {
-              if (t.region === expectedRegion) {
+              if (t.region === expectedRegion && VALID_TERRITORY_OWNING_MAPICONS.includes(t.iconType)) {
                 const idParts = id.split('-');
                 if (idParts.length === 3) {
                   const dx = Math.abs(parseFloat(idParts[1]) - expectedX);
@@ -308,7 +313,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
     }
   };
 
-  if (!visible || !snapshot?.territories?.length) {
+  if (!snapshot?.territories?.length) {
     return null;
   }
 
@@ -328,116 +333,119 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
           <svg viewBox={o.viewBox} preserveAspectRatio="xMidYMid meet">
             <path id="HexBorder" d="M384.425 1L512.845 222.001L385.423 443H128.577L1.15332 222L128.577 1H384.425Z" fill="none" stroke="hsla(0,0%,0%,0.8)" strokeWidth="2" />
+            
+            { activeLayers.territories ? ( 
+              <g id="Territories" className="transition-opacity duration-150">
+                {o.paths.map((p) => {   
+                  const affected = p.highlighted; 
+                  const active = (hoveredId === p.territoryId) || (selectedLocation?.id === p.territoryId && selectedLocation?.source === 'territory');
+                  const hist = historyById.get(p.territoryId || '');  
+                  const events = hist?.events ?? [];
+                  const teamColors = getTeamColors(p.owner || 'Neutral');
+                  
+                  const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
 
-            <g id="Territories" className="transition-opacity duration-150">
-              {o.paths.map((p) => {   
-                const affected = p.highlighted; 
-                const active = (hoveredId === p.territoryId) || (selectedLocation?.id === p.territoryId && selectedLocation?.source === 'territory');
-                const hist = historyById.get(p.territoryId || '');  
-                const events = hist?.events ?? [];
-                const teamColors = getTeamColors(p.owner || 'Neutral');
-                
-                const timeLastCaptured = getTimeSinceLastCapture(events) || -1;
+                  const strokeZoomModifier = () => {
+                    if (zoom == MAP_MIN_ZOOM) return 2;
+                    else if (zoom < 0) return 1.5;
+                    else if (zoom > 1.5) return 0.5;
+                    return 1;
+                  }
 
-                const strokeZoomModifier = () => {
-                  if (zoom == MAP_MIN_ZOOM) return 2;
-                  else if (zoom < 0) return 1.5;
-                  else if (zoom > 1.5) return 0.5;
-                  return 1;
-                }
-
-                // Normal
-                let fill = p.owner ? teamColors?.base : '#000000';
-                let fillSaturation = TERRITORY_SATURATION_NORMAL;
-                let fillBrightness = TERRITORY_BRIGHTNESS_NORMAL;
-                let fillOpacity = TERRITORY_OPACITY_NORMAL;
-                let stroke = p.stroke;
-                let strokeWidth = p.strokeWidth;
+                  // Normal
+                  let fill = p.owner ? teamColors?.base : '#000000';
+                  let fillSaturation = TERRITORY_SATURATION_NORMAL;
+                  let fillBrightness = TERRITORY_BRIGHTNESS_NORMAL;
+                  let fillOpacity = TERRITORY_OPACITY_NORMAL;
+                  let stroke = p.stroke;
+                  let strokeWidth = p.strokeWidth;
 
 
-                // Overview
-                if (zoom === MAP_MIN_ZOOM && (!reportModeActive && !viewModeRules)) {
-                  fillSaturation = TERRITORY_SATURATION_OVERVIEW;
-                  fillBrightness = TERRITORY_BRIGHTNESS_OVERVIEW;
-                  fillOpacity = TERRITORY_OPACITY_OVERVIEW;
-                }
+                  // Overview
+                  if (zoom === MAP_MIN_ZOOM && (!reportModeActive && !viewModeRules)) {
+                    fillSaturation = TERRITORY_SATURATION_OVERVIEW;
+                    fillBrightness = TERRITORY_BRIGHTNESS_OVERVIEW;
+                    fillOpacity = TERRITORY_OPACITY_OVERVIEW;
+                  }
 
-                // Report mode
-                if (reportModeActive) {
+                  // Report mode
+                  if (reportModeActive) {
 
-                  // If the report mode has specific rules for territory display
-                  if (viewModeRules) {
-                    fillSaturation = viewModeRules.territory.unaffectedSaturation;
-                    fillBrightness = viewModeRules.territory.unaffectedBrightness;
-                    fillOpacity = viewModeRules.territory.unaffectedOpacity;
+                    // If the report mode has specific rules for territory display
+                    if (viewModeRules) {
+                      fillSaturation = viewModeRules.territory.unaffectedSaturation;
+                      fillBrightness = viewModeRules.territory.unaffectedBrightness;
+                      fillOpacity = viewModeRules.territory.unaffectedOpacity;
 
-                    // If the territory is affected in the report
-                    if (affected) {
-                      fillSaturation = viewModeRules.territory.affectedSaturation;
-                      fillBrightness = viewModeRules.territory.affectedBrightness;
-                      fillOpacity = viewModeRules.territory.affectedOpacity;
-                    }
-                  } 
-                  // No view mode rules for this report
-                  else {
-                    // If the territory is affected in the report
-                    if (affected) {                    
-                        fillSaturation = TERRITORY_SATURATION_REPORT_AFFECTED;
-                        fillBrightness = TERRITORY_BRIGHTNESS_REPORT_AFFECTED;
-                        fillOpacity = TERRITORY_OPACITY_REPORT_AFFECTED;
+                      // If the territory is affected in the report
+                      if (affected) {
+                        fillSaturation = viewModeRules.territory.affectedSaturation;
+                        fillBrightness = viewModeRules.territory.affectedBrightness;
+                        fillOpacity = viewModeRules.territory.affectedOpacity;
+                      }
+                    } 
+                    // No view mode rules for this report
+                    else {
+                      // If the territory is affected in the report
+                      if (affected) {                    
+                          fillSaturation = TERRITORY_SATURATION_REPORT_AFFECTED;
+                          fillBrightness = TERRITORY_BRIGHTNESS_REPORT_AFFECTED;
+                          fillOpacity = TERRITORY_OPACITY_REPORT_AFFECTED;
+                      }
                     }
                   }
-                }
 
-                // Capture highlighting
-                if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
-                    fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_1;
-                    fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_1;
-                }
-                else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
-                    fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_2;
-                    fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_2;
-                }
+                  // Capture highlighting
+                  if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
+                      fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_1;
+                      fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_1;
+                  }
+                  else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
+                      fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_2;
+                      fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_2;
+                  }
 
-                if (active) {
-                  fillSaturation = fillSaturation * TERRITORY_SATURATION_ACTIVE_MODIFIER;
-                  fillBrightness = fillBrightness * TERRITORY_BRIGHTNESS_ACTIVE_MODIFIER;
-                  fillOpacity = fillOpacity * TERRITORY_OPACITY_ACTIVE_MODIFIER;
-                  strokeWidth = strokeWidth * 2;
-                }
+                  if (active) {
+                    fillSaturation = 20;
+                    fillBrightness = 40;
+                    fillOpacity = fillOpacity * TERRITORY_OPACITY_ACTIVE_MODIFIER;
+                    strokeWidth = strokeWidth * 2;
+                  }
 
-                fill = tinycolor(fill).saturate(fillSaturation).brighten(fillBrightness).toString();
+                  fill = tinycolor(fill).saturate(fillSaturation).brighten(fillBrightness).toString();
 
-                strokeWidth = strokeWidth * strokeZoomModifier();
-                
-                const interactive = reportModeActive ? p.highlighted ? true : false : true; 
-                
-                return (
-                  <path
-                    key={p.key}
-                    d={p.d}
-                    fill={fill}
-                    fillOpacity={fillOpacity}
-                    stroke={stroke}
-                    strokeWidth={strokeWidth}
-                    style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
-                    onMouseEnter={() => {
-                      handleHover(p)
-                      //if (isTouch && !reportModeActive) setPanelState('info', 'off');
-                    }}
-                    onMouseLeave={() => handleLeave(p)}
-                    onMouseDown={(e) => {
-                      if (!isTouch) setMouseDownPosition({ x: e.pageX, y: e.pageY });
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClick(e, p);
-                    }}
-                    className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
-                  />
-                );
-              })}
-            </g>
+                  strokeWidth = strokeWidth * strokeZoomModifier();
+                  
+                  const interactive = reportModeActive ? p.highlighted ? true : false : true; 
+                  
+                  return (
+                    <path
+                      key={p.key}
+                      d={p.d}
+                      fill={fill}
+                      fillOpacity={fillOpacity}
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      style={{ pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'pointer' : 'default', transition: 'fill 120ms ease, fill-opacity 120ms ease, transform 250ms ease', outline: 'none' }}
+                      onMouseEnter={() => {
+                        handleHover(p)
+                        //if (isTouch && !reportModeActive) setPanelState('info', 'off');
+                      }}
+                      onMouseLeave={() => handleLeave(p)}
+                      onMouseDown={(e) => {
+                        if (!isTouch) setMouseDownPosition({ x: e.pageX, y: e.pageY });
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClick(e, p);
+                      }}
+                      className={ active ? zoom >= 1 ? '-translate-y-0.5' : '-translate-y-1' : '' }
+                    />
+                  );
+                })}
+              </g>
+            ) : null }
+            
             { activeLayers.casualties && (
               <g className="hexCasualtyVisual">
                 <g id="casualtyRate" opacity={(() => {

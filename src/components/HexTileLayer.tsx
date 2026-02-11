@@ -12,8 +12,13 @@ export default function HexTileLayer() {
 
   React.useEffect(() => {
     // Set initial map bounds to show the whole world
+    // Add padding to allow panning near edges without auto-centering
     const { north, south, east, west } = HEX_CONFIG.worldBounds;
-    map.setMaxBounds([[south, west], [north, east]]);
+    const padding = 1500; // Allow panning 500 units beyond world bounds
+    map.setMaxBounds([
+      [south, west - padding],
+      [north, east + padding]
+    ]);
     map.fitBounds([[south, west], [north, east]]);
   }, [map]);
 
@@ -27,7 +32,6 @@ export default function HexTileLayer() {
         
         // Use WebP with PNG fallback
         const imageUrl = webpUrl;
-        console.log(`Adding hex tile: ${hex.apiName} using imageName ${hex.apiName} and img ${imageUrl} at row ${hex.row}, col ${hex.col}`);
         return (
           <ImageOverlay
             key={hex.name == Region.Empty ? `empty-${hex.row}-${hex.col}` : hex.apiName}
