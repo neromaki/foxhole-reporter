@@ -4,3 +4,5 @@
 /dist
 /.temp-icons
 src/data/icon-sprite.ts
+/src/map/icons/hq
+/.worktrees
