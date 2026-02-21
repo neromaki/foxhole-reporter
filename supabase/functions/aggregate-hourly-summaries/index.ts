@@ -106,16 +106,17 @@ Deno.serve(async (req: Request) => {
     console.log(`[aggregate-hourly-summaries] Grouped into ${hourlyBuckets.length} hourly buckets`);
 
     // Aggregate territory ownership
-    const territoryRows = await aggregateTerritoryOwnership(hourlyBuckets, warNumber);
-    console.log(`[aggregate-hourly-summaries] Generated ${territoryRows.length} territory ownership rows`);
+    const { ownershipRows, lifecycleRows } = await aggregateTerritoryOwnership(hourlyBuckets, warNumber);
+    console.log(`[aggregate-hourly-summaries] Generated ${ownershipRows.length} territory ownership rows, ${lifecycleRows.length} lifecycle rows`);
 
     // Aggregate casualty data
     const casualtyRows = await aggregateCasualties(hourlyBuckets, warNumber);
     console.log(`[aggregate-hourly-summaries] Generated ${casualtyRows.length} casualty rows`);
 
     // Upsert all rows
-    await upsertTerritoryOwnership(territoryRows);
+    await upsertTerritoryOwnership(ownershipRows);
     await upsertCasualties(casualtyRows);
+    await upsertTerritoryLifecycle(lifecycleRows, warNumber, dayStart, dayEnd);
 
     console.log(`[aggregate-hourly-summaries] Aggregation complete`);
     return new Response(
@@ -123,7 +124,8 @@ Deno.serve(async (req: Request) => {
         message: "Aggregation completed successfully",
         war_number: warNumber,
         date: dateUtc,
-        territory_rows_upserted: territoryRows.length,
+        territory_rows_upserted: ownershipRows.length,
+        lifecycle_rows_upserted: lifecycleRows.length,
         casualty_rows_upserted: casualtyRows.length,
       }),
       { status: 200 }
@@ -171,11 +173,27 @@ interface TerritoryOwnershipRow {
   icon_type: number | null;
 }
 
+interface TerritoryLifecycleRow {
+  war_number: number;
+  territory_id: string;
+  hex_region: string;
+  changed_at: string;
+  new_owner: string;
+  previous_owner: string;
+  icon_type: number | null;
+}
+
+interface AggregatedTerritoryResult {
+  ownershipRows: TerritoryOwnershipRow[];
+  lifecycleRows: TerritoryLifecycleRow[];
+}
+
 async function aggregateTerritoryOwnership(
   buckets: HourlyBucket[],
   warNumber: number
-): Promise<TerritoryOwnershipRow[]> {
-  const rows: TerritoryOwnershipRow[] = [];
+): Promise<AggregatedTerritoryResult> {
+  const ownershipRows: TerritoryOwnershipRow[] = [];
+  const lifecycleRows: TerritoryLifecycleRow[] = [];
 
   // Track previous hour's ownership for change detection
   let previousHourTerritories: Map<string, LocationTile> | null = null;
@@ -200,7 +218,7 @@ async function aggregateTerritoryOwnership(
       const prevTile = previousHourTerritories?.get(tile.id);
       const ownerChanged = prevTile && prevTile.owner !== tile.owner ? true : false;
 
-      rows.push({
+      ownershipRows.push({
         war_number: warNumber,
         territory_id: tile.id,
         hex_region: tile.region,
@@ -210,12 +228,25 @@ async function aggregateTerritoryOwnership(
         owner_changed_during_hour: ownerChanged,
         icon_type: tile.iconType,
       });
+
+      // Emit a lifecycle row for each ownership transition
+      if (ownerChanged && prevTile) {
+        lifecycleRows.push({
+          war_number: warNumber,
+          territory_id: tile.id,
+          hex_region: tile.region,
+          changed_at: bucket.hourEnd, // Use hour boundary as approximate capture time
+          new_owner: tile.owner,
+          previous_owner: prevTile.owner,
+          icon_type: tile.iconType,
+        });
+      }
     }
 
     previousHourTerritories = currentHourTerritories;
   }
 
-  return rows;
+  return { ownershipRows, lifecycleRows };
 }
 
 interface CasualtyRow {
@@ -307,6 +338,38 @@ async function upsertCasualties(rows: CasualtyRow[]) {
 
     if (error) {
       throw new Error(`Failed to upsert casualty data: ${error.message}`);
+    }
+  }
+}
+
+async function upsertTerritoryLifecycle(
+  rows: TerritoryLifecycleRow[],
+  warNumber: number,
+  dayStart: string,
+  dayEnd: string
+) {
+  // Delete existing lifecycle rows for this day to ensure idempotency
+  // (running aggregation twice for the same day won't produce duplicates)
+  const { error: deleteError } = await supabase
+    .from("territory_lifecycle")
+    .delete()
+    .eq("war_number", warNumber)
+    .gte("changed_at", dayStart)
+    .lte("changed_at", dayEnd);
+
+  if (deleteError) {
+    throw new Error(`Failed to clear lifecycle rows for day: ${deleteError.message}`);
+  }
+
+  if (rows.length === 0) return;
+
+  const batchSize = 500;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const { error } = await supabase.from("territory_lifecycle").insert(batch);
+
+    if (error) {
+      throw new Error(`Failed to insert territory lifecycle data: ${error.message}`);
     }
   }
 }
