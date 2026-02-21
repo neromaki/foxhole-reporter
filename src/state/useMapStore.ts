@@ -10,6 +10,7 @@ import {
 } from './layers';
 import { MapIcon } from '../data/map-icons';
 import { ReportSpec } from './reports';
+import type { FPIScore } from '../lib/pressureIndex';
 
 export type RealtimeConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PanelType = 'layer' | 'report' | 'reportInfo' | 'info';
@@ -82,6 +83,8 @@ interface MapState {
   mapIconCounts: Map<number, { colonial: number; warden: number; neutral: number }>
   setMapIconCounts: (counts: Map<number, { colonial: number; warden: number; neutral: number }>) => void;
   getCountForMapIcon: (iconType: number | MapIcon) => { colonial: number; warden: number; neutral: number };
+  fpiScores: Record<string, FPIScore> | null;
+  setFpiScores: (scores: Record<string, FPIScore> | null) => void;
 };
 
 
@@ -286,6 +289,8 @@ export const useMapStore = create<MapState>((set, get) => ({
   setMajorLabelsByMap: (map) => set({ majorLabelsByMap: map }),
   mapIconCounts: new Map<number, { colonial: number; warden: number; neutral: number }>(),
   setMapIconCounts: (counts) => set({ mapIconCounts: counts }),
+  fpiScores: null,
+  setFpiScores: (scores) => set({ fpiScores: scores }),
   getCountForMapIcon: (iconType: number | MapIcon) => {
     const s = get();
     const icon = iconType as number;
