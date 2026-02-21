@@ -67,17 +67,19 @@ export default function HexInfo({
 
     if (pct === 0) return ''; // no pressure worth showing
 
-    const dirLabel = dominant.pressureDirection === 'colonial' ? 'Colonial' :
-                     dominant.pressureDirection === 'warden' ? 'Warden' :
-                     dominant.pressureDirection === 'disputed' ? 'Disputed' : 'Stable';
+    const actionLabel = dominant.pressureDirection === 'colonial' ? 'Colonial push' :
+                        dominant.pressureDirection === 'warden'   ? 'Warden push' :
+                        dominant.pressureDirection === 'disputed' ? 'Contested' : 'Stable';
+
+    const intensityLabel = pct >= 80 ? 'Critical' : pct >= 60 ? 'High' : pct >= 30 ? 'Moderate' : 'Low';
 
     const badgeStyle = `background-color:${directionColor}AA;border-radius:0.75rem;padding:0.15rem 0.5rem;display:inline-flex;align-items:center;gap:0.25rem;`;
     const textStyle = `color:white;font-weight:bold;font-size:${zoom >= MAJOR_LABEL_MIN_ZOOM ? '18px' : '0.7rem'};`;
     const labelStyle = `color:${directionColor};font-size:${zoom >= MAJOR_LABEL_MIN_ZOOM ? '14px' : '0.6rem'};font-weight:600;margin-top:0.1rem;`;
 
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;">
-      <div style="${badgeStyle}"><span style="${textStyle}">FPI ${pct}%</span></div>
-      <span style="${labelStyle}">${dirLabel}</span>
+      <div style="${badgeStyle}"><span style="${textStyle}">${actionLabel}</span></div>
+      <span style="${labelStyle}">${intensityLabel}</span>
     </div>`;
   }
 

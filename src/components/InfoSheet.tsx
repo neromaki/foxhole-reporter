@@ -19,8 +19,6 @@ dayjs.extend(relativeTime);
 
 export default function InfoSheet() {
   const selected = useMapStore((s) => s.selectedLocation);
-  const activeReport = useMapStore((s) => s.activeReport);
-  const fpiScores = useMapStore((s) => s.fpiScores);
   
   // State for aggregated data
   const [ownershipHistory, setOwnershipHistory] = useState<any[]>([]);
@@ -118,106 +116,11 @@ export default function InfoSheet() {
         </div>
       </div>
 
-      {activeReport?.highlightType === 'pressureHeatmap' && <FpiSection />}
-
       <CaptureHistory />
 
       <OwnershipGraph />
     </div>
   );
-
-  function FpiSection() {
-    if (activeReport?.highlightType !== 'pressureHeatmap' || !selected?.id || !fpiScores) return null;
-    const score = fpiScores[selected.id];
-    if (!score) return null;
-
-    const { fpi, pressureDirection, tci, cii, cai, meanHoldHours, hoursUntilEstimatedCapture, estimatedCasualtyCost } = score;
-
-    const directionColor =
-      pressureDirection === 'colonial' ? (getTeamData('Colonial')?.colors.saturated ?? '#4caf50') :
-      pressureDirection === 'warden'   ? (getTeamData('Warden')?.colors.saturated   ?? '#2196f3') :
-      pressureDirection === 'disputed' ? '#f97316' : '#6b7280';
-
-    const dirLabel =
-      pressureDirection === 'colonial' ? 'Colonial pressure' :
-      pressureDirection === 'warden'   ? 'Warden pressure' :
-      pressureDirection === 'disputed' ? 'Disputed' : 'Stable';
-
-    const pct = Math.round(fpi * 100);
-    const isHighPressure = fpi >= 0.65 && cai >= 0.65;
-
-    function chip(label: string, value: string, hint: string) {
-      return (
-        <div key={label} className="flex flex-col items-center bg-gray-700/50 rounded px-2 py-1 min-w-[60px]">
-          <span className="text-xs text-gray-400">{hint}</span>
-          <span className="text-sm font-bold text-gray-100">{value}</span>
-          <span className="text-xs text-gray-400">{label}</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="w-full space-y-3">
-        <h3 className="text-sm font-semibold text-gray-300">Frontline Pressure</h3>
-
-        {/* Pressure bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-gray-400">
-            <span>{dirLabel}</span>
-            <span className="font-semibold" style={{ color: directionColor }}>{pct}%</span>
-          </div>
-          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${pct}%`, backgroundColor: directionColor }}
-            />
-          </div>
-        </div>
-
-        {/* Component chips */}
-        <div className="flex gap-2 flex-wrap">
-          {chip('TCI', String(tci), 'Capture churn')}
-          {chip('CII', `${Math.round(cii * 100)}%`, 'Casualty intensity')}
-          {chip('CAI', cai >= 0.6 ? 'Rising' : cai <= 0.4 ? 'Falling' : 'Steady', 'Escalating?')}
-        </div>
-
-        {/* Estimates */}
-        <div className="flex flex-col gap-1 text-xs text-gray-400">
-          <div className="flex justify-between">
-            <span>Est. time to next capture</span>
-            <span className="text-gray-200 font-medium">
-              {hoursUntilEstimatedCapture !== null
-                ? hoursUntilEstimatedCapture < 1
-                  ? 'Imminent'
-                  : `~${Math.round(hoursUntilEstimatedCapture)}h`
-                : 'Unknown'}
-            </span>
-          </div>
-          {estimatedCasualtyCost !== null && (
-            <div className="flex justify-between">
-              <span>Est. casualty cost</span>
-              <span className="text-gray-200 font-medium">~{estimatedCasualtyCost.toLocaleString()} combined</span>
-            </div>
-          )}
-          {meanHoldHours > 0 && (
-            <div className="flex justify-between">
-              <span>Mean hold time</span>
-              <span className="text-gray-200 font-medium">
-                {meanHoldHours < 1 ? `${Math.round(meanHoldHours * 60)}m` : `~${meanHoldHours.toFixed(1)}h`}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Schwerpunkt context label */}
-        {isHighPressure && (
-          <div className="text-xs text-amber-400/90 italic border border-amber-400/20 rounded px-2 py-1 bg-amber-400/5">
-            Schwerpunkt: high churn with rising casualties — likely focal point of current offensive.
-          </div>
-        )}
-      </div>
-    );
-  }
 
   function OwnershipGraph() {
     // Only show for territory selections
