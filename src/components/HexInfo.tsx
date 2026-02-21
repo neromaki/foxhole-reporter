@@ -11,6 +11,7 @@ import { MAJOR_LABEL_MIN_ZOOM, CASUALTIES_MAX_ZOOM } from '../lib/mapConfig';
 import type { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { isMobilePortrait } from '../lib/devices';
 import tinycolor from 'tinycolor2';
+import type { FPIScore, PressureDirection } from '../lib/pressureIndex';
 
 export default function HexInfo({
   casualtyRates,
@@ -24,7 +25,9 @@ export default function HexInfo({
   const map = useMap();
   const [zoom, setZoom] = React.useState(map.getZoom());
   const disabledHexes = useMapStore((s) => s.disabledHexes);
-  const reportModeActive = useMapStore((s) => s.activeReport !== null);
+  const activeReport = useMapStore((s) => s.activeReport);
+  const reportModeActive = activeReport !== null;
+  const fpiScores = useMapStore((s) => s.fpiScores);
 
   React.useEffect(() => {
     const handler = () => setZoom(map.getZoom());
@@ -42,6 +45,44 @@ export default function HexInfo({
     return Math.min(1, Math.max(0, v));
   }
 
+  function getFpiDirectionColor(direction: PressureDirection): string {
+    if (direction === 'colonial') return Colonials?.colors.saturated ?? '#4caf50';
+    if (direction === 'warden') return Wardens?.colors.saturated ?? '#2196f3';
+    if (direction === 'disputed') return '#f97316';
+    return '#6b7280'; // stable — gray
+  }
+
+  function buildFpiBadgeHtml(hexApiName: string): string {
+    if (!fpiScores) return '';
+
+    // Collect all FPI scores for this hex
+    const hexScores = Object.values(fpiScores).filter((s: FPIScore) => s.hexRegion === hexApiName);
+    if (hexScores.length === 0) return '';
+
+    const avgFpi = hexScores.reduce((sum, s) => sum + s.fpi, 0) / hexScores.length;
+    // Dominant direction = highest-FPI territory's direction
+    const dominant = hexScores.sort((a, b) => b.fpi - a.fpi)[0];
+    const directionColor = getFpiDirectionColor(dominant.pressureDirection);
+    const pct = Math.round(avgFpi * 100);
+
+    if (pct === 0) return ''; // no pressure worth showing
+
+    const actionLabel = dominant.pressureDirection === 'colonial' ? 'Colonial push' :
+                        dominant.pressureDirection === 'warden'   ? 'Warden push' :
+                        dominant.pressureDirection === 'disputed' ? 'Contested' : 'Stable';
+
+    const intensityLabel = pct >= 80 ? 'Critical' : pct >= 60 ? 'High' : pct >= 30 ? 'Moderate' : 'Low';
+
+    const badgeStyle = `background-color:${directionColor}AA;border-radius:0.75rem;padding:0.15rem 0.5rem;display:inline-flex;align-items:center;gap:0.25rem;`;
+    const textStyle = `color:white;font-weight:bold;font-size:${zoom >= MAJOR_LABEL_MIN_ZOOM ? '18px' : '0.7rem'};`;
+    const labelStyle = `color:${directionColor};font-size:${zoom >= MAJOR_LABEL_MIN_ZOOM ? '14px' : '0.6rem'};font-weight:600;margin-top:0.1rem;`;
+
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;">
+      <div style="${badgeStyle}"><span style="${textStyle}">${actionLabel}</span></div>
+      <span style="${labelStyle}">${intensityLabel}</span>
+    </div>`;
+  }
+
   return (
     <LayerGroup>
       <Pane name="hex-info-pane" style={{ zIndex: zoom < MAJOR_LABEL_MIN_ZOOM ? 600 : 200 }} />
@@ -54,9 +95,12 @@ export default function HexInfo({
         // Hex name label
         const nameLabelHtml = `<span style="${zoom >= MAJOR_LABEL_MIN_ZOOM ? 'text-shadow: none' : ''}">${hex.displayName}</span>`;
         const nameLabelClassName = `hex-name-label map-label z-[100] text-center text-[16px] ${zoom < MAJOR_LABEL_MIN_ZOOM ? 'text-gray-100 font-bold' : 'text-[40px] text-gray-100/40 font-extrabold'} ${isPortrait && zoom < portraitZoomThreshold ? 'text-[8px]' : ''} ${isDisabled ? 'text-gray-400/40 font-normal' : ''} whitespace-nowrap`;
-        // Hex casualties
+        // Hex casualties / FPI badge (mutually exclusive — driven by report highlightType)
         let casualtyLabelHtml = '';
-        if (casualtiesVisible && !reportModeActive && zoom <= CASUALTIES_MAX_ZOOM) {
+        if (activeReport?.highlightType === 'pressureHeatmap') {
+          casualtyLabelHtml = zoom <= CASUALTIES_MAX_ZOOM ? buildFpiBadgeHtml(hex.apiName) : '';
+        }
+        if (activeReport?.highlightType !== 'pressureHeatmap' && casualtiesVisible && !reportModeActive && zoom <= CASUALTIES_MAX_ZOOM) {
           const rate = casualtyRates.getRate(hex.apiName);
           if (rate) {
             const wardenRate = Math.round(rate.warden);

@@ -3,7 +3,7 @@ import { LayerState } from './layers';
 
 // Type definitions
 export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'territoryHighlighting' | 'minimal' | 'none';
-export type TerritoryHighlight = 'territory' | 'mapIconTags' | 'stackComparisonIcons' | 'none';
+export type TerritoryHighlight = 'territory' | 'mapIconTags' | 'stackComparisonIcons' | 'pressureHeatmap' | 'none';
 export type ReportSource = 'builtin' | 'user';
 export type FilterMode = 'ANY' | 'ALL';
 export type CountType = 'mapIcons' | 'territories' | 'mapIconsByTerritory';
@@ -442,6 +442,21 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     countType: 'mapIcons',
     defaultLayers: { structures: true, resources: false, casualties: false, territories: false, minorLocations: false },
     reportContextGroup: 'jobs-production',
+    source: 'builtin',
+  },
+
+  // Frontline Intel Reports
+  'frontline-pressure-index': {
+    id: 'frontline-pressure-index',
+    name: 'Frontline Pressure',
+    tooltip: 'Hexes and territories under active military pressure, directional by team. Based on territorial churn, hold times, and casualty rates.',
+    category: 'Frontline Intel',
+    mapIconTags: [],
+    viewMode: 'territoryHighlighting',
+    highlightType: 'pressureHeatmap',
+    countType: 'territories',
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'frontline-intel',
     source: 'builtin',
   },
 };

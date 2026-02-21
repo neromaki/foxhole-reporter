@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, LayerGroup, Marker, useMap, ZoomControl, Pane } from 'react-leaflet';
 import { CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince, useActiveReportDiff } from '../lib/queries';
+import { useLatestSnapshot, useLatestSnapshots, useTerritoryDiff, useSnapshotsSince, useActiveReportDiff, useWarState, useFrontlinePressureIndex } from '../lib/queries';
 import { useWarApiDirect } from '../lib/hooks/useWarApiDirect';
 import { useCasualtyRates } from '../lib/hooks/useCasualtyRates';
 import { useMapStore } from '../state/useMapStore';
@@ -57,6 +57,11 @@ export default function MapView() {
   const setReportHighlightedSet = useMapStore((s) => s.setReportHighlightedSet);
   const setStackComparisonMapIcon = useMapStore((s) => s.setStackComparisonMapIcon);
   const setVictoryBarDrawerState = useMapStore(s => s.setVictoryBarDrawerState);
+  const setFpiScores = useMapStore((s) => s.setFpiScores);
+
+  // FPI: fetch war number, then run FPI queries when pressureHeatmap report is active
+  const { data: warState } = useWarState();
+  const { data: fpiData } = useFrontlinePressureIndex(warState?.warNumber ?? null);
 
   const majorLabelsByMap = useMapStore(s => s.majorLabelsByMap);
   
@@ -97,6 +102,18 @@ export default function MapView() {
       setVictoryBarDrawerState(true);
     }
   }, [activeReport, activeReportDiff, snapshot, setReportHighlightedSet, setStackComparisonMapIcon]);
+
+  // Sync FPI scores into store when FPI report is active
+  useEffect(() => {
+    if (!activeReport || activeReport.highlightType !== 'pressureHeatmap') {
+      setFpiScores(null);
+      return;
+    }
+    if (fpiData?.scores) {
+      setFpiScores(fpiData.scores);
+      setReportHighlightedSet(new Set(Object.keys(fpiData.scores)));
+    }
+  }, [activeReport, fpiData, setFpiScores, setReportHighlightedSet]);
 
   const activeLayers = useMapStore((s) => s.activeLayers);
 

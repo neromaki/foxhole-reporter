@@ -8,6 +8,7 @@ import { snapshotCache, logCacheStatus } from './snapshotCache';
 import { useRealtimeSnapshot } from './hooks/useRealtimeSnapshot';
 import { useMapStore } from '../state/useMapStore';
 import { getTerritoryDiffPeriod } from './territoryDiffMapping';
+import { computeFPIScores, type FPIScore, type LifecycleRow, type CasualtyRow } from './pressureIndex';
 
 export const REALTIME_SNAPSHOTS_ENABLED = true; // Feature flag for realtime snapshots
 
@@ -332,9 +333,61 @@ export function useLatestSnapshots(count: number, options?: { enabled?: boolean 
 }
 
 /**
+ * Fetches lifecycle and casualty data for the Frontline Pressure Index report.
+ * Enabled only when the active report uses `highlightType: 'pressureHeatmap'`.
+ *
+ * Runs 2 queries (all hexes at once) and computes FPI scores client-side:
+ *   1. territory_lifecycle — last 48h ownership changes
+ *   2. casualty_hourly     — last 12h casualty rates
+ */
+export function useFrontlinePressureIndex(warNumber: number | null) {
+  const activeReport = useMapStore((s) => s.activeReport);
+  const isEnabled = activeReport?.highlightType === 'pressureHeatmap' && warNumber !== null && !!supabase;
+
+  return useQuery<{ scores: Record<string, FPIScore> }>({
+    queryKey: ['frontlinePressureIndex', warNumber],
+    enabled: isEnabled,
+    queryFn: async () => {
+      if (!supabase || warNumber === null) return { scores: {} };
+
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+
+      const [lifecycleResult, casualtyResult] = await Promise.all([
+        supabase
+          .from('territory_lifecycle')
+          .select('territory_id, hex_region, changed_at, new_owner, previous_owner')
+          .gte('changed_at', fortyEightHoursAgo)
+          .eq('war_number', warNumber),
+        supabase
+          .from('casualty_hourly')
+          .select('region, hour_start, warden_rate_per_hour, colonial_rate_per_hour')
+          .gte('hour_start', twelveHoursAgo)
+          .eq('war_number', warNumber),
+      ]);
+
+      if (lifecycleResult.error) {
+        console.error('[Queries] FPI lifecycle fetch error:', lifecycleResult.error);
+      }
+      if (casualtyResult.error) {
+        console.error('[Queries] FPI casualty fetch error:', casualtyResult.error);
+      }
+
+      const lifecycleRows = (lifecycleResult.data ?? []) as LifecycleRow[];
+      const casualtyRows = (casualtyResult.data ?? []) as CasualtyRow[];
+
+      DEBUG_MODE && console.log('[Queries] FPI: lifecycle rows', lifecycleRows.length, 'casualty rows', casualtyRows.length);
+
+      return { scores: computeFPIScores(lifecycleRows, casualtyRows) };
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
  * Fetches the appropriate territory diff for the active report (Option A query pattern).
  * Returns null if no territory report is active.
- * 
+ *
  * @returns Query result with data, isLoading, error, etc.
  */
 export function useActiveReportDiff() {

@@ -77,6 +77,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
   const activeReport = useMapStore((s) => s.activeReport);
   const reportHighlightedSet = useMapStore((s) => s.reportHighlightedSet);
   const reportModeActive = activeReport !== null;
+  const fpiScores = useMapStore((s) => s.fpiScores);
   
   const setDisabledHexes = useMapStore((s) => s.setDisabledHexes);
   const setPanelState = useMapStore((s) => s.setPanelState);
@@ -247,6 +248,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
     }
     
     // In report mode, only show hover on highlighted territories
+    // For pressureHeatmap: all territories with FPI data are highlighted, others are non-interactive
     if (reportModeActive && !p.highlighted) {
       return;
     }
@@ -368,8 +370,40 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     fillOpacity = TERRITORY_OPACITY_OVERVIEW;
                   }
 
-                  // Report mode
-                  if (reportModeActive) {
+                  // Frontline Pressure Index heatmap mode
+                  if (activeReport?.highlightType === 'pressureHeatmap') {
+                    const fpiData = p.territoryId ? fpiScores?.[p.territoryId] : null;
+                    if (fpiData) {
+                      const { fpi, pressureDirection } = fpiData;
+                      const baseOpacity = 0.20 + fpi * 0.60; // 0.20 (stable) → 0.80 (critical)
+
+                      if (pressureDirection === 'colonial') {
+                        fill = getTeamColors('Colonial')?.saturated ?? fill;
+                      } else if (pressureDirection === 'warden') {
+                        fill = getTeamColors('Warden')?.saturated ?? fill;
+                      } else if (pressureDirection === 'disputed') {
+                        fill = '#f97316'; // amber/orange
+                      }
+
+                      if (pressureDirection !== 'stable') {
+                        fillSaturation = 15 + fpi * 35; // escalate saturation with pressure
+                        fillBrightness = fpi * 15;
+                        fillOpacity = baseOpacity;
+                      } else {
+                        // stable — dim current team color
+                        fillSaturation = -20;
+                        fillBrightness = -10;
+                        fillOpacity = 0.15;
+                      }
+                    } else {
+                      // No FPI data (no lifecycle events) — render dimly
+                      fillSaturation = -20;
+                      fillBrightness = -10;
+                      fillOpacity = 0.15;
+                    }
+                  }
+                  // Regular report mode
+                  else if (reportModeActive) {
 
                     // If the report mode has specific rules for territory display
                     if (viewModeRules) {
@@ -383,11 +417,11 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                         fillBrightness = viewModeRules.territory.affectedBrightness;
                         fillOpacity = viewModeRules.territory.affectedOpacity;
                       }
-                    } 
+                    }
                     // No view mode rules for this report
                     else {
                       // If the territory is affected in the report
-                      if (affected) {                    
+                      if (affected) {
                           fillSaturation = TERRITORY_SATURATION_REPORT_AFFECTED;
                           fillBrightness = TERRITORY_BRIGHTNESS_REPORT_AFFECTED;
                           fillOpacity = TERRITORY_OPACITY_REPORT_AFFECTED;
