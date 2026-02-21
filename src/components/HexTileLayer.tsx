@@ -27,7 +27,7 @@ export default function HexTileLayer() {
       {HEX_LAYOUT.map((hex) => {
         const bounds = hexToLeafletBounds(hex);
         // Try WebP first with PNG fallback for older browsers
-        const webpUrl = new URL(`../map/tiles/Map${hex.apiName}${hex.apiName.endsWith('Hex') ? '' : 'Hex'}.webp`, import.meta.url).href;
+        const webpUrl = new URL(`../map/tiles/${hex.apiName}${hex.apiName.endsWith('Hex') ? '' : 'Hex'}.webp`, import.meta.url).href;
         const pngUrl = new URL(`../map/tiles/${hex.apiName}`, import.meta.url).href;
         
         // Use WebP with PNG fallback
