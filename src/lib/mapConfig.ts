@@ -1,5 +1,6 @@
 // Map display configuration constants
 export const MAP_MIN_ZOOM = -1.5;           // Minimum zoom level for the map (allow farther zoom-out)
+export const MAP_MIN_ZOOM_MOBILE = -3;     // Even farther zoom-out for mobile devices to accommodate smaller screens
 export const MAP_MAX_ZOOM = 3;              // Maximum zoom level for the map
 
 // Auto-show/hide overlays at zoom levels
@@ -24,9 +25,9 @@ export const TERRITORY_SATURATION_OVERVIEW = 20;
 export const TERRITORY_BRIGHTNESS_OVERVIEW = 0;
 export const TERRITORY_OPACITY_OVERVIEW = 0.7;
 
-export const TERRITORY_SATURATION_NORMAL = 20;
-export const TERRITORY_BRIGHTNESS_NORMAL = 0;
-export const TERRITORY_OPACITY_NORMAL = 0.35;
+export const TERRITORY_SATURATION_NORMAL = 100;
+export const TERRITORY_BRIGHTNESS_NORMAL = -10;
+export const TERRITORY_OPACITY_NORMAL = 0.2;
 
 export const TERRITORY_SATURATION_REPORT_UNAFFECTED = 0;
 export const TERRITORY_BRIGHTNESS_REPORT_UNAFFECTED = 0;

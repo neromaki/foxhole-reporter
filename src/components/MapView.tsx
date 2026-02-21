@@ -16,7 +16,7 @@ import { getIconUrl, getIconSize, getMapIcon, getIconLabel, getMapIconsByTag, ge
 import { ICON_SPRITE_PATH, SPRITE_WIDTH, SPRITE_HEIGHT, SPRITE_ICON_SIZE, ICON_SPRITE_METADATA } from '../data/icon-sprite';
 import L from 'leaflet';
 import type { LocationTile, Snapshot, WarReport } from '../types/war';
-import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, DEBUG_ZOOM, TERRITORY_OPACITY_NORMAL, TERRITORY_OPACITY_REPORT_AFFECTED, TERRITORY_OPACITY_REPORT_UNAFFECTED, TERRITORY_OPACITY_REPORT_HIGHLIGHTED, CLICK_DISTANCE_THRESHOLD } from '../lib/mapConfig';
+import { MAP_MIN_ZOOM, MAP_MAX_ZOOM, DATA_SOURCE, MAP_MARKER_MIN_ZOOM, ZOOM_THROTTLE_MS, DEBUG_PERF_OVERLAY, DEBUG_ZOOM, TERRITORY_OPACITY_NORMAL, TERRITORY_OPACITY_REPORT_AFFECTED, TERRITORY_OPACITY_REPORT_UNAFFECTED, TERRITORY_OPACITY_REPORT_HIGHLIGHTED, CLICK_DISTANCE_THRESHOLD, MAP_MIN_ZOOM_MOBILE } from '../lib/mapConfig';
 import { SharedTooltipProvider, useSharedTooltip } from '../lib/sharedTooltip';
 import { layerTagsByKey } from '../state/layers';
 import { getJobViewFilter } from '../state/jobViews';
@@ -29,8 +29,8 @@ import { DEBUG_MODE } from '../lib/appConfig';
 import { getTeamIcon } from '../data/teams';
 import { ZoomControls } from './ZoomControls';
 import HexInfoLayer from './HexInfo';
-import { isTouchDevice } from '../lib/devices';
 import { SelectedLocation } from '../state/useMapStore';
+import { isTouchDevice, isMobilePortrait } from '../lib/devices';
 
 export default function MapView() {
   // Fetch data based on config constant (only one source is fetched)
@@ -178,13 +178,12 @@ export default function MapView() {
     <MapContainer
       center={[0, 0] as [number, number]} 
       zoom={-1}
-      minZoom={MAP_MIN_ZOOM}
+      minZoom={isMobilePortrait() ? MAP_MIN_ZOOM_MOBILE : MAP_MIN_ZOOM}
       maxZoom={MAP_MAX_ZOOM}
       crs={CRS.Simple}
       zoomControl={false}
       zoomSnap={0.1}
-      zoomDelta={0.5}
-      attributionControl={false}      
+      zoomDelta={0.5}     
       className="h-full w-full bg-gray-900"
     >
       <ZoomControls />

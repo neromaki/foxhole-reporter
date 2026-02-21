@@ -326,8 +326,8 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
         // Compute casualty rates once per overlay
         const rate = casualtyRates.getRate(o.region);
         const combined = rate ? rate.warden + rate.colonial : 0;
-        type combinedCasualtyRate = 'low' | 'medium' | 'high' | 'none';
-        const hexCasualtyRate: combinedCasualtyRate = (combined > 200 && combined <= 500) ? 'low' : (combined > 500 && combined <= 1000) ? 'medium' : (combined > 1000) ? 'high' : 'none';
+        type combinedCasualtyRate = 'low' | 'medium' | 'high' | 'extreme' | 'none';
+        const hexCasualtyRate: combinedCasualtyRate = (combined > 200 && combined <= 800) ? 'low' : (combined > 800 && combined <= 1500) ? 'medium' : (combined > 1500 && combined <= 2500) ? 'high' : (combined > 2500) ? 'extreme' : 'none';
 
         return (
         <SVGOverlay key={o.region} bounds={o.bounds} pane="territories-pane" className="territory-subregions">
@@ -396,13 +396,16 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   }
 
                   // Capture highlighting
-                  if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
-                      fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_1;
-                      fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_1;
-                  }
-                  else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
-                      fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_2;
-                      fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_2;
+
+                  if (viewModeRules?.territory.captureHighlighting) {
+                    if(timeLastCaptured > 0 && timeLastCaptured <= 6) {
+                        fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_1;
+                        fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_1;
+                    }
+                    else if(timeLastCaptured > 0 && timeLastCaptured <= 24) {
+                        fillSaturation += TERRITORY_SATURATION_HIGHLIGHT_2;
+                        fillBrightness += TERRITORY_BRIGHTNESS_HIGHLIGHT_2;
+                    }
                   }
 
                   if (active) {
@@ -452,8 +455,9 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   if (reportModeActive) return 0;
                   switch (hexCasualtyRate) {
                     case 'low': return 0.5;
-                    case 'medium': return 0.7;
-                    case 'high': return 0.9;
+                    case 'medium': return 0.9;
+                    case 'high': return 0.8;
+                    case 'extreme': return 0.9;
                     default: return 0;
                   }
                 })()} filter={(() => {
@@ -462,6 +466,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     case 'low': return 'url(#casualtyRateLow)';
                     case 'medium': return 'url(#casualtyRateMed)';
                     case 'high': return 'url(#casualtyRateHigh)';
+                    case 'extreme': return 'url(#casualtyRateExtreme)';
                     default: return '';
                   }
                 })()}>
@@ -471,11 +476,32 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                       case 'low': return '#EAED10';
                       case 'medium': return '#E55A09';
                       case 'high': return '#FF0000';
+                      case 'extreme': return '#000000';
                       default: return 'none';
                     }
-                  })()} strokeOpacity="0.6" strokeWidth="12"/>
+                  })()} strokeOpacity="0.6" strokeWidth={(() => {
+                    switch (hexCasualtyRate) {
+                      case 'low': return 4;
+                      case 'medium': return 4;
+                      case 'high': return 2;
+                      case 'extreme': return 4;
+                      default: return 0;
+                    }
+                  })()} />
                 </g>
                 <defs>
+
+                  <filter id="casualtyRateExtreme" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                    <feOffset/>
+                    <feGaussianBlur stdDeviation="40"/>
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                    <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0"/>
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_876_45784"/>
+                  </filter>
+
                   <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                     <feFlood floodOpacity="0" result="BackgroundImageFix" />
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
@@ -492,7 +518,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
                     <feOffset />
-                    <feGaussianBlur stdDeviation="80" />
+                    <feGaussianBlur stdDeviation="70" />
                     <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
                     <feColorMatrix type="matrix" values="0 0 0 0 0.841346 0 0 0 0 0.308494 0 0 0 0 0 0 0 0 1 0" />
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />

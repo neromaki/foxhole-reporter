@@ -2,7 +2,7 @@ import { MapIcon, MapIconTag } from '../data/map-icons';
 import { LayerState } from './layers';
 
 // Type definitions
-export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'minimal' | 'none';
+export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'territoryHighlighting' | 'minimal' | 'none';
 export type TerritoryHighlight = 'territory' | 'mapIconTags' | 'stackComparisonIcons' | 'none';
 export type ReportSource = 'builtin' | 'user';
 export type FilterMode = 'ANY' | 'ALL';
@@ -38,6 +38,21 @@ export interface ReportSpec {
  */
 export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   // Territory Reports (map to territory_diffs table periods: daily, threeDay, weekly, allTime)
+  'overview': {
+    id: 'overview',
+    name: 'Overview',
+    image: 'Tile_Report_1',
+    tooltip: 'Current overview of the war',
+    category: 'Frequently used',
+    mapIconTags: [],
+    viewMode: 'none',
+    highlightType: 'none',
+    countType: 'territories',
+    defaultLayers: { structures: true, territories: true, resources: true, casualties: false, minorLocations: false },
+    reportContextGroup: 'frequently-used',
+    source: 'builtin',
+  },
+  // Territory Reports (map to territory_diffs table periods: daily, threeDay, weekly, allTime)
   'territory-daily': {
     id: 'territory-daily',
     name: '1 Day',
@@ -45,7 +60,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     tooltip: 'Changes since 24 hours ago',
     category: 'Territory',
     mapIconTags: [],
-    viewMode: 'territoryDimming',
+    viewMode: 'territoryHighlighting',
     highlightType: 'territory',
     countType: 'territories',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
@@ -59,7 +74,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     tooltip: 'Changes since 3 days ago',
     category: 'Territory',
     mapIconTags: [],
-    viewMode: 'territoryDimming',
+    viewMode: 'territoryHighlighting',
     highlightType: 'territory',
     countType: 'territories',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
@@ -73,7 +88,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     tooltip: 'Changes since 7 days ago',
     category: 'Territory',
     mapIconTags: [],
-    viewMode: 'territoryDimming',
+    viewMode: 'territoryHighlighting',
     highlightType: 'territory',
     countType: 'territories',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
@@ -87,7 +102,7 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     tooltip: 'Changes since war start',
     category: 'Territory',
     mapIconTags: [],
-    viewMode: 'territoryDimming',
+    viewMode: 'territoryHighlighting',
     highlightType: 'territory',
     countType: 'territories',
     defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
@@ -96,6 +111,21 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
   },
   
   // Threats Reports
+  'threats-casualties': {
+    id: 'threats-casualties',
+    name: 'Casualties',
+    image: 'Tile_Casualties',
+    tooltip: 'Showing casualties',
+    category: 'Threats',
+    mapIconTags: [],
+    viewMode: 'none',
+    highlightType: 'mapIconTags',
+    countType: 'mapIcons',
+    defaultLayers: { structures: true, territories: true, resources: false, casualties: false, minorLocations: false },
+    reportContextGroup: 'threats',
+    metadata: {  },
+    source: 'builtin',
+  },
   'threats-major': {
     id: 'threats-major',
     name: 'Major threats',

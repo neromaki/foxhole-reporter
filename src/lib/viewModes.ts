@@ -14,6 +14,8 @@ export interface ViewModeRules {
     affectedOpacity: number;
     affectedSaturation: number;
     affectedBrightness: number;
+
+    captureHighlighting?: boolean; // Whether to apply special styling to recently captured territories
   };
   // MapIcon visibility
   mapIcon: {
@@ -33,6 +35,27 @@ export interface ViewModeRules {
  */
 export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
   switch (viewMode) {
+    case 'territoryHighlighting':
+      return {
+        territory: {
+          unaffectedOpacity: 0.5,
+          unaffectedSaturation: 20,
+          unaffectedBrightness: -30,
+          affectedOpacity: 0.8,
+          affectedSaturation: 20,
+          affectedBrightness: 5,
+        },
+        mapIcon: {
+          visibleAtMinZoom: true,
+          affectedOpacity: 1,
+          unaffectedOpacity: 1,
+        },
+        interaction: {
+          restrictHoverToAffected: true,
+          restrictClickToAffected: true,
+        },
+      };
+
     case 'territoryDimming':
       return {
         territory: {
