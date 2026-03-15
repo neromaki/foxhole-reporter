@@ -3,6 +3,8 @@
 Verbose task list for each phase. Check off items as they are completed.
 Reference `REBUILD_PLAN.md` for context on each item.
 
+**Last updated:** 2026-03-15 — added tasks for: `user_profiles`, `war_summaries`, `discord_subscriptions` tables; `cleanup-on-war-end` + `public-api` edge functions; `react-i18next` setup; `userStore`; PWA install prompt; F-30 auto-refresh (moved to Phase 1); F-32 cross-war analytics; F-33 search; F-34 faction perspective; F-35 war end flow; F-36 shard comparison; F-37 streaming overlay; F-38 public API; localisation (Phase 5).
+
 ---
 
 ## Phase 1 — Foundation
@@ -53,8 +55,25 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 
 - [ ] **Migration: create `annotations` table**
   - Columns: `id` (uuid), `shard`, `war_number`, `created_at`, `expires_at`, `data` (jsonb)
+  - Add `user_id uuid` foreign key to `user_profiles`
   - Add partial index on `expires_at WHERE expires_at IS NOT NULL`
   - Enable RLS; add public SELECT + public INSERT policies
+
+- [ ] **Migration: create `user_profiles` table**
+  - Columns: `id` (uuid), `sigil_id` (text, unique, nullable), `created_at`, `last_seen_at`
+  - Add partial index on `sigil_id WHERE sigil_id IS NOT NULL`
+  - Enable RLS; public SELECT + INSERT; owner UPDATE only
+
+- [ ] **Migration: create `war_summaries` table**
+  - Columns: `id`, `shard`, `war_number`, `winner`, `started_at`, `ended_at`, `duration_hours`, `peak_colonial_territories`, `peak_warden_territories`, `final_colonial_territories`, `final_warden_territories`, `total_colonial_casualties`, `total_warden_casualties`, `total_captures`, `created_at`
+  - UNIQUE constraint on `(shard, war_number)`
+  - Enable RLS; public SELECT; authenticated INSERT
+
+- [ ] **Migration: create `discord_subscriptions` table**
+  - Columns: `id`, `guild_id`, `channel_id`, `shard`, `event_types` (text[]), `hex_filter` (text[], nullable), `created_at`
+  - UNIQUE constraint on `(channel_id, shard)`
+  - Enable RLS; public SELECT; authenticated INSERT
+  - **No bot or cron to wire up yet** — table reserved only
 
 - [ ] **Run all migrations** against local Supabase (`supabase migration up`)
 - [ ] **Verify schema** — inspect each table, confirm columns + indexes + RLS policies
@@ -110,6 +129,17 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - Return 501 Not Implemented with a note about pending Steam API source
   - Do not wire up cron yet
 
+- [ ] **New: `cleanup-on-war-end` edge function**
+  - Create `supabase/functions/cleanup-on-war-end/index.ts`
+  - Accept `shard` + `war_number` params
+  - Step 1: Compute `war_summaries` row from existing data (winner from `wars`, duration, final territory counts from last `territory_ownership_hourly`, total casualties from `casualty_hourly`, total captures from `war_events WHERE event_type='capture'`)
+  - Step 2: INSERT into `war_summaries`
+  - Step 3: DELETE `war_events` for `(shard, war_number)`
+  - Step 4: DELETE `snapshots` for `(shard, war_number)`
+  - Step 5: DELETE `territory_diffs`, `casualty_hourly`, `territory_ownership_hourly`, `territory_lifecycle` for `(shard, war_number)`
+  - Triggered by `poll-war` when `conquestEndTime` first detected
+  - Idempotent: safe to call multiple times
+
 - [ ] **Deploy all updated edge functions** to remote Supabase
 - [ ] **Smoke test** `poll-warapi?shard=able` manually — verify snapshot inserted with `shard='able'`
 - [ ] **Smoke test** `diff-all-structures?shard=able` — verify `war_events` rows created
@@ -119,6 +149,15 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 - [ ] **Install React Router**
   - `npm install react-router-dom`
   - Verify TypeScript types included
+
+- [ ] **Install and configure `react-i18next`**
+  - `npm install react-i18next i18next i18next-browser-languagedetector`
+  - Create `src/shared/lib/i18n.ts` — configure i18next with browser language detection
+  - Create `src/shared/locales/en/translation.json` as the source of truth
+  - Create stub files for: `fr/`, `de/`, `pt/`, `ru/`, `zh-Hans/` (content deferred to Phase 5)
+  - Wrap `App.tsx` with `I18nextProvider`
+  - Add language selector to settings (shows flag + language name)
+  - All strings in components must use `t('key')` — no hardcoded UI text
 
 - [ ] **Create `src/app/` directory structure**
   - `src/app/App.tsx` — providers + layout shell (replaces current `App.tsx`)
@@ -186,6 +225,13 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - Persist to localStorage key `foxhole-annotations`
   - Actions: `addDrawing`, `removeDrawing`, `addLabel`, `removeLabel`, `clearAll`
 
+- [ ] **Create `src/state/userStore.ts`**
+  - State: `deviceId: string` (UUID), `factionPreference: 'warden' | 'colonial' | null`, `language: string`
+  - Persist to localStorage key `foxhole-user`
+  - On first load: generate UUID if none present, store it; also upsert a `user_profiles` row
+  - Actions: `setFactionPreference`, `setLanguage`
+  - `factionPreference` propagates to all UI that labels factions ("your territory" vs faction name)
+
 - [ ] **Delete old `src/state/useMapStore.ts`** after all consumers migrated
 - [ ] **Update all component imports** to use new stores
 
@@ -246,7 +292,35 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 - [ ] **Implement `Badge.tsx`**
   - Coloured dot/pill — used for event type indicators in feed
 
-### 1.8 Phase 1 verification
+### 1.9 F-30 Data Freshness & Auto-Refresh (moved from P4)
+
+- [ ] **Configure automatic polling intervals on all data hooks**
+  - `useLatestSnapshot`: refetch every 60s
+  - `useActivityFeed`: refetch every 60s
+  - `useWarState`: refetch every 120s
+  - `useCasualtyTrend`, `useFPI`, `useTerritoryDiff`: refetch every 300s
+  - Use React Query `refetchInterval` — no manual `setInterval` calls
+
+- [ ] **Implement pulsing live indicator**
+  - A small animated dot in `WarHeader` — green pulse when data is fresh (<2 min old), amber when stale (2–10 min), red when very stale (>10 min)
+  - Derives from the most recently updated query's `dataUpdatedAt`
+
+- [ ] **Implement API downtime banner**
+  - Show when any critical query has not refreshed for >15 min
+  - Banner: "WarAPI unavailable — showing last known state from X ago" + Retry button
+  - Dismissible; re-appears if still stale after dismiss
+
+- [ ] **"Last updated" timestamps on reports**
+  - Each report panel footer shows "Updated X min ago"
+  - Derived from the report's primary query `dataUpdatedAt`
+
+- [ ] **PWA: installable + manifest**
+  - Add `manifest.json` with app name, icons, theme colour, `display: standalone`
+  - Register service worker (install prompt only; no offline caching)
+  - Show "Add to Home Screen" prompt on mobile after 30s of engagement
+  - Verify app opens in standalone mode on iOS and Android
+
+### 1.10 Phase 1 verification
 
 - [ ] `npm run build` passes with zero errors
 - [ ] `npm run lint` passes with zero errors
@@ -254,6 +328,10 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 - [ ] Shard selector changes `shardStore.activeShard`
 - [ ] URL param `?shard=baker` loads and persists shard selection
 - [ ] DB: `SELECT DISTINCT shard FROM snapshots` returns at least 'able'
+- [ ] Map auto-refreshes territory layer without user interaction
+- [ ] Stale data banner appears when API mock returns no new data for >15 min
+- [ ] App is installable on mobile (Add to Home Screen prompt appears)
+- [ ] `user_profiles` row created on first app load; UUID persists in localStorage
 
 ---
 
@@ -448,6 +526,49 @@ Goal: Unlock the logistics and strategist archetype improvements.
 
 - [ ] **Add manual trigger** in header or nav (e.g., clock/history icon)
 
+### 3.6 F-32 Cross-War Analytics
+
+- [ ] **Create `src/shared/hooks/useWarHistory.ts`**
+  - Query `war_summaries` ordered by `war_number DESC`
+  - Accept `shard` param
+  - Return list of wars with winner, duration, final territory counts, casualty totals
+
+- [ ] **Create cross-war analytics report/dashboard**
+  - Faction win rate (W/L/draw counts, percentage)
+  - Average war duration in hours
+  - Longest and shortest wars
+  - Territory count at war end (trend chart across last N wars)
+  - Total casualties per faction across all wars
+  - Accessible from the Reports panel
+
+### 3.7 F-33 Hex & Location Search
+
+- [ ] **Build search index from static data**
+  - Index all 43 hex region names from `src/shared/data/regions`
+  - Index all named locations (towns, bases, facilities) from icon data
+  - Each entry: `{ name, type, hexRegion, lat, lng }`
+
+- [ ] **Create `src/features/search/SearchBar.tsx`**
+  - Type-ahead input with debounce (200ms)
+  - Filters index client-side (no backend needed)
+  - Results grouped: Hex Regions | Locations
+  - Selecting a result: fly map to location, optionally open drill-down if hex
+
+- [ ] **Place search** in `WarHeader` (desktop: inline; mobile: icon → full-screen overlay)
+
+### 3.8 F-34 Faction Perspective
+
+- [ ] **Add faction preference to settings panel**
+  - Warden / Colonial / No preference (default)
+  - Stored in `userStore.factionPreference`
+
+- [ ] **Propagate faction perspective through UI**
+  - Report labels: "Your territories" / "Enemy territories" when preference set
+  - Map highlights: slightly emphasise your faction's territory
+  - Feed: "You captured X" / "Enemy captured X" framing
+  - Capability reports: "Your capabilities" / "Enemy capabilities"
+  - All strings go through i18n keys so faction framing is translatable
+
 ---
 
 ## Phase 4 — Differentiators (P3)
@@ -525,6 +646,65 @@ Goal: Features that set Foxhole Reporter apart from competitors.
   - Renders as `Polyline` arrows using Leaflet
   - Highlight contested corridors in warning colour
 
+### 4.6 F-35 War End Flow
+
+- [ ] **Detect war end in `poll-war`**
+  - When `conquestEndTime` first appears: set a `war_ended` flag, trigger `cleanup-on-war-end`
+
+- [ ] **Create `src/features/war-end/VictoryScreen.tsx`**
+  - Full-screen overlay showing winner (faction banner + colour)
+  - Final stats from `war_summaries`: duration, territory counts, total casualties, total captures
+  - "War History" link opens cross-war analytics
+  - Dismiss button → app returns to frozen map state
+
+- [ ] **Create inter-war waiting state**
+  - After VictoryScreen dismissed: map shows last known state with "War Ended" overlay
+  - Header shows "Awaiting War [N+1]..." with elapsed time since war end
+  - Polls `poll-war` every 60s for new war start
+  - Auto-transitions (removes overlay, reloads data) when new war detected
+
+### 4.7 F-36 Shard Comparison Panel
+
+- [ ] **Create `src/features/shard/ShardComparisonPanel.tsx`**
+  - Triggered from shard selector dropdown ("Compare all shards")
+  - Shows 3-column grid: Able | Baker | Charlie
+  - Each column: war number, day of war, territory balance (W vs C), player count (if available)
+  - Tap a column to switch to that shard
+
+### 4.8 F-37 Streaming Overlay
+
+- [ ] **Create `/overlay` route in React Router**
+  - Minimal shell: no nav, no panels, no FABs
+  - Transparent background (`body { background: transparent }`)
+  - Intended for OBS browser source
+
+- [ ] **Create `src/features/overlay/StreamOverlay.tsx`**
+  - War status bar: shard name, territory balance progress bar, war day + timer
+  - Territory map (read-only, no interaction, auto-refreshing)
+  - All text large enough to be legible at 1280×720 in a corner overlay
+  - URL params: `?shard=able&opacity=0.8&map=true&status=true`
+
+### 4.9 F-38 Public API
+
+- [ ] **Create `supabase/functions/public-api/index.ts`**
+  - Route: `GET /v1/wars/current?shard=`
+  - Route: `GET /v1/events?shard=&limit=&after=` (paginated, max 500/request)
+  - Route: `GET /v1/casualties?shard=&region=&hours=`
+  - Route: `GET /v1/territory?shard=&period=`
+  - Route: `GET /v1/wars?shard=` (list of `war_summaries`)
+  - Route: `GET /v1/wars/:war_number/summary?shard=`
+  - Route: `GET /v1/openapi.json` (static OpenAPI spec)
+
+- [ ] **Rate limiting**
+  - 60 req/min per IP unauthenticated
+  - Return `429 Too Many Requests` with `Retry-After` header
+  - Log abuse patterns (don't block legitimate heavy use)
+
+- [ ] **Write OpenAPI spec** (`supabase/functions/public-api/openapi.json`)
+  - All endpoints documented with params, response shapes, examples
+
+- [ ] **Add API docs link** to app footer or About page
+
 ---
 
 ## Phase 5 — Polish (P4, continuous)
@@ -541,13 +721,7 @@ Goal: Features that set Foxhole Reporter apart from competitors.
 - [ ] "What is this?" help icon on complex features (FPI, feed, drill-down)
 - [ ] Skip/dismiss mechanism stored in localStorage
 
-### 5.3 F-30 Data Freshness Indicators
-
-- [ ] All query hooks already expose `dataUpdatedAt`
-- [ ] Add subtle "updated 3 min ago" timestamp to WarHeader and report panels
-- [ ] Flash indicator when new data arrives (feed, territory layer)
-
-### 5.4 F-31 Accessibility / Colour-Blind Mode
+### 5.3 F-31 Accessibility / Colour-Blind Mode
 
 - [ ] Audit all faction colours for WCAG AA contrast
 - [ ] Provide alternative colour scheme for deuteranopia (green/red → blue/orange)
@@ -555,13 +729,26 @@ Goal: Features that set Foxhole Reporter apart from competitors.
 - [ ] All interactive elements have `aria-label`
 - [ ] Keyboard navigation for panels and report grid
 
+### 5.4 Localisation — additional languages
+
+- [ ] **Translate `en/translation.json` → French (`fr/`)**
+- [ ] **Translate `en/translation.json` → German (`de/`)**
+- [ ] **Translate `en/translation.json` → Portuguese PT (`pt/`)**
+- [ ] **Translate `en/translation.json` → Russian (`ru/`)**
+- [ ] **Translate `en/translation.json` → Chinese Simplified (`zh-Hans/`)**
+- [ ] **RTL check** — Russian and Chinese are LTR; no RTL work needed for this language set
+- [ ] **Verify** number/date formatting via `i18next` locale settings (date formats, decimal separators)
+- [ ] **In-app language switcher** — verify all 6 languages render correctly on mobile
+
 ---
 
 ## Cross-Cutting Concerns (all phases)
 
 - [ ] **Every data hook accepts `shard` param** — enforce this as a code review criterion
-- [ ] **Every hook exposes `dataUpdatedAt`** — required for F-30
+- [ ] **Every hook exposes `dataUpdatedAt`** — required for freshness indicators
 - [ ] **No hardcoded colours** — all faction/event colours come from a central constants file
+- [ ] **No hardcoded UI strings** — all text via `t('key')` from i18next
+- [ ] **Faction perspective respected** — any label naming a faction checks `userStore.factionPreference`
 - [ ] **No bespoke tooltip logic** — all tooltips use `shared/ui/Tooltip.tsx`
 - [ ] **No DOM/Node APIs in `src/lib/`** — keep Edge Function compatibility
 - [ ] **`npm run lint` must pass** before every commit

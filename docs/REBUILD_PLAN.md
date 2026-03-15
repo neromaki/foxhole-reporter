@@ -2,6 +2,8 @@
 
 **Purpose:** Master design document for the rebuild. Covers user archetypes, feature scope, frontend architecture, and Supabase DB schema. Intended as the reference for all subsequent implementation plans.
 
+**Last updated:** 2026-03-15 — requirements interview added Discord bot reservation, cross-war analytics, shard comparison panel, war end flow, hex+location search, faction perspective, soft accounts (Sigil-linkable), streaming overlay, PWA auto-refresh, localisation, public API, data export, data retention policy, annotation moderation, soft accounts, and war end handling.
+
 ---
 
 ## Context
@@ -67,6 +69,7 @@ Four primary archetypes drive every design decision. The current app scores and 
 - **F-15 Global Player Count** — UI slot reserved; data source deferred (note: Steam API may provide this, investigate later)
 - **F-16 True "What Changed" Reports** — upgrade F-06 snapshots into genuine diffs using `war_events`
 - **F-17 Multi-Shard Support** — `shard` column added to all time-series tables from day 1; 3× polling
+- **F-30 Data Freshness Indicators** — *upgraded from P4*; essential for passive second-screen monitoring use case; auto-refresh without user interaction, pulsing live indicator
 
 ### P2 — High value (ship next)
 - **F-18 Per-Region Drill-Down** — click hex → bottom sheet with structures, casualties, recent events
@@ -74,19 +77,27 @@ Four primary archetypes drive every design decision. The current app scores and 
 - **F-20 Distance & Travel Time Tool** — interactive map measurement with vehicle presets; pure frontend
 - **F-21 Weapon & Structure Range Visualisation** — range circle overlays with presets; pure frontend
 - **F-22 "Returning Player" Summary** — time-windowed catch-up computed from `war_events` + `territory_lifecycle`
+- **F-32 Cross-War Analytics** — `war_summaries` table; faction win rates, average war length, per-war territory trends; Strategist archetype
+- **F-33 Hex & Location Search** — type-ahead search covering hex names and named locations within hexes; zooms map to result
+- **F-34 Faction Perspective** — optional Warden/Colonial preference in settings; reframes UI labels ("your territory", "enemy structures") and adjusts colour emphasis throughout
 
 ### P3 — Differentiators (build after P2)
 - **F-23 Supply Chain Visualisation** — proximity-based directional flow overlay; pure frontend computed from snapshot
 - **F-24 Capability Balance Dashboard** — side-by-side faction comparison panel
-- **F-25 Map Annotation & Drawing Tools** — requires `annotations` DB table + URL share key
+- **F-25 Map Annotation & Drawing Tools** — requires `annotations` DB table + URL share key; annotations linked to `user_profiles`
 - **F-26 Victory Point Tracking** — `is_victory_base` flag already in data; needs dedicated UI layer
 - **F-27 Shareable Deep Links** — URL state encoding; required before F-25 share flows
+- **F-35 War End Flow** — victory screen with final stats → "awaiting next war" countdown → auto-transition when new war starts; feeds into F-32 cross-war history
+- **F-36 Shard Comparison Panel** — headline stats (territory balance, player count, war day) for all 3 shards side by side; helps players choose which shard to join
+- **F-37 Streaming Overlay** — `/overlay` route; minimal OBS-embeddable view with war status bar + territory map; transparent background; no controls
+- **F-38 Public API** — versioned REST (`/v1/`), OpenAPI-documented, rate-limited per IP/key; supports bulk war data export; enables community Discord bots and third-party tools
 
 ### P4 — Polish (continuous)
 - F-28 Report Panel UX (mobile)
-- F-29 Onboarding
-- F-30 Data Freshness Indicators
+- F-29 Onboarding — launch with contextual help; aligned with Foxhole's 6 supported languages
 - F-31 Accessibility/Colour-Blind Mode
+
+*Note: F-30 Data Freshness Indicators has been moved to P1 — it is essential for the passive second-screen monitoring use case, not optional polish.*
 
 ---
 
@@ -97,8 +108,12 @@ Four primary archetypes drive every design decision. The current app scores and 
 2. **URL as source of truth for shareable state** — enables F-27 deep links at zero cost
 3. **Shard-aware from day 1** — all data hooks accept `shard` param
 4. **Mobile-first** — bottom sheet pattern for all panels, min 44px touch targets
-5. **Data freshness exposed** — every query hook exposes `dataUpdatedAt` for F-30
-6. **No bespoke tooltip/modal logic** — shared primitives only
+5. **Auto-refreshing** — all data layers refresh automatically; no user interaction required for second-screen use
+6. **Data freshness exposed** — every query hook exposes `dataUpdatedAt`; stale data clearly indicated
+7. **i18n from day 1** — all strings via `react-i18next`; launch languages: EN, FR, DE, PT, RU, ZH-Hans
+8. **Faction-perspective aware** — UI respects optional Warden/Colonial preference throughout
+9. **No bespoke tooltip/modal logic** — shared primitives only
+10. **API-first data layer** — public `/v1/` API is a first-class output alongside the frontend
 
 ### Directory structure
 
@@ -214,11 +229,13 @@ src/
     toolsStore.ts            # activeTool, distance points, range state
     uiStore.ts               # panel open/close states, modals
     annotationStore.ts       # annotation drawings — persisted to localStorage
+    userStore.ts             # deviceId (UUID), factionPreference, language — persisted to localStorage
 
   types/
     war.ts
     events.ts
     annotations.ts
+    user.ts
 ```
 
 ### State management
@@ -422,7 +439,82 @@ CREATE POLICY "Public read by id" ON annotations FOR SELECT TO public USING (tru
 CREATE POLICY "Public insert" ON annotations FOR INSERT TO public WITH CHECK (true);
 ```
 
-**Note:** No auth required for insert — the UUID is the access key. Client-side annotations are stored in `annotationStore` (localStorage). Sharing triggers an INSERT and returns the UUID for URL construction: `?share=<uuid>`.
+**Note:** No auth required for insert — the UUID is the access key. Client-side annotations are stored in `annotationStore` (localStorage). Sharing triggers an INSERT and returns the UUID for URL construction: `?share=<uuid>`. Insert rate-limited by IP at the edge function level; generous limits to allow heavy legitimate use.
+
+---
+
+#### `user_profiles` — soft accounts (F-25, F-27, future Sigil auth)
+
+```sql
+CREATE TABLE user_profiles (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sigil_id     text UNIQUE,          -- reserved for future Sigil OAuth link
+  created_at   timestamptz DEFAULT now(),
+  last_seen_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_user_profiles_sigil ON user_profiles (sigil_id)
+  WHERE sigil_id IS NOT NULL;
+
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read by id" ON user_profiles FOR SELECT TO public USING (true);
+CREATE POLICY "Public insert" ON user_profiles FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Owner update" ON user_profiles FOR UPDATE TO public USING (id = current_setting('app.user_id', true)::uuid);
+```
+
+**Note:** UUID generated on first app open, stored in `localStorage`. Used as the foreign key for annotations and preferences. `sigil_id` reserved for future Sigil OAuth flow that will verify faction and regiment membership.
+
+---
+
+#### `war_summaries` — per-war aggregates for cross-war analytics (F-32)
+
+```sql
+CREATE TABLE war_summaries (
+  id                  bigserial PRIMARY KEY,
+  shard               text NOT NULL,
+  war_number          int NOT NULL,
+  winner              text,               -- 'Colonial' | 'Warden' | null (ongoing)
+  started_at          timestamptz,
+  ended_at            timestamptz,
+  duration_hours      float,
+  peak_colonial_territories int,
+  peak_warden_territories   int,
+  final_colonial_territories int,
+  final_warden_territories   int,
+  total_colonial_casualties  bigint,
+  total_warden_casualties    bigint,
+  total_captures      int,               -- count of capture events
+  created_at          timestamptz DEFAULT now(),
+  UNIQUE (shard, war_number)
+);
+
+ALTER TABLE war_summaries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read access for all" ON war_summaries FOR SELECT TO public USING (true);
+CREATE POLICY "Insert only for authenticated" ON war_summaries FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+---
+
+#### `discord_subscriptions` — reserved for future Discord bot (deferred)
+
+```sql
+CREATE TABLE discord_subscriptions (
+  id           bigserial PRIMARY KEY,
+  guild_id     text NOT NULL,
+  channel_id   text NOT NULL,
+  shard        text NOT NULL DEFAULT 'able',
+  event_types  text[] NOT NULL DEFAULT ARRAY['capture'],  -- event types to notify
+  hex_filter   text[],                  -- null = all regions; or list of hex names
+  created_at   timestamptz DEFAULT now(),
+  UNIQUE (channel_id, shard)
+);
+
+ALTER TABLE discord_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read access for all" ON discord_subscriptions FOR SELECT TO public USING (true);
+CREATE POLICY "Insert only for authenticated" ON discord_subscriptions FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+**Note:** Table reserved in schema; no bot or cron job wired up yet. Bot will be a separate service that reads `war_events` via the public API or Supabase Realtime and sends notifications to subscribed channels.
 
 ---
 
@@ -482,6 +574,30 @@ Accept `shard`, filter all queries by shard.
 
 ---
 
+### New edge functions (additional)
+
+#### `cleanup-on-war-end`
+
+Triggered when `conquestEndTime` is detected in `poll-war`. For the completed war:
+1. Compute and INSERT a `war_summaries` row (winner, duration, final territory counts, total casualties, total captures)
+2. DELETE all `war_events` rows for that `shard` + `war_number`
+3. DELETE all `snapshots` rows older than the new war's first snapshot
+4. DELETE all `territory_diffs`, `casualty_hourly`, `territory_ownership_hourly`, `territory_lifecycle` rows for that war
+
+#### `public-api` (v1)
+
+Versioned edge function serving REST endpoints for external consumers:
+- `GET /v1/wars/current?shard=` — current war state
+- `GET /v1/events?shard=&limit=&after=` — paginated war events
+- `GET /v1/casualties?shard=&region=&hours=` — casualty trend data
+- `GET /v1/territory?shard=&period=` — territory diff for period
+- `GET /v1/wars/:war_number/summary?shard=` — historical war summary
+- `GET /v1/wars?shard=` — list of all war summaries (cross-war analytics)
+
+Rate limited: 60 req/min per IP unauthenticated; higher limits with API key. OpenAPI spec served at `/v1/openapi.json`.
+
+---
+
 ### Complete table inventory (post-rebuild)
 
 | Table | Purpose | Key new columns |
@@ -496,42 +612,54 @@ Accept `shard`, filter all queries by shard.
 | **`war_events`** | All-structures event log (new) | new table |
 | **`player_counts`** | Steam player count (reserved) | new table |
 | **`annotations`** | Shareable map annotations | new table |
+| **`user_profiles`** | Soft accounts + Sigil link (new) | new table |
+| **`war_summaries`** | Per-war aggregates, retained forever (new) | new table |
+| **`discord_subscriptions`** | Discord bot subscriptions, reserved (new) | new table |
 
 ---
 
 ## 5. Implementation Phases
 
-### Phase 1 — Foundation (P0 preserve + multi-shard + feed)
-1. DB migrations: add `shard` to all existing tables, create `war_events`, `player_counts`, `annotations`
-2. Edge functions: update all to accept shard param; build `diff-all-structures`
-3. Frontend: new directory structure, split Zustand stores, `ShardSelector`, `urlState.ts`, `WarHeader` redesign
+### Phase 1 — Foundation (P0 preserve + multi-shard + infrastructure)
+1. DB migrations: add `shard` to all existing tables; create `war_events`, `player_counts`, `annotations`, `user_profiles`, `war_summaries`, `discord_subscriptions`
+2. Edge functions: update all to accept shard param; build `diff-all-structures`; stub `cleanup-on-war-end`
+3. Frontend: new directory structure, `react-i18next` setup (EN only initially), split Zustand stores including `userStore`, `ShardSelector`, `urlState.ts`, `WarHeader` redesign with PWA install prompt
 4. Carry forward all P0 features with clean component structure
+5. F-30 Data Freshness Indicators — auto-refresh, pulsing live indicator, stale data banner
 
 ### Phase 2 — Critical gaps (P1)
-5. F-13 Live Activity Feed (`war_events` → `ActivityFeed`)
-6. F-14 Hotspot Indicator (from `casualty_hourly`)
-7. F-16 True Change Reports (upgrade territory reports using `war_events`)
-8. F-15 Player count UI slot (empty until Steam source confirmed)
+6. F-13 Live Activity Feed (`war_events` → `ActivityFeed`)
+7. F-14 Hotspot Indicator (from `casualty_hourly`)
+8. F-16 True Change Reports (upgrade territory reports using `war_events`)
+9. F-15 Player count UI slot (empty until Steam source confirmed)
+10. F-17 Multi-Shard complete with API downtime banner (stale data state)
 
 ### Phase 3 — High value (P2)
-9. F-18 Per-Region Drill-Down
-10. F-19 Casualty Rate Trend Chart
-11. F-20 Distance & Travel Time Tool
-12. F-21 Weapon & Structure Range Vis
-13. F-22 Returning Player Summary
+11. F-18 Per-Region Drill-Down
+12. F-19 Casualty Rate Trend Chart
+13. F-20 Distance & Travel Time Tool
+14. F-21 Weapon & Structure Range Vis
+15. F-22 Returning Player Summary
+16. F-32 Cross-War Analytics (war_summaries report)
+17. F-33 Hex & Location Search
+18. F-34 Faction Perspective (settings)
 
 ### Phase 4 — Differentiators (P3)
-14. F-27 Shareable Deep Links (urlState.ts + test)
-15. F-26 Victory Point Tracking
-16. F-24 Capability Balance Dashboard
-17. F-25 Map Annotation & Drawing Tools
-18. F-23 Supply Chain Visualisation
+19. F-27 Shareable Deep Links (urlState.ts + test)
+20. F-26 Victory Point Tracking
+21. F-24 Capability Balance Dashboard
+22. F-25 Map Annotation & Drawing Tools
+23. F-23 Supply Chain Visualisation
+24. F-35 War End Flow (victory screen + transition)
+25. F-36 Shard Comparison Panel
+26. F-37 Streaming Overlay (`/overlay` route)
+27. F-38 Public API (`/v1/` endpoints + OpenAPI spec)
 
 ### Phase 5 — Polish (P4, continuous)
 - F-28 Mobile report UX
 - F-29 Onboarding
-- F-30 Data Freshness Indicators
 - F-31 Accessibility
+- Localisation: add FR, DE, PT, RU, ZH-Hans translations
 
 ---
 
