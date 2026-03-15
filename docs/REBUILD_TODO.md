@@ -69,6 +69,11 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - UNIQUE constraint on `(shard, war_number)`
   - Enable RLS; public SELECT; authenticated INSERT
 
+- [ ] **Migration: create `presets` table**
+  - Columns: `id` (uuid), `user_id` (FK to `user_profiles`), `name`, `description`, `layers` (jsonb), `info_panel` (jsonb), `created_at`, `updated_at`
+  - Index on `user_id`
+  - Enable RLS; public SELECT + INSERT; owner UPDATE only
+
 - [ ] **Migration: create `discord_subscriptions` table**
   - Columns: `id`, `guild_id`, `channel_id`, `shard`, `event_types` (text[]), `hex_filter` (text[], nullable), `created_at`
   - UNIQUE constraint on `(channel_id, shard)`
@@ -168,7 +173,8 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - `src/features/map/` with `MapCanvas.tsx`, `layers/`, `hooks/`
   - `src/features/war-header/WarHeader.tsx`
   - `src/features/layers/LayerPanel.tsx`, `LayerTree.tsx`
-  - `src/features/reports/ReportPanel.tsx`, `ReportGrid.tsx`, `reports/`
+  - `src/features/presets/PresetPanel.tsx`, `PresetGrid.tsx`, `PresetBuilder.tsx`, `LayerConfigEditor.tsx`, `InfoPanelEditor.tsx`, `SharePresetModal.tsx`
+  - `src/features/info-panel/InfoPanel.tsx`, `components/` (stub files for each InfoPanel component)
   - `src/features/feed/` (stub files)
   - `src/features/hotspots/` (stub files)
   - `src/features/drill-down/` (stub files)
@@ -193,7 +199,52 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - `src/types/events.ts` — `war_events` row types
   - `src/types/annotations.ts` — annotation data types
 
-### 1.4 Frontend — split Zustand stores
+### 1.4 Frontend — layer & preset foundation
+
+- [ ] **Create `src/shared/lib/layerRegistry.ts`**
+  - Define `LayerDefinition` interface: `id`, `name`, `category`, `component`, `defaultConfig`, `curatedBindings[]`, `configSchema`
+  - Register all initial layers: `territory`, `casualties`, `fpi`, `icon.bases`, `icon.production`, `icon.storage`, `icon.defensive`, `icon.resources`, `icon.aircraft`, `icon.naval`, `victory-points`, `range-circles`, `annotations`, `distance-measure`
+  - Export `getLayer(id)`, `getAllLayers()`, `getLayersByCategory()`
+
+- [ ] **Create `src/shared/lib/dataBindings.ts`**
+  - Define `DataBinding` interface: `source`, `filter`, `aggregate`, `mapTo`, `style`
+  - Implement `resolveBinding(binding, shard)` — maps spec to the correct query hook and returns `{ entityId → styleProps }`
+  - Standard curated bindings per layer (e.g. territory layer: "Captures 24h", "Casualties", "FPI", "Faction diff", "None")
+
+- [ ] **Create `src/shared/lib/infoPanelRegistry.ts`**
+  - Define `InfoPanelComponentDefinition` interface
+  - Register all initial components: `stat-card.territory-counts`, `stat-card.casualty-totals`, `chart.casualty-trend`, `list.hotspots`, `list.territory-diff`, `table.capability-counts`, `list.fpi-ranked`, `timeline.events`, `list.resource-breakdown`, `stats.war-summary`
+  - Export `getInfoPanelComponent(id)`, `getAllInfoPanelComponents()`
+
+- [ ] **Create `src/shared/lib/presetDefinitions.ts`**
+  - Define all system presets as static `Preset[]` objects (no DB)
+  - System presets replacing current reports:
+    - `frontline-pressure` — territory + FPI overlay + casualties; InfoPanel: FPI ranked list + casualty trend
+    - `capability-balance` — icon layers (all structure types); InfoPanel: capability table
+    - `territory-change-24h` — territory diff binding (24h captures); InfoPanel: territory diff list + stat cards
+    - `territory-change-3d` — same, 3-day window
+    - `territory-change-7d` — same, 7-day window
+    - `casualties-overview` — casualty heatmap; InfoPanel: casualty trend chart + stat cards
+    - `resource-overview` — icon.resources layer; InfoPanel: resource breakdown
+    - `logistics-overview` — icon.storage + icon.production layers; InfoPanel: logistics stats
+    - `partisan-targets` — icon.defensive + icon.production (enemy only); InfoPanel: capability table filtered to enemy
+    - `victory-points` — territory + VP layer; InfoPanel: VP counts per faction
+    - `returning-player` — territory diff + hotspots + casualties; InfoPanel: war summary stats + event timeline
+    - `war-history` — no map layers; InfoPanel: war summary stats (cross-war)
+
+- [ ] **Create `src/state/layerStore.ts`**
+  - State: `activeLayerState: { [layerId]: { enabled: boolean, config: LayerConfig } }`
+  - Initialise from active preset's layer state, or defaults from layer registry
+  - Actions: `setLayerEnabled(id, enabled)`, `setLayerConfig(id, config)`, `applyPreset(preset)`
+  - No persistence (derived from active preset)
+
+- [ ] **Create `src/state/presetStore.ts`**
+  - State: `activePresetId: string | null`, `userPresets: Preset[]`
+  - Persist `userPresets` to localStorage key `foxhole-presets`
+  - Actions: `setActivePreset(id)`, `saveUserPreset(preset)`, `deleteUserPreset(id)`, `forkPreset(preset)`
+  - On `setActivePreset`: calls `layerStore.applyPreset(preset)`
+
+### 1.6 Frontend — split Zustand stores
 
 - [ ] **Create `src/state/shardStore.ts`**
   - State: `activeShard: 'able' | 'baker' | 'charlie'`
@@ -235,7 +286,7 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 - [ ] **Delete old `src/state/useMapStore.ts`** after all consumers migrated
 - [ ] **Update all component imports** to use new stores
 
-### 1.5 Frontend — URL state
+### 1.7 Frontend — URL state
 
 - [ ] **Create `src/shared/lib/urlState.ts`**
   - Export `useUrlState()` hook
@@ -246,7 +297,7 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 
 - [ ] **Wire `useUrlState()` into `App.tsx`** (call once at app root)
 
-### 1.6 Frontend — P0 features in new structure
+### 1.8 Frontend — P0 features in new structure
 
 - [ ] **Migrate `HexTileLayer`** → `src/features/map/layers/HexTileLayer.tsx`
 - [ ] **Migrate `TerritorySubregionLayer`** → `src/features/map/layers/TerritoryLayer.tsx`
@@ -256,9 +307,29 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
 - [ ] **Migrate `VictoryBar` + war header** → `src/features/war-header/WarHeader.tsx`
   - Add placeholder `[Able ▼]` shard selector (wired to `shardStore`)
   - Add placeholder player count slot (shows `---` until F-15 implemented)
-- [ ] **Migrate `LayerPanel`** → `src/features/layers/LayerPanel.tsx`
-- [ ] **Migrate all report components** → `src/features/reports/reports/`
-- [ ] **Migrate `InfoSheet` / `ReportInfoSheet`** → `src/features/reports/ReportPanel.tsx`
+- [ ] **Implement `src/features/presets/PresetPanel.tsx`**
+  - Lists system presets (from `presetDefinitions.ts`) + user presets (from `presetStore`)
+  - Active preset highlighted
+  - "Create preset" button → opens `PresetBuilder`
+  - Selecting a preset calls `presetStore.setActivePreset(id)`
+
+- [ ] **Implement `src/features/info-panel/InfoPanel.tsx`**
+  - Reads `activePreset.infoPanelComponents` from `presetStore`
+  - Renders each registered component in order
+  - Wraps in `BottomSheet` (mobile) / sidebar (desktop)
+
+- [ ] **Implement all system preset InfoPanel components** (stub → real data):
+  - `StatCard` — single metric display
+  - `TerritoryDiffList` — list of captured/lost territories
+  - `CasualtyTrendChart` — line chart from `useCasualtyTrend`
+  - `HotspotRankedList` — top regions by casualty rate
+  - `CapabilityTable` — structure counts by type and faction
+  - `FPIRankedList` — regions ranked by frontline pressure
+  - `EventTimeline` — recent events from activity feed
+  - `ResourceBreakdown` — resource node counts
+  - `WarSummaryStats` — cross-war stats (stub until Phase 3)
+
+- [ ] **Migrate `InfoSheet` / `ReportInfoSheet`** → dissolve into `InfoPanel` system
 - [ ] **Migrate `HexInfo`** → stub for drill-down (Phase 3)
 - [ ] **Update `MapCanvas`** to compose all migrated layers correctly
 - [ ] **Verify all existing P0 features work** after migration:
@@ -268,7 +339,7 @@ Goal: Clean architecture, shard support everywhere, all P0 features preserved in
   - VictoryBar shows correct war state
   - Mobile layout is intact
 
-### 1.7 Frontend — shared UI primitives
+### 1.9 Frontend — shared UI primitives
 
 - [ ] **Implement `BottomSheet.tsx`**
   - Drag handle at top
@@ -646,7 +717,31 @@ Goal: Features that set Foxhole Reporter apart from competitors.
   - Renders as `Polyline` arrows using Leaflet
   - Highlight contested corridors in warning colour
 
-### 4.6 F-35 War End Flow
+### 4.6 Preset Builder (full implementation)
+
+- [ ] **Implement `PresetBuilder.tsx`**
+  - Step 1 — Layers: toggle layers on/off; map updates live as user toggles
+  - Step 2 — Configure layers: for each enabled layer, show `LayerConfigEditor`
+  - Step 3 — InfoPanel: pick components from registry via `InfoPanelEditor`; drag to reorder
+  - Step 4 — Name & save: text input for name + optional description; Save button
+
+- [ ] **Implement `LayerConfigEditor.tsx`**
+  - Standard mode: curated binding picker (dropdown of named `curatedBindings` for the layer)
+  - "Advanced" toggle reveals guided builder: source selector → filter fields (contextual) → aggregate → style sliders
+  - Preview updates the map in real time as config changes
+
+- [ ] **Implement `InfoPanelEditor.tsx`**
+  - Grid of available InfoPanel components with name + description
+  - Toggle to add/remove; drag handle to reorder selected components
+  - Each selected component shows its own config options (e.g. time window for charts)
+
+- [ ] **Implement `SharePresetModal.tsx`**
+  - Triggered from preset kebab menu → "Share"
+  - Saves preset to `presets` DB table (INSERT) if not already saved
+  - Displays `?preset=<uuid>` deep link with copy button
+  - Opening a shared preset URL: renders preset immediately; "Fork to my presets" button
+
+### 4.8 F-35 War End Flow
 
 - [ ] **Detect war end in `poll-war`**
   - When `conquestEndTime` first appears: set a `war_ended` flag, trigger `cleanup-on-war-end`
@@ -663,7 +758,7 @@ Goal: Features that set Foxhole Reporter apart from competitors.
   - Polls `poll-war` every 60s for new war start
   - Auto-transitions (removes overlay, reloads data) when new war detected
 
-### 4.7 F-36 Shard Comparison Panel
+### 4.9 F-36 Shard Comparison Panel
 
 - [ ] **Create `src/features/shard/ShardComparisonPanel.tsx`**
   - Triggered from shard selector dropdown ("Compare all shards")
@@ -671,7 +766,7 @@ Goal: Features that set Foxhole Reporter apart from competitors.
   - Each column: war number, day of war, territory balance (W vs C), player count (if available)
   - Tap a column to switch to that shard
 
-### 4.8 F-37 Streaming Overlay
+### 4.10 F-37 Streaming Overlay
 
 - [ ] **Create `/overlay` route in React Router**
   - Minimal shell: no nav, no panels, no FABs
@@ -684,7 +779,7 @@ Goal: Features that set Foxhole Reporter apart from competitors.
   - All text large enough to be legible at 1280×720 in a corner overlay
   - URL params: `?shard=able&opacity=0.8&map=true&status=true`
 
-### 4.9 F-38 Public API
+### 4.11 F-38 Public API
 
 - [ ] **Create `supabase/functions/public-api/index.ts`**
   - Route: `GET /v1/wars/current?shard=`
@@ -748,6 +843,8 @@ Goal: Features that set Foxhole Reporter apart from competitors.
 - [ ] **Every hook exposes `dataUpdatedAt`** — required for freshness indicators
 - [ ] **No hardcoded colours** — all faction/event colours come from a central constants file
 - [ ] **No hardcoded UI strings** — all text via `t('key')` from i18next
+- [ ] **No hardcoded report/layer logic** — all visualisations registered in `layerRegistry`; all data components registered in `infoPanelRegistry`; system presets defined in `presetDefinitions.ts`
+- [ ] **Layer components are generic renderers** — they receive resolved data from `dataBindings.ts`, never query hooks directly
 - [ ] **Faction perspective respected** — any label naming a faction checks `userStore.factionPreference`
 - [ ] **No bespoke tooltip logic** — all tooltips use `shared/ui/Tooltip.tsx`
 - [ ] **No DOM/Node APIs in `src/lib/`** — keep Edge Function compatibility

@@ -143,29 +143,33 @@ src/
     war-header/              # F-02, F-15
       WarHeader.tsx          # Shard selector + victory bar + player count slot + war timer
 
-    layers/                  # F-03
-      LayerPanel.tsx
-      LayerTree.tsx
+    presets/                 # Unified preset system (replaces reports/ + role modes)
+      PresetPanel.tsx        # Panel shell — lists system + user presets
+      PresetGrid.tsx         # Grid of preset tiles
+      PresetBuilder.tsx      # Create/edit preset: layer picker + InfoPanel composer
+      LayerConfigEditor.tsx  # Per-layer config controls (curated picker + advanced guided builder)
+      InfoPanelEditor.tsx    # Pick + order InfoPanel components for a preset
+      SharePresetModal.tsx   # Shows deep link UUID for a user preset
 
-    reports/                 # F-04 through F-11
-      ReportPanel.tsx        # Panel shell
-      ReportGrid.tsx         # Report tile selector
-      reports/
-        OverviewReport.tsx
-        TerritoryChangeReport.tsx   # F-16 upgraded
-        CasualtyReport.tsx
-        CapabilityReport.tsx
-        ResourceReport.tsx
-        LogisticsZoneReport.tsx
-        FrontlinePressureReport.tsx
-        CapabilityDashboard.tsx     # F-24
+    info-panel/              # Generic InfoPanel compositor
+      InfoPanel.tsx          # Renders an ordered list of registered components
+      components/            # Individual InfoPanel data components (registered by ID)
+        StatCard.tsx         # Single metric (e.g. "Warden territories: 142")
+        TerritoryDiffList.tsx
+        CasualtyTrendChart.tsx
+        HotspotRankedList.tsx
+        CapabilityTable.tsx
+        FPIRankedList.tsx
+        EventTimeline.tsx
+        ResourceBreakdown.tsx
+        WarSummaryStats.tsx  # For cross-war analytics
 
     feed/                    # F-13
       ActivityFeed.tsx
       FeedCard.tsx
       FeedFilters.tsx        # Filter by region, event type
 
-    hotspots/                # F-14
+    hotspots/                # F-14 — also available as InfoPanel component
       HotspotPanel.tsx       # Ranked regions list with map-zoom links
 
     drill-down/              # F-18
@@ -209,6 +213,7 @@ src/
       useFPI.ts
       useRegionDetail.ts
       useAnnotations.ts
+      usePreset.ts           # Fetch shared preset by UUID from server
 
     lib/
       projection.ts
@@ -219,13 +224,18 @@ src/
       icons.ts
       time.ts
       urlState.ts            # URL ↔ store sync for deep links (F-27)
+      layerRegistry.ts       # All layer definitions: id, name, category, component, defaultConfig, configSchema
+      infoPanelRegistry.ts   # All InfoPanel component definitions: id, name, description, component
+      dataBindings.ts        # DataBinding spec types + resolver (spec → query hook → resolved data)
+      presetDefinitions.ts   # System preset definitions (static data, not DB)
 
     data/                    # Static data (icons, regions, teams, etc.)
 
   state/                     # Zustand stores (split by domain)
     shardStore.ts            # activeShard — persisted to localStorage
     mapStore.ts              # viewport: center, zoom, interaction mode
-    reportStore.ts           # activeReport, layerState, highlightedSet
+    layerStore.ts            # activeLayerState: { [layerId]: { enabled, config } } — replaces reportStore
+    presetStore.ts           # activePreset, userPresets[] — persisted to localStorage; replaces reportStore
     toolsStore.ts            # activeTool, distance points, range state
     uiStore.ts               # panel open/close states, modals
     annotationStore.ts       # annotation drawings — persisted to localStorage
@@ -237,6 +247,83 @@ src/
     annotations.ts
     user.ts
 ```
+
+### Unified Layer & Preset System
+
+Everything visible on the map is a **layer**. "Reports" and "role modes" are both **presets** — named combinations of layer states with optional InfoPanel compositions. There is no separate reports panel; there is one unified preset + layer system.
+
+#### Layer registry (`layerRegistry.ts`)
+
+Every visualisation is registered with a `LayerDefinition`:
+
+```typescript
+interface LayerDefinition {
+  id: string                          // e.g. 'territory', 'casualties', 'fpi', 'icon.bases'
+  name: string                        // display name
+  category: 'base' | 'overlay' | 'icons' | 'tools' | 'analysis'
+  component: React.ComponentType      // the Leaflet layer component
+  defaultConfig: LayerConfig          // type-safe defaults
+  curatedBindings?: BindingOption[]   // named data binding presets for the config picker
+  configSchema: JSONSchema            // drives the advanced guided builder UI
+}
+```
+
+Layer configs are **data-driven** — they contain `DataBinding` specs rather than hardcoded modes:
+
+```typescript
+interface DataBinding {
+  source: 'war_events' | 'casualty_hourly' | 'territory_diffs' | 'snapshots' | 'static'
+  filter: { event_type?: string[], window?: string, faction?: string, hex_region?: string }
+  aggregate?: 'sum' | 'max' | 'count' | 'latest'
+  mapTo: 'territory_id' | 'hex_region' | 'x_y'
+  style: { opacity?: number, colorScale?: string, saturation?: number }
+}
+```
+
+The **data resolver** (`dataBindings.ts`) reads a binding spec, executes the appropriate query hook, and returns resolved `{ entityId → styleProps }` maps to the layer component.
+
+**Config builder UI:** Standard mode shows a curated picker of named binding options per layer (e.g. "Colour by: Captures / Casualties / FPI / None"). Advanced mode (one tap away) shows the full guided builder: source → filter fields → aggregate → style.
+
+#### InfoPanel component registry (`infoPanelRegistry.ts`)
+
+Every data display component is registered:
+
+```typescript
+interface InfoPanelComponentDefinition {
+  id: string              // e.g. 'stat-card.territory-counts', 'chart.casualty-trend'
+  name: string
+  description: string
+  component: React.ComponentType<{ config: InfoPanelComponentConfig }>
+  defaultConfig: InfoPanelComponentConfig
+}
+```
+
+#### Presets
+
+```typescript
+interface Preset {
+  id: string              // UUID — enables deep link ?preset=<uuid>
+  name: string
+  description?: string
+  isSystem: boolean       // system presets defined in presetDefinitions.ts; user presets in DB
+  layers: {
+    [layerId: string]: { enabled: boolean, config: LayerConfig }
+  }
+  infoPanelComponents: Array<{ id: string, config: InfoPanelComponentConfig }>
+}
+```
+
+**System presets** (defined in `presetDefinitions.ts`, not DB) replace the current hardcoded report components. Examples: Frontline Pressure, Capability Balance, Returning Player, Salvage Miner, Partisan Strike.
+
+**User presets** are stored in localStorage + synced to the `presets` DB table. UUID enables deep linking. Opening a shared preset URL renders it immediately; a "Fork to my presets" button saves a copy locally.
+
+**Preset builder** (discoverable — "Create preset" button in PresetPanel):
+1. Toggle layers on the map to compose the view
+2. Configure each active layer (curated picker or advanced guided builder)
+3. Pick InfoPanel components from the registry and order them
+4. Name the preset → Save → UUID generated → share link available
+
+---
 
 ### State management
 
@@ -466,6 +553,34 @@ CREATE POLICY "Owner update" ON user_profiles FOR UPDATE TO public USING (id = c
 
 ---
 
+#### `presets` — user-created presets (F-27, preset builder)
+
+```sql
+CREATE TABLE presets (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid REFERENCES user_profiles(id),
+  name         text NOT NULL,
+  description  text,
+  layers       jsonb NOT NULL,   -- { [layerId]: { enabled, config } }
+  info_panel   jsonb NOT NULL DEFAULT '[]',  -- [{ id, config }]
+  created_at   timestamptz DEFAULT now(),
+  updated_at   timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_presets_user ON presets (user_id);
+
+-- RLS: public read by UUID (the UUID is the share key)
+ALTER TABLE presets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read by id" ON presets FOR SELECT TO public USING (true);
+CREATE POLICY "Public insert" ON presets FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Owner update" ON presets FOR UPDATE TO public
+  USING (user_id::text = current_setting('app.user_id', true));
+```
+
+**Note:** System presets are defined in `presetDefinitions.ts` (static data, not stored in DB). User presets are stored here and also cached in `presetStore` (localStorage). The UUID enables deep links via `?preset=<uuid>`. Opening a shared link renders the preset immediately; "Fork" saves a copy under the viewer's `user_id`.
+
+---
+
 #### `war_summaries` — per-war aggregates for cross-war analytics (F-32)
 
 ```sql
@@ -615,6 +730,7 @@ Rate limited: 60 req/min per IP unauthenticated; higher limits with API key. Ope
 | **`user_profiles`** | Soft accounts + Sigil link (new) | new table |
 | **`war_summaries`** | Per-war aggregates, retained forever (new) | new table |
 | **`discord_subscriptions`** | Discord bot subscriptions, reserved (new) | new table |
+| **`presets`** | User-created layer + InfoPanel presets, shareable by UUID (new) | new table |
 
 ---
 
