@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
+
+/* Hide scrollbars globally */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 .leaflet-container { height: 100%; width: 100%; }
 .map-label { text-shadow: 0 0 2px #000, 0 0 4px #000, 1px 1px 2px #000; white-space: nowrap; }
 .map-label-major { z-index: 9999 !important;}
@@ -36,3 +40,4 @@ svg .hexCasualtyVisual {
     opacity: 1;
   }
 }
+

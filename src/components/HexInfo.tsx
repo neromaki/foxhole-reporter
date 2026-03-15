@@ -97,10 +97,11 @@ export default function HexInfo({
         const nameLabelClassName = `hex-name-label map-label z-[100] text-center text-[16px] ${zoom < MAJOR_LABEL_MIN_ZOOM ? 'text-gray-100 font-bold' : 'text-[40px] text-gray-100/40 font-extrabold'} ${isPortrait && zoom < portraitZoomThreshold ? 'text-[8px]' : ''} ${isDisabled ? 'text-gray-400/40 font-normal' : ''} whitespace-nowrap`;
         // Hex casualties / FPI badge (mutually exclusive — driven by report highlightType)
         let casualtyLabelHtml = '';
+        
         if (activeReport?.highlightType === 'pressureHeatmap') {
-          casualtyLabelHtml = zoom <= CASUALTIES_MAX_ZOOM ? buildFpiBadgeHtml(hex.apiName) : '';
+          casualtyLabelHtml += zoom <= CASUALTIES_MAX_ZOOM ? buildFpiBadgeHtml(hex.apiName) : '';
         }
-        if (activeReport?.highlightType !== 'pressureHeatmap' && casualtiesVisible && !reportModeActive && zoom <= CASUALTIES_MAX_ZOOM) {
+        if (((!reportModeActive && casualtiesVisible) || (reportModeActive && activeReport?.defaultLayers.casualties)) && zoom <= CASUALTIES_MAX_ZOOM) {
           const rate = casualtyRates.getRate(hex.apiName);
           if (rate) {
             const wardenRate = Math.round(rate.warden);
@@ -118,20 +119,20 @@ export default function HexInfo({
             let totalCasualtyRateStyle = casualtyBadge;
             if (zoom < MAJOR_LABEL_MIN_ZOOM) {
               if (totalRate > 200 && totalRate <= 800) {          // Low
-                totalCasualtyRateStyle += `background-color:oklch(0.7186 0.1496 91.605 / 40%);`;
+                totalCasualtyRateStyle += `background-color:oklch(0.7259 0.1397 170.65 / 40%);`;
               } else if (totalRate > 800 && totalRate <= 1500) {  // Medium
-                totalCasualtyRateStyle += `background-color:oklch(75% 0.183 55.934 / 40%);`;
+                totalCasualtyRateStyle += `background-color:oklch(0.7186 0.1496 91.605 / 40%);`;
               } else if (totalRate > 1500 && totalRate <= 2500) {                      // High
-                totalCasualtyRateStyle += `background-color:oklch(57.7% 0.245 27.325 / 40%);`;
+                totalCasualtyRateStyle += `background-color:oklch(0.7557 0.183 55.934 / 40%);`;
               } else if (totalRate > 2500) {                      // Extreme
-                totalCasualtyRateStyle += `background-color:oklch(0 0 304.24 / 40%);`;
+                totalCasualtyRateStyle += `background-color:oklch(57.7% 0.245 27.325 / 40%)`;
               }
             }
 
             const SHOW_CASUALTY_RATE_FACTION_BAR = false;
             const SHOW_CASUALTY_RATE_FACTION_NUMBERS = true;
 
-            casualtyLabelHtml = 
+            casualtyLabelHtml += 
             `<div class="flex flex-col items-center text-left font-semibold text-base gap-0.5 ${totalRate == 0 ? "opacity-0" : totalRate < 50 ? "opacity-50" : ""}">
               <div class="flex items-center" style="${totalCasualtyRateStyle}">
                 <div class="flex items-center">
@@ -174,6 +175,7 @@ export default function HexInfo({
             casualtyLabelHtml += `</div>`;
           }
         }
+        
         const icon = L.divIcon({
           className: `${nameLabelClassName}`,
           html: `<div style="display:inline-block;">${labelsVisible ? nameLabelHtml : ''}${casualtyLabelHtml}</div>`,

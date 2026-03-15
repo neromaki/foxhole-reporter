@@ -30,7 +30,10 @@ function getServiceClient() {
           const text = await response.text();
           return { error: new Error(`Insert failed: ${response.status} ${text}`) };
         }
-        return { error: null, data: await response.json() };
+        // Handle empty response body (204 No Content)
+        const text = await response.text();
+        const responseData = text ? JSON.parse(text) : null;
+        return { error: null, data: responseData };
       },
     }),
   };

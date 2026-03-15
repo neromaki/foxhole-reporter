@@ -35,6 +35,26 @@ export interface ViewModeRules {
  */
 export function getViewModeRules(viewMode: ViewMode): ViewModeRules {
   switch (viewMode) {
+    case 'hexHighlighting':
+      return {
+        territory: {
+          unaffectedOpacity: 0.5,
+          unaffectedSaturation: 20,
+          unaffectedBrightness: -30,
+          affectedOpacity: 0.8,
+          affectedSaturation: 20,
+          affectedBrightness: 5,
+        },
+        mapIcon: {
+          visibleAtMinZoom: false,
+          affectedOpacity: 1,
+          unaffectedOpacity: 1,
+        },
+        interaction: {
+          restrictHoverToAffected: true,
+          restrictClickToAffected: true,
+        },
+      };
     case 'territoryHighlighting':
       return {
         territory: {

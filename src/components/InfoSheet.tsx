@@ -14,11 +14,14 @@ import {
 import { OwnershipPieChart } from './OwnershipPieChart';
 import { OwnershipTimelineGraph } from './OwnershipTimelineGraph';
 import { CasualtyTrendGraph } from './CasualtyTrendGraph';
+import type { FPIScore } from '../lib/pressureIndex';
 
 dayjs.extend(relativeTime);
 
 export default function InfoSheet() {
   const selected = useMapStore((s) => s.selectedLocation);
+  const activeReport = useMapStore((s) => s.activeReport);
+  const fpiScores = useMapStore((s) => s.fpiScores);
   
   // State for aggregated data
   const [ownershipHistory, setOwnershipHistory] = useState<any[]>([]);
@@ -116,11 +119,35 @@ export default function InfoSheet() {
         </div>
       </div>
 
+      { activeReport?.highlightType === 'pressureHeatmap' && (
+        <FpiPanel selected={selected} fpiScores={fpiScores} />
+      )}
+
       <CaptureHistory />
 
       <OwnershipGraph />
+
     </div>
   );
+
+  function FpiPanel({ selected, fpiScores }: {
+    selected: { id?: string | null } | null;
+    fpiScores: Record<string, FPIScore> | null;
+  }) {
+    const colonialColor = getTeamData(Teams.Colonial)?.colors.saturated ?? '#4caf50';
+    const wardenColor   = getTeamData(Teams.Warden)?.colors.saturated   ?? '#2196f3';
+
+    const selectedScore: FPIScore | null = (selected?.id && fpiScores) ? (fpiScores[selected.id] ?? null) : null;
+
+    return (
+      <div className="flex flex-col gap-y-5 w-full">
+
+      {selectedScore && (
+        <FpiDetail score={selectedScore} colonialColor={colonialColor} wardenColor={wardenColor} />
+      )}
+      </div>
+    );
+  }
 
   function OwnershipGraph() {
     // Only show for territory selections
@@ -257,5 +284,86 @@ export default function InfoSheet() {
       </div>
     );
   }
+
+
+  function FpiDetail({ score, colonialColor, wardenColor }: {
+    score: FPIScore;
+    colonialColor: string;
+    wardenColor: string;
+  }) {
+    const { fpi, pressureDirection, tci, cii, cai, meanHoldHours, hoursUntilEstimatedCapture, estimatedCasualtyCost } = score;
+
+    const directionColor =
+      pressureDirection === 'colonial' ? colonialColor :
+      pressureDirection === 'warden'   ? wardenColor   :
+      pressureDirection === 'disputed' ? '#f97316' : '#6b7280';
+
+    const headline =
+      pressureDirection === 'colonial' ? 'Under Colonial assault' :
+      pressureDirection === 'warden'   ? 'Under Warden assault'   :
+      pressureDirection === 'disputed' ? 'Actively contested — fighting on both sides' :
+      'Holding steady — no recent activity';
+
+    const pct = Math.round(fpi * 100);
+    const intensityLabel = pct >= 80 ? 'Critical' : pct >= 60 ? 'High' : pct >= 30 ? 'Moderate' : 'Low';
+    const isHotspot = fpi >= 0.65 && cai >= 0.65;
+
+    return (
+      <div className="space-y-3 w-full">
+        <div>
+          <p className="text-sm font-medium text-gray-200">{headline}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Activity intensity: <span className="font-semibold" style={{ color: directionColor }}>{intensityLabel}</span></p>
+        </div>
+
+        {/* Intensity bar */}
+        <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: directionColor }} />
+        </div>
+
+        {/* Estimates */}
+        <div className="flex flex-col gap-1 text-xs text-gray-400">
+          {hoursUntilEstimatedCapture !== null && (
+            <div className="flex justify-between">
+              <span>Est. time to flip</span>
+              <span className="text-gray-200 font-medium">
+                {hoursUntilEstimatedCapture < 1 ? 'Imminent' : `~${Math.round(hoursUntilEstimatedCapture)}h`}
+              </span>
+            </div>
+          )}
+          {estimatedCasualtyCost !== null && (
+            <div className="flex justify-between">
+              <span>Est. casualty cost to capture</span>
+              <span className="text-gray-200 font-medium">~{estimatedCasualtyCost.toLocaleString()}</span>
+            </div>
+          )}
+          {meanHoldHours > 0 && (
+            <div className="flex justify-between">
+              <span>Avg. hold time</span>
+              <span className="text-gray-200 font-medium">
+                {meanHoldHours < 1 ? `${Math.round(meanHoldHours * 60)}m` : `~${meanHoldHours.toFixed(1)}h`}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span>Casualties escalating?</span>
+            <span className="text-gray-200 font-medium">
+              {cai >= 0.6 ? 'Yes — rising' : cai <= 0.4 ? 'No — falling' : 'Steady'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Times captured (48h)</span>
+            <span className="text-gray-200 font-medium">{tci}×</span>
+          </div>
+        </div>
+
+        {isHotspot && (
+          <div className="text-xs text-amber-400/90 border border-amber-400/20 rounded px-2 py-1.5 bg-amber-400/5">
+            This is a focal point of the current offensive — high turnover with rising casualties.
+          </div>
+        )}
+      </div>
+    );
+  }
+
 }
 

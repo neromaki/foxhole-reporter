@@ -382,7 +382,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                       } else if (pressureDirection === 'warden') {
                         fill = getTeamColors('Warden')?.saturated ?? fill;
                       } else if (pressureDirection === 'disputed') {
-                        fill = '#f97316'; // amber/orange
+                        fill = '#4C3008'; // amber/orange
                       }
 
                       if (pressureDirection !== 'stable') {
@@ -397,9 +397,9 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                       }
                     } else {
                       // No FPI data (no lifecycle events) — render dimly
-                      fillSaturation = -20;
-                      fillBrightness = -10;
-                      fillOpacity = 0.15;
+                      // fillSaturation = -20;
+                      // fillBrightness = -10;
+                      fillOpacity = 0.2;
                     }
                   }
                   // Regular report mode
@@ -483,13 +483,22 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
               </g>
             ) : null }
             
-            { activeLayers.casualties && (
-              <g className="hexCasualtyVisual">
+            { ((!reportModeActive && activeLayers.casualties) || (reportModeActive && activeReport?.defaultLayers.casualties)) && (
+              <g className="hexCasualtyVisual" style={(() => {
+                  let duration = 2;
+                  switch (hexCasualtyRate) {
+                    case 'low':     duration = 2; break;
+                    case 'medium':  duration = 2; break;
+                    case 'high':    duration = 2; break;
+                    case 'extreme': duration = 1; break;
+                  }
+                  return { animationDuration: `${duration}s` };
+              })()}>
                 <g id="casualtyRate" opacity={(() => {
                   if (reportModeActive) return 0;
                   switch (hexCasualtyRate) {
                     case 'low': return 0.5;
-                    case 'medium': return 0.9;
+                    case 'medium': return 0.6;
                     case 'high': return 0.8;
                     case 'extreme': return 0.9;
                     default: return 0;
@@ -507,17 +516,17 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                   <path d="M128 5.37604e-06L385 0L514 222L386 444H128L0 222L128 5.37604e-06Z" fill="white" fillOpacity="0.01" />
                   <path d="M381.547 6L507.066 222.011L382.533 438H131.467L6.92578 222L131.467 6H381.547Z" fill="none" stroke={(() => {
                     switch (hexCasualtyRate) {
-                      case 'low': return '#EAED10';
-                      case 'medium': return '#E55A09';
-                      case 'high': return '#FF0000';
-                      case 'extreme': return '#000000';
+                      case 'low': return '#15C29A';
+                      case 'medium': return '#EAED10';
+                      case 'high': return '#E55A09';
+                      case 'extreme': return '#FF0000';
                       default: return 'none';
                     }
                   })()} strokeOpacity="0.6" strokeWidth={(() => {
                     switch (hexCasualtyRate) {
                       case 'low': return 4;
                       case 'medium': return 4;
-                      case 'high': return 2;
+                      case 'high': return 4;
                       case 'extreme': return 4;
                       default: return 0;
                     }
@@ -525,7 +534,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                 </g>
                 <defs>
 
-                  <filter id="casualtyRateExtreme" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <filter id="casualtyRateExtremeAlt" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                     <feFlood floodOpacity="0" result="BackgroundImageFix"/>
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
@@ -536,7 +545,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_876_45784"/>
                   </filter>
 
-                  <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <filter id="casualtyRateExtreme" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                     <feFlood floodOpacity="0" result="BackgroundImageFix" />
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
@@ -547,7 +556,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_716_627" />
                   </filter>
 
-                  <filter id="casualtyRateMed" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <filter id="casualtyRateHigh" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                     <feFlood floodOpacity="0" result="BackgroundImageFix" />
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
@@ -558,7 +567,7 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_592" />
                   </filter>
 
-                  <filter id="casualtyRateLow" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                  <filter id="casualtyRateMed" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                     <feFlood floodOpacity="0" result="BackgroundImageFix" />
                     <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
@@ -568,6 +577,19 @@ export default function TerritorySubregionLayer({ snapshot, visible, historyById
                     <feColorMatrix type="matrix" values="0 0 0 0 0.916591 0 0 0 0 0.93109 0 0 0 0 0.0611772 0 0 0 1 0" />
                     <feBlend mode="normal" in2="shape" result="effect1_innerShadow_726_593" />
                   </filter>
+
+
+                  <filter id="casualtyRateLow" x="0" y="0" width="514" height="444" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                    <feOffset/>
+                    <feGaussianBlur stdDeviation="35"/>
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                    <feColorMatrix type="matrix" values="0 0 0 0 0.0839959 0 0 0 0 0.759615 0 0 0 0 0.601971 0 0 0 1 0"/>
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_888_45783"/>
+                  </filter>
+
                 </defs>
               </g>
             )}

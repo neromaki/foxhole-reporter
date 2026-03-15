@@ -2,7 +2,7 @@ import { MapIcon, MapIconTag } from '../data/map-icons';
 import { LayerState } from './layers';
 
 // Type definitions
-export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'territoryHighlighting' | 'minimal' | 'none';
+export type ViewMode = 'normal' | 'overview' | 'mapIcons' | 'territoryDimming' | 'territoryHighlighting' | 'minimal' | 'hexHighlighting' | 'none';
 export type TerritoryHighlight = 'territory' | 'mapIconTags' | 'stackComparisonIcons' | 'pressureHeatmap' | 'none';
 export type ReportSource = 'builtin' | 'user';
 export type FilterMode = 'ANY' | 'ALL';
@@ -452,10 +452,10 @@ export const BUILTIN_REPORTS: Record<string, ReportSpec> = {
     tooltip: 'Hexes and territories under active military pressure, directional by team. Based on territorial churn, hold times, and casualty rates.',
     category: 'Frontline Intel',
     mapIconTags: [],
-    viewMode: 'territoryHighlighting',
+    viewMode: 'hexHighlighting',
     highlightType: 'pressureHeatmap',
     countType: 'territories',
-    defaultLayers: { structures: false, territories: true, resources: false, casualties: false, minorLocations: false },
+    defaultLayers: { structures: false, territories: true, resources: false, casualties: true, minorLocations: false },
     reportContextGroup: 'frontline-intel',
     source: 'builtin',
   },
